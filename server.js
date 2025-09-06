@@ -9,7 +9,7 @@ import path from "path";
 import OpenAI from "openai";
 dotenv.config();
 
-const elevenLabsApiKey = process.env.ELEVEN_LABS_API_KEY;
+const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS_API_KEY;
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const voiceID = "MF4J4IDTRo0AxOO4dpFR"; // Adam - natural male voice
 
@@ -261,11 +261,22 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
     const message = messages[i];
     console.log(`Processing message ${i}:`, message);
     
+    // Check if API keys are available
+    if (!elevenLabsApiKey) {
+      console.error('ElevenLabs API key not found in environment variables');
+      message.audio = null;
+      message.lipsync = null;
+      continue;
+    }
+    
     // generate audio file with ElevenLabs
     const fileName = `audios/message_${i}.mp3`;
     const textInput = message.text;
     
     console.log(`Generating audio with ElevenLabs for message ${i}`);
+    console.log(`ElevenLabs API Key present: ${!!elevenLabsApiKey}`);
+    console.log(`Voice ID: ${voiceID}`);
+    
     try {
       const audioBuffer = await elevenlabs.textToSpeech.convert(voiceID, {
         text: textInput,
