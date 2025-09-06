@@ -23,8 +23,17 @@ const openai = new OpenAI({
 
 const app = express();
 app.use(express.json());
-app.use(cors());
-const port = 3000;
+
+// Environment-aware CORS configuration
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || ["http://localhost:5173", "http://localhost:3000"],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+const port = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -77,12 +86,12 @@ app.post("/chat", async (req, res) => {
     res.send({
       messages: [
         {
-          text: "Namaste! Main aapka Python teacher hun. Aaj kya Python topic sikhna chahte hain?",
+          text: "Namaste! Main aapka digital teacher hun. Aaj kya subject ya topic sikhna chahte hain?",
           facialExpression: "smile",
           animation: "Talking_1",
         },
         {
-          text: "Welcome! I'm your Python tutor. What would you like to learn about Python today?",
+          text: "Welcome! I'm your digital tutor. What subject or topic would you like to learn today?",
           facialExpression: "smile",
           animation: "Talking_0",
         },
@@ -92,21 +101,21 @@ app.post("/chat", async (req, res) => {
   }
 
   // Use OpenAI for text generation
-  // Python syllabus - add your topics here
-  const pythonSyllabus = [
-    "Introduction to Python",
-    "Variables and Data Types",
-    "Operators",
-    "Control Flow (if, else, for, while)",
-    "Functions",
-    "Lists, Tuples, and Dictionaries",
-    "Modules and Packages",
-    "File Handling",
-    "Error and Exception Handling",
-    "Object-Oriented Programming",
-    "Python Standard Library",
-    "Working with External Libraries",
-    "Basic Projects"
+  // General academic subjects for grades 7-8
+  const academicSyllabus = [
+    "Mathematics (Algebra, Geometry, Fractions, Decimals)",
+    "Science (Physics, Chemistry, Biology basics)",
+    "English (Grammar, Literature, Writing skills)",
+    "Social Studies (History, Geography, Civics)",
+    "Computer Science basics (Programming concepts)",
+    "General Knowledge",
+    "Study skills and Learning techniques",
+    "Problem-solving strategies",
+    "Creative writing and Communication",
+    "Basic Research skills",
+    "Time management and Organization",
+    "Critical thinking",
+    "Environmental Science"
   ];
 
   // Function to detect if user input contains Hindi/Hinglish
@@ -146,20 +155,20 @@ app.post("/chat", async (req, res) => {
   
   // Create dynamic system prompt based on detected language
   const createSystemPrompt = (language) => {
-    const basePrompt = `You are a helpful and friendly Python teacher. You only teach Python and only answer questions related to the following syllabus:\n${pythonSyllabus.map((t,i)=>`${i+1}. ${t}`).join("\n")}.\n\n`;
+    const basePrompt = `You are a helpful and friendly digital tutor for students in grades 7-8. You can teach any subject and answer questions related to these academic areas:\n${academicSyllabus.map((t,i)=>`${i+1}. ${t}`).join("\n")}.\n\nExplain concepts in very simple language suitable for 7th-8th grade students. Use examples from everyday life to make learning fun and easy to understand.\n\n`;
     
     let languageInstructions = '';
     let offTopicResponse = '';
     
     if (language === 'hinglish') {
-      languageInstructions = `Respond in Hinglish (Hindi-English mix). When explaining Python concepts, use Hinglish naturally - mix Hindi and English words like: "Python ek high-level programming language hai", "variables ko hum data store karne ke liye use karte hain", "function banana bahut easy hai", etc. Make it conversational and friendly.`;
-      offTopicResponse = 'Sorry yaar, main sirf Python topics from syllabus teach karta hun.';
+      languageInstructions = `Respond in Hinglish (Hindi-English mix). When explaining concepts, use simple Hinglish naturally - mix Hindi and English words like: "Math ek interesting subject hai", "science mein hum nature ke baare mein sikhte hain", "English grammar banana bahut easy hai", etc. Make it conversational, friendly, and like talking to a friend. Use simple words that a 7th-8th class student can easily understand.`;
+      offTopicResponse = 'Sorry yaar, main sirf academic subjects teach karta hun jo 7th-8th class ke students ke liye helpful hai.';
     } else {
-      languageInstructions = `Respond in clear, simple English. When explaining Python concepts, use easy-to-understand English with examples. Be conversational and friendly while maintaining clarity.`;
-      offTopicResponse = 'Sorry, I only teach Python topics from the syllabus.';
+      languageInstructions = `Respond in clear, simple English suitable for 7th-8th grade students. Use easy-to-understand words and give real-life examples. Be conversational, encouraging, and friendly - like a helpful older sibling or favorite teacher.`;
+      offTopicResponse = 'Sorry, I focus on teaching academic subjects that are helpful for 7th-8th grade students.';
     }
     
-    return basePrompt + languageInstructions + `\n\nIf the user asks about something outside Python or the syllabus, reply: '${offTopicResponse}'\n\nIMPORTANT: You MUST respond with ONLY a valid JSON array in this exact format:\n[{"text": "your complete response here", "facialExpression": "smile", "animation": "Talking_0"}]\n\nProvide complete, detailed explanations. Do NOT cut off mid-sentence. Always finish your thoughts completely. Include code examples when relevant.\nFacial expressions: smile, surprised, default. Animations: Talking_0, Talking_1, Idle. Maximum 3 messages.`;
+    return basePrompt + languageInstructions + `\n\nIf the user asks about something inappropriate or outside academic subjects, reply: '${offTopicResponse}'\n\nIMPORTANT: You MUST respond with ONLY a valid JSON array in this exact format:\n[{"text": "your complete response here", "facialExpression": "smile", "animation": "Talking_0"}]\n\nProvide complete, detailed explanations using simple language. Do NOT cut off mid-sentence. Always finish your thoughts completely. Include examples when relevant. Keep responses encouraging and positive.\nFacial expressions: smile, surprised, default. Animations: Talking_0, Talking_1, Idle. Maximum 3 messages.`;
   };
 
   const systemPrompt = createSystemPrompt(userLanguage);
@@ -207,8 +216,8 @@ app.post("/chat", async (req, res) => {
       console.log("JSON parse failed, using fallback response:", parseError);
       // Language-aware fallback response
       const fallbackText = userLanguage === 'hinglish' 
-        ? "Namaste! Main aapka Python teacher hun. Aaj kya Python topic sikhna chahte hain?"
-        : "Hi! I'm your Python teacher. What Python topic would you like to learn today?";
+        ? "Namaste! Main aapka digital teacher hun. Aaj kya subject ya topic sikhna chahte hain?"
+        : "Hi! I'm your digital tutor. What subject or topic would you like to learn today?";
       
       messages = [{
         text: fallbackText,
@@ -290,7 +299,7 @@ const audioFileToBase64 = async (file) => {
 };
 
 app.listen(port, () => {
-  console.log(`🎓 AI Python Tutor listening on port ${port}`);
+  console.log(`🎓 AI Digital Tutor listening on port ${port}`);
   console.log(`🌐 Frontend: http://localhost:5173`);
   console.log(`🤖 Backend: http://localhost:${port}`);
 });

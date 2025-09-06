@@ -1,14 +1,14 @@
 {
-  "name": "python-tutor-backend",
+  "name": "digital-tutor-backend",
   "version": "1.0.0",
-  "description": "AI-powered Python tutor with Hinglish responses, OpenAI integration, ElevenLabs voice synthesis, and lip-sync generation",
+  "description": "AI-powered digital tutor backend - teaches any subject to 7th-8th grade students with multilingual support, OpenAI integration, ElevenLabs voice synthesis, and lip-sync generation",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js --ext js"
   },
-  "author": "Python Tutor Team",
+  "author": "Digital Tutor Team",
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.12.2",
     "cors": "^2.8.5",
@@ -21,13 +21,16 @@
     "nodemon": "^3.0.1"
   },
   "keywords": [
-    "python",
-    "tutor",
+    "digital tutor",
     "ai",
+    "education",
+    "learning",
+    "students",
+    "grades 7-8",
+    "multilingual",
     "hinglish",
     "elevenlabs",
     "openai",
-    "lip-sync",
-    "education"
+    "lip-sync"
   ]
 }

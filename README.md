@@ -4,6 +4,13 @@ A revolutionary AI-powered Python learning platform featuring a 3D avatar teache
 
 ## 🌟 Features
 
+### 🔐 User Authentication & Personalization
+- **Secure Login/Signup**: Supabase-powered authentication with email verification
+- **Personalized Profiles**: Custom display names, avatar preferences, and learning settings
+- **Side Navigation**: Intuitive sidebar with profile management and settings
+- **User Progress**: Track learning journey and achievements (coming soon)
+- **Custom Preferences**: Language, theme, and avatar customization options
+
 ### 🤖 Intelligent AI Teacher
 - **Smart Language Detection**: Automatically detects and responds in English or Hinglish
 - **Dynamic Token Allocation**: Optimizes response length based on question complexity (500-2000 tokens)
@@ -12,6 +19,7 @@ A revolutionary AI-powered Python learning platform featuring a 3D avatar teache
 
 ### 🎭 3D Avatar & Voice
 - **Realistic 3D Avatar**: Interactive teacher model with facial expressions and animations
+- **Personalized Avatars**: Choose from multiple avatar styles (Professional, Casual, Formal)
 - **ElevenLabs Voice Synthesis**: Natural voice generation with Adam's voice model
 - **Real-time Lip Sync**: Rhubarb-powered mouth movement synchronization
 - **Emotion Mapping**: Dynamic facial expressions (smile, surprised, default)
@@ -21,11 +29,14 @@ A revolutionary AI-powered Python learning platform featuring a 3D avatar teache
 - **Persistent Chat History**: Conversations remain intact across sessions
 - **Quick Action Buttons**: Pre-made questions for instant learning
 - **New Chat & Clear Functions**: Easy conversation management
+- **Profile Integration**: Easy access to user settings and preferences
 - **Professional UI**: Modern classroom-style design with green theme
 
 ### 🛠 Technical Stack
 - **Frontend**: React 18 + Vite + React Three Fiber + Tailwind CSS
 - **Backend**: Node.js + Express + OpenAI GPT-3.5-turbo
+- **Database**: Supabase (PostgreSQL) with Row Level Security
+- **Authentication**: Supabase Auth with email/password and social providers
 - **Audio**: ElevenLabs API + FFmpeg + Rhubarb lip-sync
 - **Development**: Concurrently for unified development experience
 
@@ -86,6 +97,7 @@ ai tutor/
 - **npm** package manager
 - **OpenAI API Key** ([Get one here](https://platform.openai.com/api-keys))
 - **ElevenLabs API Key** ([Get one here](https://elevenlabs.io/))
+- **Supabase Account** ([Sign up free](https://app.supabase.com))
 - **FFmpeg** installed on your system
 
 ### Installation
@@ -101,12 +113,25 @@ cd ai-tutor-full-stack
 npm run install:all
 ```
 
-3. **Configure environment variables:**
-   - Create `backend/.env` file
-   - Add your API keys:
-```env
-ELEVEN_LABS_API_KEY="your_elevenlabs_api_key_here"
-OPENAI_API_KEY="your_openai_api_key_here"
+3. **Set up Supabase (Required for Authentication):**
+   - Follow the detailed [Supabase Setup Guide](./SUPABASE_SETUP_GUIDE.md)
+   - Create your Supabase project
+   - Set up database tables
+   - Get your project URL and anon key
+
+4. **Configure environment variables:**
+   
+   **Backend (`backend/.env`):**
+   ```env
+   ELEVEN_LABS_API_KEY="your_elevenlabs_api_key_here"
+   OPENAI_API_KEY="your_openai_api_key_here"
+   ```
+   
+   **Frontend (`frontend/.env`):**
+   ```env
+   VITE_SUPABASE_URL="your_supabase_project_url"
+   VITE_SUPABASE_ANON_KEY="your_supabase_anon_key"
+   ```
 ```
 
 4. **Start the application:**
