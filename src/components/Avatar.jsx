@@ -114,6 +114,79 @@ export function Avatar(props) {
   const { message, onMessagePlayed, chat } = useChat();
 
   const [lipsync, setLipsync] = useState();
+  const [audioContext, setAudioContext] = useState(null);
+  const [isAudioInitialized, setIsAudioInitialized] = useState(false);
+
+  // Initialize audio context for mobile compatibility
+  const initializeAudio = async () => {
+    if (isAudioInitialized) return;
+    
+    try {
+      // Create or resume audio context for mobile
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      setAudioContext(ctx);
+      setIsAudioInitialized(true);
+      console.log('Audio initialized for mobile');
+    } catch (error) {
+      console.error('Failed to initialize audio:', error);
+    }
+  };
+
+  // Mobile-friendly audio player
+  const playAudioMobile = async (audioSrc) => {
+    try {
+      // Ensure audio is initialized
+      await initializeAudio();
+      
+      const audio = new Audio();
+      
+      // Mobile-specific audio settings
+      audio.preload = 'auto';
+      audio.crossOrigin = 'anonymous';
+      
+      // Add mobile-specific properties
+      if ('playsInline' in audio) {
+        audio.playsInline = true;
+      }
+      
+      return new Promise((resolve, reject) => {
+        const handleCanPlay = async () => {
+          try {
+            // Try to play immediately
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+              await playPromise;
+            }
+            setAudio(audio);
+            audio.onended = onMessagePlayed;
+            resolve(audio);
+          } catch (playError) {
+            console.error('Mobile audio play failed:', playError);
+            // Fallback for mobile - still set the audio for lipsync fallback
+            setAudio(audio);
+            setTimeout(onMessagePlayed, 3000);
+            resolve(audio);
+          }
+        };
+
+        const handleError = (error) => {
+          console.error('Mobile audio load failed:', error);
+          reject(error);
+        };
+
+        audio.addEventListener('canplaythrough', handleCanPlay, { once: true });
+        audio.addEventListener('error', handleError, { once: true });
+        audio.src = audioSrc;
+        audio.load(); // Explicitly load for mobile
+      });
+    } catch (error) {
+      console.error('Mobile audio setup failed:', error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     console.log('Message changed:', message);
@@ -137,12 +210,28 @@ export function Avatar(props) {
     }
     
     if (audioSrc) {
-      const audio = new Audio(audioSrc);
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-      });
-      setAudio(audio);
-      audio.onended = onMessagePlayed;
+      // Detect mobile device
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        console.log('Mobile device detected, using mobile audio player');
+        playAudioMobile(audioSrc).catch(error => {
+          console.error('Mobile audio failed:', error);
+          // Fallback: just run lipsync animation without audio
+          const fallbackAudio = { paused: false, currentTime: 0 };
+          setAudio(fallbackAudio);
+          setTimeout(onMessagePlayed, 3000);
+        });
+      } else {
+        // Desktop audio handling
+        console.log('Desktop device, using standard audio player');
+        const audio = new Audio(audioSrc);
+        audio.play().catch(error => {
+          console.error('Desktop audio failed:', error);
+        });
+        setAudio(audio);
+        audio.onended = onMessagePlayed;
+      }
     } else {
       // No audio, but still need to call onMessagePlayed after animation
       console.log('No audio available, using fallback timing');
@@ -221,8 +310,8 @@ export function Avatar(props) {
     }
 
     const appliedMorphTargets = [];
-    if (message && lipsync && audio) {
-      // Use actual lipsync data (local development)
+    if (message && lipsync && audio && audio.currentTime !== undefined) {
+      // Use actual lipsync data (local development with working audio)
       const currentAudioTime = audio.currentTime;
       for (let i = 0; i < lipsync.mouthCues.length; i++) {
         const mouthCue = lipsync.mouthCues[i];
@@ -235,8 +324,8 @@ export function Avatar(props) {
           break;
         }
       }
-    } else if (message && !lipsync && audio && !audio.paused) {
-      // Fallback: realistic talking animation when no lipsync data (production)
+    } else if (message && (!lipsync || !audio || audio.paused !== false)) {
+      // Fallback: realistic talking animation for production OR mobile audio issues
       const time = Date.now() * 0.001;
       
       // Create more realistic mouth movements with multiple visemes
@@ -265,6 +354,8 @@ export function Avatar(props) {
       // Add subtle jaw movement
       const jawIntensity = (Math.sin(time * 4) + 1) * 0.1; // Slower jaw movement
       lerpMorphTarget("jawOpen", jawIntensity, 0.1);
+      
+      console.log('Using fallback lipsync animation'); // Debug for mobile
     }
 
     Object.values(corresponding).forEach((value) => {

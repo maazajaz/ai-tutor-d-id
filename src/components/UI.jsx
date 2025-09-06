@@ -1,10 +1,40 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useChat } from "../hooks/useChat";
 
 export const UI = ({ hidden, ...props }) => {
   const input = useRef();
   const whiteboardRef = useRef();
   const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, clearChatHistory } = useChat();
+  const [audioInitialized, setAudioInitialized] = useState(false);
+  const [showMobileAudioPrompt, setShowMobileAudioPrompt] = useState(false);
+
+  // Check if mobile and show audio initialization prompt
+  useEffect(() => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile && !audioInitialized) {
+      setShowMobileAudioPrompt(true);
+    }
+  }, [audioInitialized]);
+
+  const initializeMobileAudio = async () => {
+    try {
+      // Create a silent audio context to enable audio
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      
+      // Play a silent audio to unlock audio on mobile
+      const silentAudio = new Audio('data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAAW1wM1BST1YgdjMuOTggcmVsLiAxLjA3NgD/80DEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v///////////////////8AAAAATGF2YzMuOTgAAAAAAAAAAAAAAAAkAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA');
+      silentAudio.play().catch(() => {}); // Ignore errors
+      
+      setAudioInitialized(true);
+      setShowMobileAudioPrompt(false);
+      console.log('Mobile audio initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize mobile audio:', error);
+    }
+  };
 
   const handleClearChat = () => {
     if (chatHistory.length === 0) {
@@ -145,6 +175,35 @@ export const UI = ({ hidden, ...props }) => {
                 <p>• "What is photosynthesis?"</p>
                 <p>• "Math mein fractions kaise solve karte hain?"</p>
                 <p>• "How do I write a good essay?"</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Audio Initialization Prompt */}
+        {showMobileAudioPrompt && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl p-6 max-w-sm mx-auto shadow-2xl">
+              <div className="text-center">
+                <div className="text-4xl mb-4">🔊</div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                  Enable Audio
+                </h3>
+                <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+                  To hear your AI teacher speak, please tap the button below to enable audio on your mobile device.
+                </p>
+                <button
+                  onClick={initializeMobileAudio}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                >
+                  🎵 Enable Audio
+                </button>
+                <button
+                  onClick={() => setShowMobileAudioPrompt(false)}
+                  className="w-full mt-2 text-gray-500 text-sm underline"
+                >
+                  Skip (text only)
+                </button>
               </div>
             </div>
           </div>
