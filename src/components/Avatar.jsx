@@ -124,10 +124,29 @@ export function Avatar(props) {
     setAnimation(message.animation);
     setFacialExpression(message.facialExpression);
     setLipsync(message.lipsync);
-    const audio = new Audio("data:audio/mp3;base64," + message.audio);
-    audio.play();
-    setAudio(audio);
-    audio.onended = onMessagePlayed;
+    
+    // Handle audio - check if it's already a data URL or just base64
+    let audioSrc;
+    if (message.audio && message.audio.startsWith('data:audio/')) {
+      // Already a complete data URL
+      audioSrc = message.audio;
+    } else if (message.audio) {
+      // Just base64, need to add the data URL prefix
+      audioSrc = "data:audio/mpeg;base64," + message.audio;
+    }
+    
+    if (audioSrc) {
+      const audio = new Audio(audioSrc);
+      audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+      });
+      setAudio(audio);
+      audio.onended = onMessagePlayed;
+    } else {
+      // No audio, but still need to call onMessagePlayed after animation
+      console.log('No audio available, using fallback timing');
+      setTimeout(onMessagePlayed, 3000); // Fallback: auto-advance after 3 seconds
+    }
   }, [message]);
 
   const { animations } = useGLTF("/models/animations.glb");
@@ -201,7 +220,8 @@ export function Avatar(props) {
     }
 
     const appliedMorphTargets = [];
-    if (message && lipsync) {
+    if (message && lipsync && audio) {
+      // Use actual lipsync data (local development)
       const currentAudioTime = audio.currentTime;
       for (let i = 0; i < lipsync.mouthCues.length; i++) {
         const mouthCue = lipsync.mouthCues[i];
@@ -214,6 +234,12 @@ export function Avatar(props) {
           break;
         }
       }
+    } else if (message && !lipsync && audio && !audio.paused) {
+      // Fallback: simple talking animation when no lipsync data (production)
+      const time = Date.now() * 0.001;
+      const talkingIntensity = (Math.sin(time * 8) + 1) * 0.5; // Oscillate between 0 and 1
+      appliedMorphTargets.push("viseme_AA");
+      lerpMorphTarget("viseme_AA", talkingIntensity * 0.5, 0.2);
     }
 
     Object.values(corresponding).forEach((value) => {
