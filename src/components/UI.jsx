@@ -11,28 +11,86 @@ export const UI = ({ hidden, ...props }) => {
   // Check if mobile and show audio initialization prompt
   useEffect(() => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile && !audioInitialized) {
+    const wasInitialized = localStorage.getItem('mobileAudioInitialized') === 'true';
+    
+    console.log('Mobile detection:', { isMobile, wasInitialized, audioInitialized });
+    
+    if (isMobile && !audioInitialized && !wasInitialized) {
       setShowMobileAudioPrompt(true);
+    } else if (wasInitialized) {
+      setAudioInitialized(true);
     }
   }, [audioInitialized]);
 
   const initializeMobileAudio = async () => {
     try {
-      // Create a silent audio context to enable audio
+      console.log('🔧 Initializing mobile audio...');
+      
+      // Multiple strategies to unlock mobile audio
+      
+      // Strategy 1: Create audio context
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      console.log('AudioContext state:', ctx.state);
+      
       if (ctx.state === 'suspended') {
         await ctx.resume();
+        console.log('AudioContext resumed');
       }
       
-      // Play a silent audio to unlock audio on mobile
-      const silentAudio = new Audio('data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAAW1wM1BST1YgdjMuOTggcmVsLiAxLjA3NgD/80DEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v///////////////////8AAAAATGF2YzMuOTgAAAAAAAAAAAAAAAAkAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA');
-      silentAudio.play().catch(() => {}); // Ignore errors
+      // Strategy 2: Play multiple silent audio formats
+      const silentAudioPromises = [
+        // MP3 format
+        new Audio('data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAAW1wM1BST1YgdjMuOTggcmVsLiAxLjA3NgD/80DEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v///////////////////8AAAAATGF2YzMuOTgAAAAAAAAAAAAAAAAkAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA'),
+        // WAV format fallback
+        new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMfCjiN1fLNeSsFJHfH8N+RQQoUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFA==')
+      ];
+      
+      // Try to play all silent audio formats
+      for (const silentAudio of silentAudioPromises) {
+        try {
+          silentAudio.volume = 0.1; // Very low volume
+          silentAudio.muted = false;
+          silentAudio.playsInline = true;
+          
+          const playPromise = silentAudio.play();
+          if (playPromise) {
+            await playPromise;
+            console.log('✅ Silent audio played successfully');
+            break; // Success, no need to try other formats
+          }
+        } catch (silentError) {
+          console.log('Silent audio failed:', silentError.message);
+          // Continue to next format
+        }
+      }
+      
+      // Strategy 3: Create and play a very short beep
+      try {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        gainNode.gain.value = 0.01; // Very quiet
+        oscillator.frequency.value = 440; // A4 note
+        oscillator.start();
+        oscillator.stop(ctx.currentTime + 0.01); // 10ms beep
+        console.log('✅ Oscillator beep played');
+      } catch (oscError) {
+        console.log('Oscillator failed:', oscError.message);
+      }
       
       setAudioInitialized(true);
       setShowMobileAudioPrompt(false);
-      console.log('Mobile audio initialized successfully');
+      console.log('🎉 Mobile audio fully initialized!');
+      
+      // Store in localStorage to remember for next visit
+      localStorage.setItem('mobileAudioInitialized', 'true');
+      
     } catch (error) {
-      console.error('Failed to initialize mobile audio:', error);
+      console.error('❌ Failed to initialize mobile audio:', error);
+      // Still hide the prompt and try to continue
+      setShowMobileAudioPrompt(false);
+      setAudioInitialized(true);
     }
   };
 

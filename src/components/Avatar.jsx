@@ -141,30 +141,62 @@ export function Avatar(props) {
       // Ensure audio is initialized
       await initializeAudio();
       
+      console.log('🔊 Mobile Audio Debug:', {
+        audioSrc: audioSrc ? audioSrc.substring(0, 50) + '...' : 'null',
+        audioInitialized: isAudioInitialized,
+        userAgent: navigator.userAgent
+      });
+      
       const audio = new Audio();
       
       // Mobile-specific audio settings
       audio.preload = 'auto';
       audio.crossOrigin = 'anonymous';
+      audio.volume = 1.0; // Ensure volume is at maximum
+      audio.muted = false; // Ensure not muted
       
       // Add mobile-specific properties
       if ('playsInline' in audio) {
         audio.playsInline = true;
       }
       
+      // iOS specific settings
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+        audio.setAttribute('webkit-playsinline', 'true');
+        audio.setAttribute('playsinline', 'true');
+      }
+      
       return new Promise((resolve, reject) => {
         const handleCanPlay = async () => {
           try {
+            console.log('🎵 Mobile audio can play, attempting to play...');
+            console.log('Audio properties:', {
+              duration: audio.duration,
+              volume: audio.volume,
+              muted: audio.muted,
+              readyState: audio.readyState
+            });
+            
             // Try to play immediately
             const playPromise = audio.play();
             if (playPromise !== undefined) {
               await playPromise;
+              console.log('✅ Mobile audio playing successfully!');
             }
             setAudio(audio);
-            audio.onended = onMessagePlayed;
+            audio.onended = () => {
+              console.log('🔚 Mobile audio ended');
+              onMessagePlayed();
+            };
             resolve(audio);
           } catch (playError) {
-            console.error('Mobile audio play failed:', playError);
+            console.error('❌ Mobile audio play failed:', playError);
+            console.log('Play error details:', {
+              name: playError.name,
+              message: playError.message,
+              audioState: audio.readyState,
+              audioVolume: audio.volume
+            });
             // Fallback for mobile - still set the audio for lipsync fallback
             setAudio(audio);
             setTimeout(onMessagePlayed, 3000);
@@ -173,17 +205,30 @@ export function Avatar(props) {
         };
 
         const handleError = (error) => {
-          console.error('Mobile audio load failed:', error);
+          console.error('❌ Mobile audio load failed:', error);
           reject(error);
         };
 
+        const handleLoadStart = () => {
+          console.log('📥 Mobile audio load started');
+        };
+
+        const handleLoadedData = () => {
+          console.log('📊 Mobile audio data loaded');
+        };
+
+        audio.addEventListener('loadstart', handleLoadStart, { once: true });
+        audio.addEventListener('loadeddata', handleLoadedData, { once: true });
         audio.addEventListener('canplaythrough', handleCanPlay, { once: true });
         audio.addEventListener('error', handleError, { once: true });
+        
+        // Set the source AFTER adding event listeners
         audio.src = audioSrc;
+        console.log('🎯 Mobile audio source set, loading...');
         audio.load(); // Explicitly load for mobile
       });
     } catch (error) {
-      console.error('Mobile audio setup failed:', error);
+      console.error('💥 Mobile audio setup failed:', error);
       throw error;
     }
   };
@@ -214,13 +259,27 @@ export function Avatar(props) {
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
       if (isMobile) {
-        console.log('Mobile device detected, using mobile audio player');
+        console.log('📱 Mobile device detected, using mobile audio player');
+        
+        // Additional mobile audio debugging
+        console.log('Mobile audio environment:', {
+          userAgent: navigator.userAgent,
+          audioInitialized: isAudioInitialized,
+          audioContextState: audioContext?.state,
+          windowAudioContext: !!(window.AudioContext || window.webkitAudioContext)
+        });
+        
         playAudioMobile(audioSrc).catch(error => {
-          console.error('Mobile audio failed:', error);
-          // Fallback: just run lipsync animation without audio
-          const fallbackAudio = { paused: false, currentTime: 0 };
+          console.error('❌ Mobile audio completely failed:', error);
+          // Even if audio fails, ensure lipsync works
+          const fallbackAudio = { 
+            paused: false, 
+            currentTime: 0,
+            volume: 1,
+            duration: 5 // Assume 5 second message for lipsync timing
+          };
           setAudio(fallbackAudio);
-          setTimeout(onMessagePlayed, 3000);
+          setTimeout(onMessagePlayed, 5000); // 5 second fallback
         });
       } else {
         // Desktop audio handling
