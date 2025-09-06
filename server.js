@@ -13,6 +13,13 @@ const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LA
 const openaiApiKey = process.env.OPENAI_API_KEY;
 const voiceID = "MF4J4IDTRo0AxOO4dpFR"; // Adam - natural male voice
 
+// Debug environment variables
+console.log('🔧 Environment Check:');
+console.log('OpenAI API Key present:', !!openaiApiKey);
+console.log('ElevenLabs API Key present:', !!elevenLabsApiKey);
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Vercel environment:', !!process.env.VERCEL);
+
 const elevenlabs = new ElevenLabsClient({
   apiKey: elevenLabsApiKey,
 });
@@ -257,24 +264,39 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
     return res.status(500).send({ error: "Failed to get response from OpenAI", details: err.message });
   }
 
+  // Process each message for audio and lip sync
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
     console.log(`Processing message ${i}:`, message);
     
+    // Check if we're in a serverless environment (Vercel)
+    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+    
     // Check if API keys are available
     if (!elevenLabsApiKey) {
       console.error('ElevenLabs API key not found in environment variables');
+      console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('ELEVEN')));
       message.audio = null;
       message.lipsync = null;
       continue;
     }
     
-    // generate audio file with ElevenLabs
+    console.log(`ElevenLabs API Key present: ${!!elevenLabsApiKey}`);
+    console.log(`Environment: ${isServerless ? 'Serverless' : 'Local'}`);
+    
+    if (isServerless) {
+      // In serverless, skip file operations and just provide text response
+      console.log(`Serverless environment detected, skipping audio generation for message ${i}`);
+      message.audio = null;
+      message.lipsync = null;
+      continue;
+    }
+    
+    // generate audio file with ElevenLabs (only in local development)
     const fileName = `audios/message_${i}.mp3`;
     const textInput = message.text;
     
     console.log(`Generating audio with ElevenLabs for message ${i}`);
-    console.log(`ElevenLabs API Key present: ${!!elevenLabsApiKey}`);
     console.log(`Voice ID: ${voiceID}`);
     
     try {
