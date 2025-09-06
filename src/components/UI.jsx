@@ -143,52 +143,52 @@ export const UI = ({ hidden, ...props }) => {
   return (
     <div className="h-full flex flex-col bg-white shadow-2xl">
       {/* Whiteboard Header */}
-      <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-2 lg:p-4 shadow-lg">
+      <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-1 lg:p-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg lg:text-2xl font-bold">🎓 AI Learning Board</h1>
-            <p className="text-green-100 text-xs lg:text-sm">Interactive AI-Powered Classroom</p>
+            <h1 className="text-sm lg:text-2xl font-bold">🎓 AI Learning Board</h1>
+            <p className="text-green-100 text-xs lg:text-sm hidden sm:block">Interactive AI-Powered Classroom</p>
           </div>
           <div className="flex gap-1 lg:gap-2">
             <button
               onClick={handleNewChat}
               disabled={chatHistory.length === 0}
-              className={`p-1.5 lg:p-2 rounded-lg transition-colors ${
+              className={`p-1 lg:p-2 rounded-lg transition-colors ${
                 chatHistory.length === 0 
                   ? "bg-gray-400 cursor-not-allowed text-gray-200" 
                   : "bg-blue-500 hover:bg-blue-400 text-white"
               }`}
               title={chatHistory.length === 0 ? "No chat to restart" : "Start New Chat"}
             >
-              <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
             </button>
             <button
               onClick={handleClearChat}
               disabled={chatHistory.length === 0}
-              className={`p-1.5 lg:p-2 rounded-lg transition-colors ${
+              className={`p-1 lg:p-2 rounded-lg transition-colors ${
                 chatHistory.length === 0 
                   ? "bg-gray-400 cursor-not-allowed text-gray-200" 
                   : "bg-red-500 hover:bg-red-400 text-white"
               }`}
               title={chatHistory.length === 0 ? "No chat to clear" : "Clear Chat History"}
             >
-              <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
             <button
               onClick={() => setCameraZoomed(!cameraZoomed)}
-              className="bg-green-500 hover:bg-green-400 text-white p-1.5 lg:p-2 rounded-lg transition-colors"
+              className="bg-green-500 hover:bg-green-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
               title={cameraZoomed ? "Zoom Out" : "Zoom In"}
             >
               {cameraZoomed ? (
-                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM13.5 10.5h-6" />
                 </svg>
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
                 </svg>
               )}
@@ -216,16 +216,16 @@ export const UI = ({ hidden, ...props }) => {
       {/* Whiteboard Content Area */}
       <div 
         ref={whiteboardRef}
-        className="flex-1 p-3 lg:p-6 overflow-y-auto bg-white whiteboard-scroll whiteboard-grid"
+        className="flex-1 p-2 lg:p-6 overflow-y-auto bg-white whiteboard-scroll whiteboard-grid"
       >
         {/* Welcome Message */}
         {chatHistory.length === 0 && (
-          <div className="text-center py-6 lg:py-12">
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 lg:p-8 max-w-md mx-auto">
-              <h3 className="text-lg lg:text-xl font-semibold text-blue-800 mb-3">
+          <div className="text-center py-3 lg:py-12">
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 lg:p-8 max-w-md mx-auto">
+              <h3 className="text-base lg:text-xl font-semibold text-blue-800 mb-2">
                 🚀 Welcome to AI Avatar Class!
               </h3>
-              <p className="text-blue-600 mb-4 text-sm lg:text-base">
+              <p className="text-blue-600 mb-3 text-xs lg:text-base">
                 Ask me anything! I can help you learn any subject in both English and Hinglish!
               </p>
               <div className="text-xs lg:text-sm text-blue-500">
@@ -268,20 +268,20 @@ export const UI = ({ hidden, ...props }) => {
         )}
 
         {/* Chat Messages */}
-        <div className="space-y-4">
+        <div className="space-y-2 lg:space-y-4">
           {chatHistory.map((msg, index) => (
             <div key={index} className="message-appear">
               {msg.sender === 'user' ? (
                 // User message
-                <div className="flex justify-end mb-4">
-                  <div className="bg-blue-500 text-white rounded-xl p-4 max-w-md shadow-sm">
-                    <div className="flex items-start gap-3">
+                <div className="flex justify-end mb-2 lg:mb-4">
+                  <div className="bg-blue-500 text-white rounded-xl p-2 lg:p-4 max-w-xs lg:max-w-md shadow-sm">
+                    <div className="flex items-start gap-2 lg:gap-3">
                       <div className="flex-1">
-                        <p className="text-white leading-relaxed font-medium">
+                        <p className="text-white leading-relaxed font-medium text-sm lg:text-base">
                           {msg.text}
                         </p>
                       </div>
-                      <div className="w-8 h-8 bg-blue-400 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      <div className="w-6 h-6 lg:w-8 lg:h-8 bg-blue-400 rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm">
                         👤
                       </div>
                     </div>
@@ -289,14 +289,14 @@ export const UI = ({ hidden, ...props }) => {
                 </div>
               ) : (
                 // AI message
-                <div className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                <div className="bg-white border-2 border-gray-200 rounded-xl p-2 lg:p-4 shadow-sm">
+                  <div className="flex items-start gap-2 lg:gap-3">
+                    <div className="w-6 h-6 lg:w-8 lg:h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm">
                       🤖
                     </div>
                     <div className="flex-1">
-                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <p className="text-gray-800 leading-relaxed font-medium">
+                      <div className="bg-gray-50 rounded-lg p-2 lg:p-3 border border-gray-200">
+                        <p className="text-gray-800 leading-relaxed font-medium text-sm lg:text-base">
                           {msg.text}
                         </p>
                       </div>
@@ -332,12 +332,12 @@ export const UI = ({ hidden, ...props }) => {
       </div>
 
       {/* Input Area */}
-      <div className="border-t-2 border-gray-200 p-2 lg:p-4 bg-gray-50">
-        <div className="flex items-center gap-2 lg:gap-3">
+      <div className="border-t-2 border-gray-200 p-1 lg:p-4 bg-gray-50">
+        <div className="flex items-center gap-1 lg:gap-3">
           <div className="flex-1 relative">
             <input
-              className="w-full p-3 lg:p-4 pr-10 lg:pr-12 border-2 border-gray-300 rounded-xl bg-white placeholder:text-gray-500 focus:border-green-500 focus:outline-none text-gray-800 font-medium enhanced-input transition-all text-sm lg:text-base"
-              placeholder="Ask any question... (English or Hinglish)"
+              className="w-full p-2 lg:p-4 pr-8 lg:pr-12 border-2 border-gray-300 rounded-xl bg-white placeholder:text-gray-500 focus:border-green-500 focus:outline-none text-gray-800 font-medium enhanced-input transition-all text-xs lg:text-base"
+              placeholder="Ask any question..."
               ref={input}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -346,7 +346,7 @@ export const UI = ({ hidden, ...props }) => {
               }}
             />
             <div className="absolute right-2 lg:right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-1.586l-4 4z" />
               </svg>
             </div>
@@ -354,19 +354,19 @@ export const UI = ({ hidden, ...props }) => {
           <button
             disabled={loading || message}
             onClick={sendMessage}
-            className={`bg-green-600 hover:bg-green-700 text-white p-3 lg:p-4 px-6 lg:px-8 font-semibold rounded-xl transition-all transform text-sm lg:text-base ${
+            className={`bg-green-600 hover:bg-green-700 text-white p-2 lg:p-4 px-3 lg:px-8 font-semibold rounded-xl transition-all transform text-xs lg:text-base ${
               loading || message 
                 ? "cursor-not-allowed opacity-50 scale-95" 
                 : "hover:scale-105 shadow-lg"
             }`}
           >
             {loading ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 lg:gap-2">
                 <div className="animate-spin w-3 h-3 lg:w-4 lg:h-4 border-2 border-white border-t-transparent rounded-full"></div>
                 <span className="hidden lg:inline">Sending</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 lg:gap-2">
                 <span>Send</span>
                 <svg className="w-3 h-3 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -377,7 +377,7 @@ export const UI = ({ hidden, ...props }) => {
         </div>
         
         {/* Quick Actions */}
-        <div className="mt-2 lg:mt-3 flex flex-wrap gap-1 lg:gap-2">
+        <div className="mt-1 lg:mt-3 flex flex-wrap gap-1 lg:gap-2">
           <button 
             onClick={() => handleQuickAction("What is photosynthesis?")}
             disabled={loading || message}

@@ -44,7 +44,7 @@ const AppContent = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       {/* Left Side - 3D Avatar */}
-      <div className="w-full lg:w-1/2 h-1/2 lg:h-full relative">
+      <div className="w-full lg:w-1/2 h-1/4 lg:h-full relative">
         <Canvas shadows camera={{ position: [0, 0, 1], fov: 30 }}>
           <Experience />
         </Canvas>
@@ -179,7 +179,7 @@ const AppContent = () => {
       </div>
       
       {/* Right Side - Whiteboard */}
-      <div className="w-full lg:w-1/2 h-1/2 lg:h-full flex flex-col">
+      <div className="w-full lg:w-1/2 h-3/4 lg:h-full flex flex-col">
         <UI />
       </div>
     </div>

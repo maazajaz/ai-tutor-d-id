@@ -42,14 +42,29 @@ export const Experience = () => {
   const { cameraZoomed } = useChat();
 
   useEffect(() => {
-    cameraControls.current.setLookAt(0, 2, 5, 0, 1.5, 0);
+    // Different camera positions for mobile vs desktop
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      cameraControls.current.setLookAt(0, 2.5, 7, 0, 1.5, 0);
+    } else {
+      cameraControls.current.setLookAt(0, 2, 5, 0, 1.5, 0);
+    }
   }, []);
 
   useEffect(() => {
+    const isMobile = window.innerWidth <= 768;
     if (cameraZoomed) {
-      cameraControls.current.setLookAt(0, 1.5, 1.5, 0, 1.5, 0, true);
+      if (isMobile) {
+        cameraControls.current.setLookAt(0, 1.5, 2.5, 0, 1.5, 0, true);
+      } else {
+        cameraControls.current.setLookAt(0, 1.5, 1.5, 0, 1.5, 0, true);
+      }
     } else {
-      cameraControls.current.setLookAt(0, 2.2, 5, 0, 1.0, 0, true);
+      if (isMobile) {
+        cameraControls.current.setLookAt(0, 2.5, 7, 0, 1.0, 0, true);
+      } else {
+        cameraControls.current.setLookAt(0, 2.2, 5, 0, 1.0, 0, true);
+      }
     }
   }, [cameraZoomed]);
   return (
