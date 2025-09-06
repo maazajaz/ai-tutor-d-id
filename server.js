@@ -284,16 +284,7 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
     console.log(`ElevenLabs API Key present: ${!!elevenLabsApiKey}`);
     console.log(`Environment: ${isServerless ? 'Serverless' : 'Local'}`);
     
-    if (isServerless) {
-      // In serverless, skip file operations and just provide text response
-      console.log(`Serverless environment detected, skipping audio generation for message ${i}`);
-      message.audio = null;
-      message.lipsync = null;
-      continue;
-    }
-    
-    // generate audio file with ElevenLabs (only in local development)
-    const fileName = `audios/message_${i}.mp3`;
+    // Generate audio with ElevenLabs (works in both local and serverless)
     const textInput = message.text;
     
     console.log(`Generating audio with ElevenLabs for message ${i}`);
@@ -320,27 +311,43 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
       }
       
       const buffer = Buffer.concat(chunks);
-      await fs.writeFile(fileName, buffer);
-      console.log(`Audio generated for message ${i}: ${fileName}`);
+      
+      if (isServerless) {
+        // In serverless, convert to base64 and send directly
+        const base64Audio = buffer.toString('base64');
+        message.audio = `data:audio/mpeg;base64,${base64Audio}`;
+        console.log(`Audio generated for message ${i} (base64, ${buffer.length} bytes)`);
+        
+        // Skip lip sync in serverless for now (Rhubarb binary won't work)
+        message.lipsync = null;
+        console.log(`Lip sync skipped for message ${i} (serverless environment)`);
+      } else {
+        // In local development, save to file and do lip sync
+        const fileName = `audios/message_${i}.mp3`;
+        await fs.writeFile(fileName, buffer);
+        console.log(`Audio generated for message ${i}: ${fileName}`);
+        
+        // generate lipsync (convert mp3 to wav first)
+        console.log(`Starting lip sync for message ${i}`);
+        try {
+          await lipSyncMessage(i);
+          console.log(`Lip sync generated for message ${i}`);
+          message.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
+        } catch (lipSyncError) {
+          console.log(`Lip sync failed for message ${i}:`, lipSyncError.message);
+          message.lipsync = null;
+        }
+        
+        // Read the audio file and convert to base64
+        message.audio = await audioFileToBase64(fileName);
+      }
+      
     } catch (audioError) {
       console.error(`Error generating audio for message ${i}:`, audioError);
       message.audio = null;
       message.lipsync = null;
       continue;
     }
-    
-    // generate lipsync (convert mp3 to wav first)
-    console.log(`Starting lip sync for message ${i}`);
-    try {
-      await lipSyncMessage(i);
-      console.log(`Lip sync generated for message ${i}`);
-      message.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
-    } catch (lipSyncError) {
-      console.log(`Lip sync failed for message ${i}:`, lipSyncError.message);
-      message.lipsync = null;
-    }
-    
-    message.audio = await audioFileToBase64(fileName);
   }
 
   console.log("Sending response to client:", { messages });
