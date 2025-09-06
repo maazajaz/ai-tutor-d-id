@@ -116,7 +116,7 @@ export function Avatar(props) {
   const [lipsync, setLipsync] = useState();
 
   useEffect(() => {
-    console.log(message);
+    console.log('Message changed:', message);
     if (!message) {
       setAnimation("Idle");
       return;
@@ -124,6 +124,7 @@ export function Avatar(props) {
     setAnimation(message.animation);
     setFacialExpression(message.facialExpression);
     setLipsync(message.lipsync);
+    console.log('Lipsync data:', message.lipsync ? 'Available' : 'NULL - using fallback');
     
     // Handle audio - check if it's already a data URL or just base64
     let audioSrc;
@@ -235,11 +236,35 @@ export function Avatar(props) {
         }
       }
     } else if (message && !lipsync && audio && !audio.paused) {
-      // Fallback: simple talking animation when no lipsync data (production)
+      // Fallback: realistic talking animation when no lipsync data (production)
       const time = Date.now() * 0.001;
-      const talkingIntensity = (Math.sin(time * 8) + 1) * 0.5; // Oscillate between 0 and 1
-      appliedMorphTargets.push("viseme_AA");
-      lerpMorphTarget("viseme_AA", talkingIntensity * 0.5, 0.2);
+      
+      // Create more realistic mouth movements with multiple visemes
+      const visemes = ["viseme_AA", "viseme_E", "viseme_I", "viseme_O", "viseme_U"];
+      const speeds = [6, 8, 10, 7, 9]; // Different speeds for each viseme
+      
+      // Use multiple sine waves for more natural movement
+      let maxIntensity = 0;
+      let dominantViseme = "viseme_AA";
+      
+      visemes.forEach((viseme, index) => {
+        const intensity = (Math.sin(time * speeds[index]) + 1) * 0.3; // 0 to 0.6
+        if (intensity > maxIntensity) {
+          maxIntensity = intensity;
+          dominantViseme = viseme;
+        }
+      });
+      
+      // Add some randomness for more natural speech
+      const randomFactor = (Math.sin(time * 13) * 0.1) + 0.8; // 0.7 to 0.9
+      const finalIntensity = maxIntensity * randomFactor;
+      
+      appliedMorphTargets.push(dominantViseme);
+      lerpMorphTarget(dominantViseme, finalIntensity, 0.15);
+      
+      // Add subtle jaw movement
+      const jawIntensity = (Math.sin(time * 4) + 1) * 0.1; // Slower jaw movement
+      lerpMorphTarget("jawOpen", jawIntensity, 0.1);
     }
 
     Object.values(corresponding).forEach((value) => {
@@ -248,6 +273,11 @@ export function Avatar(props) {
       }
       lerpMorphTarget(value, 0, 0.1);
     });
+    
+    // Reset jaw when not talking
+    if (!message || !audio || audio.paused) {
+      lerpMorphTarget("jawOpen", 0, 0.1);
+    }
   });
 
   useControls("FacialExpressions", {
