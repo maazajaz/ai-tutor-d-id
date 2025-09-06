@@ -1,7 +1,19 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-// For production, VITE_API_URL should be the base domain without /api
-const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+// For production, use the current domain if VITE_API_URL is not set or is placeholder
+const getBackendUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  
+  // If in production and no proper URL is set, use current domain
+  if (typeof window !== 'undefined' && 
+      (!envUrl || envUrl.includes('your-app-name') || envUrl.includes('localhost'))) {
+    return window.location.origin;
+  }
+  
+  return envUrl || "http://localhost:3000";
+};
+
+const backendUrl = getBackendUrl();
 
 const ChatContext = createContext();
 
@@ -12,6 +24,8 @@ export const ChatProvider = ({ children }) => {
     // Add user message to chat history
     const userMsg = { text: message, sender: 'user', timestamp: Date.now() };
     setChatHistory(prev => [...prev, userMsg]);
+    
+    console.log('Making request to:', `${backendUrl}/api/chat`);
     
     const data = await fetch(`${backendUrl}/api/chat`, {
       method: "POST",
