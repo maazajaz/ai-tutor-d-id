@@ -10,8 +10,7 @@
     "dev:client": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server.js",
-    "vercel-build": "npm install && npm run build"
+    "start": "node server.js"
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.12.2",
