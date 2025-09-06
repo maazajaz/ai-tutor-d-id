@@ -1,6 +1,6 @@
-# 🎓 AI Python Tutor - Full Stack Application
+# 🎓 AI Digital Tutor - Full Stack Application
 
-A revolutionary AI-powered Python learning platform featuring a 3D avatar teacher that responds intelligently in both English and Hinglish, complete with voice synthesis, lip-sync animation, and an interactive classroom interface.
+A revolutionary AI-powered learning platform featuring a 3D avatar teacher that helps students in grades 7-8 learn any subject. The tutor responds intelligently in multiple languages including English and Hinglish, with voice synthesis, lip-sync animation, and an interactive learning interface.
 
 ## 🌟 Features
 
@@ -15,7 +15,8 @@ A revolutionary AI-powered Python learning platform featuring a 3D avatar teache
 - **Smart Language Detection**: Automatically detects and responds in English or Hinglish
 - **Dynamic Token Allocation**: Optimizes response length based on question complexity (500-2000 tokens)
 - **Complete Responses**: Enhanced system prompts ensure no cut-off mid-sentence responses
-- **Python-Focused**: Specialized curriculum covering 13 core Python topics
+- **Multi-Subject Support**: Covers Math, Science, English, Social Studies for grades 7-8
+- **Simple Language**: Explains complex topics in grade-appropriate language
 
 ### 🎭 3D Avatar & Voice
 - **Realistic 3D Avatar**: Interactive teacher model with facial expressions and animations
@@ -25,7 +26,7 @@ A revolutionary AI-powered Python learning platform featuring a 3D avatar teache
 - **Emotion Mapping**: Dynamic facial expressions (smile, surprised, default)
 
 ### 🏫 Classroom Interface
-- **Split-Screen Layout**: Avatar on left (50%), interactive whiteboard on right (50%)
+- **Mobile-Responsive Design**: Works perfectly on phones, tablets, and desktops
 - **Persistent Chat History**: Conversations remain intact across sessions
 - **Quick Action Buttons**: Pre-made questions for instant learning
 - **New Chat & Clear Functions**: Easy conversation management

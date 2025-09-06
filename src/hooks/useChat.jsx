@@ -12,7 +12,7 @@ export const ChatProvider = ({ children }) => {
     const userMsg = { text: message, sender: 'user', timestamp: Date.now() };
     setChatHistory(prev => [...prev, userMsg]);
     
-    const data = await fetch(`${backendUrl}/chat`, {
+    const data = await fetch(`${backendUrl}/api/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
