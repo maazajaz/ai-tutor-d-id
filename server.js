@@ -77,6 +77,37 @@ app.get("/voices", async (req, res) => {
   }
 });
 
+app.get("/elevenlabs-status", async (req, res) => {
+  try {
+    console.log('🔍 Checking ElevenLabs account status...');
+    
+    // Try to get user info to check account status
+    const userInfo = await elevenlabs.users.get();
+    
+    console.log('✅ ElevenLabs API working, user info:', {
+      subscription: userInfo.subscription?.tier,
+      characterCount: userInfo.subscription?.character_count,
+      characterLimit: userInfo.subscription?.character_limit,
+      nextCharacterCountResetUnix: userInfo.subscription?.next_character_count_reset_unix
+    });
+    
+    res.send({
+      status: 'working',
+      subscription: userInfo.subscription?.tier,
+      characterCount: userInfo.subscription?.character_count,
+      characterLimit: userInfo.subscription?.character_limit,
+      remainingCharacters: userInfo.subscription?.character_limit - userInfo.subscription?.character_count
+    });
+  } catch (error) {
+    console.error('❌ ElevenLabs API error:', error);
+    res.status(500).send({ 
+      status: 'error',
+      error: error.message,
+      statusCode: error.status
+    });
+  }
+});
+
 const execCommand = (command) => {
   return new Promise((resolve, reject) => {
     exec(command, (error, stdout, stderr) => {
@@ -274,7 +305,7 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
     
     // Check if API keys are available
     if (!elevenLabsApiKey) {
-      console.error('ElevenLabs API key not found in environment variables');
+      console.error('❌ ElevenLabs API key not found in environment variables');
       console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('ELEVEN')));
       message.audio = null;
       message.lipsync = null;
@@ -343,7 +374,22 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
       }
       
     } catch (audioError) {
-      console.error(`Error generating audio for message ${i}:`, audioError);
+      console.error(`❌ Error generating audio for message ${i}:`, audioError);
+      console.error('ElevenLabs error details:', {
+        name: audioError.name,
+        message: audioError.message,
+        status: audioError.status,
+        statusText: audioError.statusText
+      });
+      
+      // Check if it's a quota/billing issue
+      if (audioError.message?.includes('quota') || 
+          audioError.message?.includes('limit') || 
+          audioError.message?.includes('credit') ||
+          audioError.status === 429) {
+        console.error('🚨 ElevenLabs API quota/credits exhausted!');
+      }
+      
       message.audio = null;
       message.lipsync = null;
       continue;
