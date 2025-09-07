@@ -323,6 +323,7 @@ export function Avatar(props) {
   }, [animation]);
 
   const lerpMorphTarget = (target, value, speed = 0.1) => {
+    let targetFound = false;
     scene.traverse((child) => {
       if (child.isSkinnedMesh && child.morphTargetDictionary) {
         const index = child.morphTargetDictionary[target];
@@ -332,6 +333,7 @@ export function Avatar(props) {
         ) {
           return;
         }
+        targetFound = true;
         child.morphTargetInfluences[index] = THREE.MathUtils.lerp(
           child.morphTargetInfluences[index],
           value,

@@ -235,9 +235,9 @@ export const UI = ({ hidden, ...props }) => {
               </p>
               <div className="text-xs lg:text-sm text-blue-500">
                 <p><strong>Try asking:</strong></p>
-                <p>• "What is photosynthesis?"</p>
-                <p>• "Math mein fractions kaise solve karte hain?"</p>
-                <p>• "How do I write a good essay?"</p>
+                <p>• "Python code to write factorial function"</p>
+                <p>• "What is a node in data structure?"</p>
+                <p>• "What are classes and objects in C++?"</p>
               </div>
             </div>
           </div>
@@ -384,7 +384,7 @@ export const UI = ({ hidden, ...props }) => {
         {/* Quick Actions */}
         <div className="mt-1 lg:mt-3 flex flex-wrap gap-1 lg:gap-2">
           <button 
-            onClick={() => handleQuickAction("What is photosynthesis?")}
+            onClick={() => handleQuickAction("Python code to write factorial function")}
             disabled={loading || message}
             className={`text-xs px-2 lg:px-3 py-1 rounded-full transition-colors ${
               loading || message 
@@ -392,10 +392,10 @@ export const UI = ({ hidden, ...props }) => {
                 : "bg-blue-100 hover:bg-blue-200 text-blue-700"
             }`}
           >
-            What is photosynthesis?
+            Python factorial code
           </button>
           <button 
-            onClick={() => handleQuickAction("Math mein fractions kaise solve karte hain?")}
+            onClick={() => handleQuickAction("What is a node in data structure?")}
             disabled={loading || message}
             className={`text-xs px-2 lg:px-3 py-1 rounded-full transition-colors ${
               loading || message 
@@ -403,10 +403,10 @@ export const UI = ({ hidden, ...props }) => {
                 : "bg-purple-100 hover:bg-purple-200 text-purple-700"
             }`}
           >
-            Math mein fractions?
+            Data structure nodes
           </button>
           <button 
-            onClick={() => handleQuickAction("How do I write a good essay?")}
+            onClick={() => handleQuickAction("What are classes and objects in C++?")}
             disabled={loading || message}
             className={`text-xs px-2 lg:px-3 py-1 rounded-full transition-colors ${
               loading || message 
@@ -414,7 +414,7 @@ export const UI = ({ hidden, ...props }) => {
                 : "bg-green-100 hover:bg-green-200 text-green-700"
             }`}
           >
-            How to write essays?
+            C++ classes & objects
           </button>
         </div>
       </div>

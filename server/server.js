@@ -29,7 +29,7 @@ const openai = new OpenAI({
 });
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // Increase payload size limit for large chat histories
 
 // Environment-aware CORS configuration
 const corsOptions = {

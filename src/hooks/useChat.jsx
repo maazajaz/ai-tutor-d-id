@@ -445,30 +445,52 @@ export const ChatProvider = ({ children }) => {
     
     console.log('Making request to:', `${backendUrl}/api/chat`);
     
-    const data = await fetch(`${backendUrl}/api/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ 
-        message,
-        chatHistory: chatHistory // Include chat history for context
-      }),
-    });
-    const resp = (await data.json()).messages;
+    // Only send last 10 messages for context to avoid payload size issues
+    const recentHistory = chatHistory.slice(-10);
     
-    // Add AI responses to chat history
-    const aiMessages = resp.map(msg => ({
-      ...msg,
-      sender: 'ai',
-      timestamp: Date.now() + Math.random(), // Ensure unique timestamps
-      played: false
-    }));
-    setChatHistory(prev => [...prev, ...aiMessages]);
-    
-    // Set messages for avatar animation (separate from history)
-    setMessages((messages) => [...messages, ...resp]);
-    setLoading(false);
+    try {
+      const data = await fetch(`${backendUrl}/api/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          message,
+          chatHistory: recentHistory // Include only recent chat history for context
+        }),
+      });
+
+      if (!data.ok) {
+        throw new Error(`HTTP error! status: ${data.status}`);
+      }
+
+      const response = await data.json();
+      const resp = response.messages;
+      
+      // Add AI responses to chat history
+      const aiMessages = resp.map(msg => ({
+        ...msg,
+        sender: 'ai',
+        timestamp: Date.now() + Math.random(), // Ensure unique timestamps
+        played: false
+      }));
+      setChatHistory(prev => [...prev, ...aiMessages]);
+      
+      // Set messages for avatar animation (separate from history)
+      setMessages((messages) => [...messages, ...resp]);
+    } catch (error) {
+      console.error('❌ Chat request failed:', error);
+      // Add error message to chat
+      const errorMsg = {
+        text: "Sorry, I'm having trouble connecting. Please try again.",
+        sender: 'ai',
+        timestamp: Date.now(),
+        played: false
+      };
+      setChatHistory(prev => [...prev, errorMsg]);
+    } finally {
+      setLoading(false);
+    }
   };
   
   const onMessagePlayed = () => {
