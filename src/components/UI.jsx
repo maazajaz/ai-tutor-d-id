@@ -15,82 +15,55 @@ export const UI = ({ hidden, ...props }) => {
     
     console.log('Mobile detection:', { isMobile, wasInitialized, audioInitialized });
     
-    if (isMobile && !audioInitialized && !wasInitialized) {
+    // Force show prompt for testing - remove this line in production
+    const forceShowPrompt = true;
+    
+    if (isMobile && !audioInitialized && (!wasInitialized || forceShowPrompt)) {
       setShowMobileAudioPrompt(true);
-    } else if (wasInitialized) {
+    } else if (wasInitialized && !forceShowPrompt) {
       setAudioInitialized(true);
     }
   }, [audioInitialized]);
 
   const initializeMobileAudio = async () => {
+    console.log('🎵 Enable Audio button clicked!');
+    
     try {
-      console.log('🔧 Initializing mobile audio...');
+      console.log('🔧 Starting mobile audio initialization...');
       
-      // Multiple strategies to unlock mobile audio
+      // Simple audio unlock
+      const audioElement = new Audio();
+      audioElement.src = 'data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAAW1wM1BST1YgdjMuOTggcmVsLiAxLjA3NgD/80DEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v///////////////////8AAAAATGF2YzMuOTgAAAAAAAAAAAAAAAAkAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA';
+      audioElement.volume = 0.01;
+      audioElement.playsInline = true;
       
-      // Strategy 1: Create audio context
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      console.log('AudioContext state:', ctx.state);
+      console.log('🎵 Attempting to play silent audio...');
+      await audioElement.play();
+      console.log('✅ Silent audio played successfully!');
       
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-        console.log('AudioContext resumed');
+      // Create AudioContext
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      console.log('🎧 AudioContext created, state:', audioContext.state);
+      
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+        console.log('🎧 AudioContext resumed, new state:', audioContext.state);
       }
       
-      // Strategy 2: Play multiple silent audio formats
-      const silentAudioPromises = [
-        // MP3 format
-        new Audio('data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAAW1wM1BST1YgdjMuOTggcmVsLiAxLjA3NgD/80DEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v///////////////////8AAAAATGF2YzMuOTgAAAAAAAAAAAAAAAAkAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA'),
-        // WAV format fallback
-        new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMfCjiN1fLNeSsFJHfH8N+RQQoUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFApGnt/xvmMfCj2N1fLNeSsFJHfH8N+RQQsUXrTp66hVFA==')
-      ];
-      
-      // Try to play all silent audio formats
-      for (const silentAudio of silentAudioPromises) {
-        try {
-          silentAudio.volume = 0.1; // Very low volume
-          silentAudio.muted = false;
-          silentAudio.playsInline = true;
-          
-          const playPromise = silentAudio.play();
-          if (playPromise) {
-            await playPromise;
-            console.log('✅ Silent audio played successfully');
-            break; // Success, no need to try other formats
-          }
-        } catch (silentError) {
-          console.log('Silent audio failed:', silentError.message);
-          // Continue to next format
-        }
-      }
-      
-      // Strategy 3: Create and play a very short beep
-      try {
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        gainNode.gain.value = 0.01; // Very quiet
-        oscillator.frequency.value = 440; // A4 note
-        oscillator.start();
-        oscillator.stop(ctx.currentTime + 0.01); // 10ms beep
-        console.log('✅ Oscillator beep played');
-      } catch (oscError) {
-        console.log('Oscillator failed:', oscError.message);
-      }
+      console.log('🎉 Mobile audio initialization SUCCESS!');
       
       setAudioInitialized(true);
       setShowMobileAudioPrompt(false);
-      console.log('🎉 Mobile audio fully initialized!');
-      
-      // Store in localStorage to remember for next visit
       localStorage.setItem('mobileAudioInitialized', 'true');
       
     } catch (error) {
-      console.error('❌ Failed to initialize mobile audio:', error);
-      // Still hide the prompt and try to continue
-      setShowMobileAudioPrompt(false);
+      console.error('❌ Mobile audio initialization FAILED:', error);
+      console.error('Error details:', error.message, error.stack);
+      
+      // Still close the prompt to avoid infinite loop
       setAudioInitialized(true);
+      setShowMobileAudioPrompt(false);
+      localStorage.setItem('mobileAudioInitialized', 'true');
     }
   };
 
