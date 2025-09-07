@@ -16,18 +16,15 @@ export const UI = ({ hidden, ...props }) => {
     
     console.log('Mobile detection:', { isMobile, wasInitialized, audioInitialized });
     
-    // Force show prompt for testing - remove this line in production
-    const forceShowPrompt = true;
-    
     // Add debug info about mobile detection
     if (isMobile) {
       setDebugLogs(prev => [...prev, `📱 Mobile device detected: ${navigator.userAgent.split(')')[0]})`]);
     }
     
-    if (isMobile && !audioInitialized && (!wasInitialized || forceShowPrompt)) {
+    if (isMobile && !audioInitialized && !wasInitialized) {
       setShowMobileAudioPrompt(true);
-      setDebugLogs(prev => [...prev, `🎵 Audio prompt shown (force: ${forceShowPrompt})`]);
-    } else if (wasInitialized && !forceShowPrompt) {
+      setDebugLogs(prev => [...prev, `🎵 Audio prompt shown`]);
+    } else if (wasInitialized) {
       setAudioInitialized(true);
       setDebugLogs(prev => [...prev, `✅ Audio already initialized from localStorage`]);
     }
@@ -54,46 +51,24 @@ export const UI = ({ hidden, ...props }) => {
       
       addDebugLog('🎵 Attempting to play silent audio...');
       
+      // Simpler approach that was working before - don't wait for play promise
       try {
-        const playPromise = audioElement.play();
-        addDebugLog('🎯 Play promise created, waiting...');
-        
-        if (playPromise !== undefined) {
-          await playPromise;
-          addDebugLog('✅ Silent audio played successfully!');
-        } else {
-          addDebugLog('⚠️ Play promise undefined - older browser?');
-        }
+        audioElement.play().catch(() => {
+          addDebugLog('⚠️ Silent audio blocked (normal on iOS)');
+        });
+        addDebugLog('✅ Silent audio play attempted (not waiting for result)');
       } catch (playError) {
-        addDebugLog(`⚠️ Silent audio play failed: ${playError.name} - ${playError.message}`);
-        // Continue anyway - some iOS devices block silent audio
+        addDebugLog(`⚠️ Silent audio play failed: ${playError.message}`);
       }
       
-      // Create AudioContext (this is more important for unlocking)
+      // Create AudioContext (this is the key for mobile audio unlock)
       addDebugLog('🎧 Creating AudioContext...');
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      addDebugLog(`🎧 AudioContext created, state: ${audioContext.state}`);
+      addDebugLog(`🎧 AudioContext state: ${audioContext.state}`);
       
       if (audioContext.state === 'suspended') {
-        addDebugLog('🔄 Resuming suspended AudioContext...');
         await audioContext.resume();
-        addDebugLog(`🎧 AudioContext resumed, new state: ${audioContext.state}`);
-      }
-      
-      // Try to create a simple beep to confirm audio unlock
-      try {
-        addDebugLog('🔊 Testing audio with beep...');
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        gainNode.gain.value = 0.001; // Very quiet
-        oscillator.frequency.value = 440;
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.01);
-        addDebugLog('✅ Audio beep test successful!');
-      } catch (beepError) {
-        addDebugLog(`⚠️ Audio beep test failed: ${beepError.message}`);
+        addDebugLog(`🎧 AudioContext resumed to: ${audioContext.state}`);
       }
       
       addDebugLog('🎉 Mobile audio initialization SUCCESS!');
@@ -103,7 +78,7 @@ export const UI = ({ hidden, ...props }) => {
       localStorage.setItem('mobileAudioInitialized', 'true');
       
     } catch (error) {
-      addDebugLog(`❌ Mobile audio initialization FAILED: ${error.name} - ${error.message}`);
+      addDebugLog(`❌ Mobile audio FAILED: ${error.message}`);
       console.error('Error details:', error.message, error.stack);
       
       // Still close the prompt to avoid infinite loop
