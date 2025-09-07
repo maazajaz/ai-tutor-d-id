@@ -30,6 +30,16 @@ export const UI = ({ hidden, ...props }) => {
     }
   }, [audioInitialized]);
 
+  // Listen for avatar audio debug events
+  useEffect(() => {
+    const handleAvatarAudioDebug = (event) => {
+      addDebugLog(event.detail);
+    };
+    
+    window.addEventListener('avatarAudioDebug', handleAvatarAudioDebug);
+    return () => window.removeEventListener('avatarAudioDebug', handleAvatarAudioDebug);
+  }, []);
+
   // Debug function for mobile testing
   const addDebugLog = (message) => {
     const timestamp = new Date().toLocaleTimeString();

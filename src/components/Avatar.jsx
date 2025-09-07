@@ -141,6 +141,11 @@ export function Avatar(props) {
       // Ensure audio is initialized
       await initializeAudio();
       
+      // Notify UI about audio attempt
+      window.dispatchEvent(new CustomEvent('avatarAudioDebug', { 
+        detail: '🔊 Avatar attempting to play audio...' 
+      }));
+      
       console.log('🔊 Mobile Audio Debug:', {
         audioSrc: audioSrc ? audioSrc.substring(0, 50) + '...' : 'null',
         audioInitialized: isAudioInitialized,
@@ -182,6 +187,9 @@ export function Avatar(props) {
             if (playPromise !== undefined) {
               await playPromise;
               console.log('✅ Mobile audio playing successfully!');
+              window.dispatchEvent(new CustomEvent('avatarAudioDebug', { 
+                detail: '✅ Avatar audio playing successfully!' 
+              }));
             }
             setAudio(audio);
             audio.onended = () => {
@@ -191,6 +199,9 @@ export function Avatar(props) {
             resolve(audio);
           } catch (playError) {
             console.error('❌ Mobile audio play failed:', playError);
+            window.dispatchEvent(new CustomEvent('avatarAudioDebug', { 
+              detail: `❌ Avatar audio failed: ${playError.message}` 
+            }));
             console.log('Play error details:', {
               name: playError.name,
               message: playError.message,
@@ -258,6 +269,10 @@ export function Avatar(props) {
       // Detect mobile device
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
+      window.dispatchEvent(new CustomEvent('avatarAudioDebug', { 
+        detail: `📨 Avatar received ${isMobile ? 'mobile' : 'desktop'} audio message` 
+      }));
+      
       if (isMobile) {
         console.log('📱 Mobile device detected, using mobile audio player');
         
@@ -284,9 +299,21 @@ export function Avatar(props) {
       } else {
         // Desktop audio handling
         console.log('Desktop device, using standard audio player');
+        window.dispatchEvent(new CustomEvent('avatarAudioDebug', { 
+          detail: `💻 Desktop audio: Creating audio element` 
+        }));
+        
         const audio = new Audio(audioSrc);
-        audio.play().catch(error => {
+        audio.play().then(() => {
+          console.log('✅ Desktop audio playing successfully');
+          window.dispatchEvent(new CustomEvent('avatarAudioDebug', { 
+            detail: `✅ Desktop audio playing successfully` 
+          }));
+        }).catch(error => {
           console.error('Desktop audio failed:', error);
+          window.dispatchEvent(new CustomEvent('avatarAudioDebug', { 
+            detail: `❌ Desktop audio failed: ${error.message}` 
+          }));
         });
         setAudio(audio);
         audio.onended = onMessagePlayed;
