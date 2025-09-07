@@ -7,90 +7,43 @@ export const UI = ({ hidden, ...props }) => {
   const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, clearChatHistory } = useChat();
   const [audioInitialized, setAudioInitialized] = useState(false);
   const [showMobileAudioPrompt, setShowMobileAudioPrompt] = useState(false);
-  const [debugLogs, setDebugLogs] = useState([]);
 
   // Check if mobile and show audio initialization prompt
   useEffect(() => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const wasInitialized = localStorage.getItem('mobileAudioInitialized') === 'true';
     
-    console.log('Mobile detection:', { isMobile, wasInitialized, audioInitialized });
-    
-    // Add debug info about mobile detection
-    if (isMobile) {
-      setDebugLogs(prev => [...prev, `📱 Mobile device detected: ${navigator.userAgent.split(')')[0]})`]);
-    }
-    
     if (isMobile && !audioInitialized && !wasInitialized) {
       setShowMobileAudioPrompt(true);
-      setDebugLogs(prev => [...prev, `🎵 Audio prompt shown`]);
     } else if (wasInitialized) {
       setAudioInitialized(true);
-      setDebugLogs(prev => [...prev, `✅ Audio already initialized from localStorage`]);
     }
   }, [audioInitialized]);
 
-  // Listen for avatar audio debug events
-  useEffect(() => {
-    const handleAvatarAudioDebug = (event) => {
-      addDebugLog(event.detail);
-    };
-    
-    window.addEventListener('avatarAudioDebug', handleAvatarAudioDebug);
-    return () => window.removeEventListener('avatarAudioDebug', handleAvatarAudioDebug);
-  }, []);
-
-  // Debug function for mobile testing
-  const addDebugLog = (message) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setDebugLogs(prev => [...prev.slice(-4), `${timestamp}: ${message}`]); // Keep last 5 logs
-    console.log(message);
-  };
-
   const initializeMobileAudio = async () => {
-    addDebugLog('🎵 Enable Audio button clicked!');
-    
     try {
-      addDebugLog('🔧 Starting mobile audio initialization...');
-      
       // Simple audio unlock
       const audioElement = new Audio();
       audioElement.src = 'data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAAW1wM1BST1YgdjMuOTggcmVsLiAxLjA3NgD/80DEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v///////////////////8AAAAATGF2YzMuOTgAAAAAAAAAAAAAAAAkAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA';
       audioElement.volume = 0.01;
       audioElement.playsInline = true;
       
-      addDebugLog('🎵 Attempting to play silent audio...');
+      // Simple audio unlock attempt
+      audioElement.play().catch(() => {
+        // Silent audio blocked (normal on iOS) - continue anyway
+      });
       
-      // Simpler approach that was working before - don't wait for play promise
-      try {
-        audioElement.play().catch(() => {
-          addDebugLog('⚠️ Silent audio blocked (normal on iOS)');
-        });
-        addDebugLog('✅ Silent audio play attempted (not waiting for result)');
-      } catch (playError) {
-        addDebugLog(`⚠️ Silent audio play failed: ${playError.message}`);
-      }
-      
-      // Create AudioContext (this is the key for mobile audio unlock)
-      addDebugLog('🎧 Creating AudioContext...');
+      // Create AudioContext
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      addDebugLog(`🎧 AudioContext state: ${audioContext.state}`);
-      
       if (audioContext.state === 'suspended') {
         await audioContext.resume();
-        addDebugLog(`🎧 AudioContext resumed to: ${audioContext.state}`);
       }
-      
-      addDebugLog('🎉 Mobile audio initialization SUCCESS!');
       
       setAudioInitialized(true);
       setShowMobileAudioPrompt(false);
       localStorage.setItem('mobileAudioInitialized', 'true');
       
     } catch (error) {
-      addDebugLog(`❌ Mobile audio FAILED: ${error.message}`);
-      console.error('Error details:', error.message, error.stack);
-      
       // Still close the prompt to avoid infinite loop
       setAudioInitialized(true);
       setShowMobileAudioPrompt(false);
@@ -216,16 +169,6 @@ export const UI = ({ hidden, ...props }) => {
           </div>
         </div>
       </div>
-
-      {/* Debug Display for Mobile (only show if there are debug logs) */}
-      {debugLogs.length > 0 && (
-        <div className="bg-black text-green-400 p-2 text-xs font-mono max-h-20 overflow-y-auto">
-          <div className="text-yellow-400 mb-1">🐛 Debug Console (Mobile):</div>
-          {debugLogs.map((log, index) => (
-            <div key={index} className="truncate">{log}</div>
-          ))}
-        </div>
-      )}
 
       {/* Whiteboard Content Area */}
       <div 
