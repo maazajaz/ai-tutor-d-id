@@ -1,0 +1,220 @@
+import { createContext, useContext, useEffect, useState } from "react";
+
+// For production, use the current domain if VITE_API_URL is not set or is placeholder
+const getBackendUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  
+  // If in production and no proper URL is set, use current domain
+  if (typeof window !== 'undefined' && 
+      (!envUrl || envUrl.includes('your-app-name') || envUrl.includes('localhost'))) {
+    return window.location.origin;
+  }
+  
+  return envUrl || "http://localhost:3000";
+};
+
+const backendUrl = getBackendUrl();
+
+const ChatContext = createContext();
+
+// Chat history utilities
+const loadChatSessions = () => {
+  try {
+    const saved = localStorage.getItem('aiTutorChatSessions');
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveChatSessions = (sessions) => {
+  try {
+    localStorage.setItem('aiTutorChatSessions', JSON.stringify(sessions));
+  } catch (error) {
+    console.error('Failed to save chat sessions:', error);
+  }
+};
+
+const generateChatId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+export const ChatProvider = ({ children }) => {
+  const [chatSessions, setChatSessions] = useState(loadChatSessions());
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [currentChatNotes, setCurrentChatNotes] = useState('');
+  const [chatHistory, setChatHistory] = useState([]); // Current session chat history
+  const [messages, setMessages] = useState([]); // Messages for avatar animation
+  const [message, setMessage] = useState(); // Current message being played
+  const [loading, setLoading] = useState(false);
+  const [cameraZoomed, setCameraZoomed] = useState(true);
+
+  // Initialize or create new chat session
+  useEffect(() => {
+    if (!currentChatId) {
+      startNewChat();
+    }
+  }, []);
+
+  const startNewChat = () => {
+    const newChatId = generateChatId();
+    const newSession = {
+      id: newChatId,
+      title: 'New Chat',
+      messages: [],
+      notes: '',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    
+    const updatedSessions = [newSession, ...chatSessions];
+    setChatSessions(updatedSessions);
+    saveChatSessions(updatedSessions);
+    
+    setCurrentChatId(newChatId);
+    setChatHistory([]);
+    setMessages([]);
+    setCurrentChatNotes('');
+  };
+
+  const loadChatSession = (sessionId) => {
+    const session = chatSessions.find(s => s.id === sessionId);
+    if (session) {
+      setCurrentChatId(sessionId);
+      setChatHistory(session.messages);
+      setCurrentChatNotes(session.notes);
+      setMessages([]); // Clear animation queue when switching chats
+    }
+  };
+
+  const updateCurrentSession = (updates) => {
+    if (!currentChatId) return;
+    
+    const updatedSessions = chatSessions.map(session => {
+      if (session.id === currentChatId) {
+        return {
+          ...session,
+          ...updates,
+          updatedAt: Date.now()
+        };
+      }
+      return session;
+    });
+    
+    setChatSessions(updatedSessions);
+    saveChatSessions(updatedSessions);
+  };
+
+  const updateChatNotes = (notes) => {
+    setCurrentChatNotes(notes);
+    updateCurrentSession({ notes });
+  };
+
+  const deleteChatSession = (sessionId) => {
+    const updatedSessions = chatSessions.filter(s => s.id !== sessionId);
+    setChatSessions(updatedSessions);
+    saveChatSessions(updatedSessions);
+    
+    if (currentChatId === sessionId) {
+      if (updatedSessions.length > 0) {
+        loadChatSession(updatedSessions[0].id);
+      } else {
+        startNewChat();
+      }
+    }
+  };
+  const chat = async (message) => {
+    setLoading(true);
+    
+    // Add user message to chat history
+    const userMsg = { text: message, sender: 'user', timestamp: Date.now() };
+    setChatHistory(prev => [...prev, userMsg]);
+    
+    console.log('Making request to:', `${backendUrl}/api/chat`);
+    
+    const data = await fetch(`${backendUrl}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message }),
+    });
+    const resp = (await data.json()).messages;
+    
+    // Add AI responses to chat history
+    const aiMessages = resp.map(msg => ({
+      ...msg,
+      sender: 'ai',
+      timestamp: Date.now() + Math.random(), // Ensure unique timestamps
+      played: false
+    }));
+    setChatHistory(prev => [...prev, ...aiMessages]);
+    
+    // Set messages for avatar animation (separate from history)
+    setMessages((messages) => [...messages, ...resp]);
+    setLoading(false);
+  };
+  
+  const [chatHistory, setChatHistory] = useState([]); // Permanent chat history
+  const [messages, setMessages] = useState([]); // Messages for avatar animation
+  const [message, setMessage] = useState(); // Current message being played
+  const [loading, setLoading] = useState(false);
+  const [cameraZoomed, setCameraZoomed] = useState(true);
+  
+  const onMessagePlayed = () => {
+    // Mark the current message as played in chat history
+    const currentMsg = messages[0];
+    if (currentMsg) {
+      setChatHistory(prev => 
+        prev.map(msg => 
+          msg.text === currentMsg.text && msg.sender === 'ai' && !msg.played
+            ? { ...msg, played: true }
+            : msg
+        )
+      );
+    }
+    // Remove from animation queue
+    setMessages((messages) => messages.slice(1));
+  };
+  
+  const clearChatHistory = () => {
+    console.log("Clearing chat history...");
+    setChatHistory([]);
+    setMessages([]);
+    setMessage(null);
+  };
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      setMessage(messages[0]);
+    } else {
+      setMessage(null);
+    }
+  }, [messages]);
+
+  return (
+    <ChatContext.Provider
+      value={{
+        chat,
+        message,
+        messages,
+        chatHistory,
+        onMessagePlayed,
+        clearChatHistory,
+        loading,
+        cameraZoomed,
+        setCameraZoomed,
+      }}
+    >
+      {children}
+    </ChatContext.Provider>
+  );
+};
+
+export const useChat = () => {
+  const context = useContext(ChatContext);
+  if (!context) {
+    throw new Error("useChat must be used within a ChatProvider");
+  }
+  return context;
+};

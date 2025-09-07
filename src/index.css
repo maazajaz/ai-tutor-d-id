@@ -72,3 +72,42 @@ body.greenScreen {
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
   transform: translateY(-1px);
 }
+
+/* Code block improvements */
+.message-content pre {
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+.message-content code {
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+}
+
+/* Improved list styling */
+.message-content ul, .message-content ol {
+  padding-left: 1.5rem;
+}
+
+.message-content li {
+  margin-bottom: 0.25rem;
+}
+
+/* Table styling */
+.message-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.message-content th,
+.message-content td {
+  border: 1px solid #d1d5db;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.message-content th {
+  background-color: #f9fafb;
+  font-weight: 600;
+}

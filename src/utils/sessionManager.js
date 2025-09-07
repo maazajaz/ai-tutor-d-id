@@ -10,11 +10,22 @@ export const sessionManager = {
       
       if (stored) {
         const parsed = JSON.parse(stored)
+        const expiresAt = parsed.expires_at ? new Date(parsed.expires_at * 1000) : null
+        const isExpired = expiresAt ? expiresAt < new Date() : false
+        
         console.log('🔍 Parsed session data:', {
           hasAccessToken: !!parsed.access_token,
           hasRefreshToken: !!parsed.refresh_token,
-          expiresAt: parsed.expires_at ? new Date(parsed.expires_at * 1000).toLocaleString() : 'N/A'
+          expiresAt: expiresAt ? expiresAt.toLocaleString() : 'N/A',
+          isExpired: isExpired
         })
+        
+        if (isExpired) {
+          console.log('⏰ Session is expired, clearing...')
+          localStorage.removeItem('ai-tutor-auth')
+          return false
+        }
+        
         return true
       }
       return false

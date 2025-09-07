@@ -1,12 +1,17 @@
 import { useRef, useEffect, useState } from "react";
 import { useChat } from "../hooks/useChat";
+import { ChatSidebar } from "./ChatSidebar";
+import { ChatNotes } from "./ChatNotes";
+import { MessageDisplay } from "./MessageDisplay";
 
 export const UI = ({ hidden, ...props }) => {
   const input = useRef();
   const whiteboardRef = useRef();
-  const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, clearChatHistory } = useChat();
+  const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, clearChatHistory, startNewChat } = useChat();
   const [audioInitialized, setAudioInitialized] = useState(false);
   const [showMobileAudioPrompt, setShowMobileAudioPrompt] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
 
   // Check if mobile and show audio initialization prompt
   useEffect(() => {
@@ -62,13 +67,18 @@ export const UI = ({ hidden, ...props }) => {
   };
 
   const handleNewChat = () => {
-    if (chatHistory.length === 0) {
-      return; // Nothing to clear
-    }
-    
-    if (window.confirm("Start a new conversation? Current chat will be cleared.")) {
-      clearChatHistory();
-    }
+    console.log('New chat button clicked');
+    startNewChat();
+  };
+
+  const handleSidebarToggle = () => {
+    console.log('Sidebar button clicked, current state:', showSidebar);
+    setShowSidebar(!showSidebar);
+  };
+
+  const handleNotesToggle = () => {
+    console.log('Notes button clicked, current state:', showNotes);
+    setShowNotes(!showNotes);
   };
 
   const sendMessage = () => {
@@ -98,29 +108,67 @@ export const UI = ({ hidden, ...props }) => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white shadow-2xl">
-      {/* Whiteboard Header */}
-      <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-1 lg:p-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-sm lg:text-2xl font-bold">🎓 AI Learning Board</h1>
-            <p className="text-green-100 text-xs lg:text-sm hidden sm:block">Interactive AI-Powered Classroom</p>
-          </div>
-          <div className="flex gap-1 lg:gap-2">
-            <button
-              onClick={handleNewChat}
-              disabled={chatHistory.length === 0}
-              className={`p-1 lg:p-2 rounded-lg transition-colors ${
-                chatHistory.length === 0 
-                  ? "bg-gray-400 cursor-not-allowed text-gray-200" 
-                  : "bg-blue-500 hover:bg-blue-400 text-white"
-              }`}
-              title={chatHistory.length === 0 ? "No chat to restart" : "Start New Chat"}
-            >
-              <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </button>
+    <>
+      {/* Chat History Sidebar */}
+      <ChatSidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
+      
+      {/* Notes Panel */}
+      <ChatNotes isOpen={showNotes} onClose={() => setShowNotes(false)} />
+      
+      <div className="h-full flex flex-col bg-white shadow-2xl">
+        {/* Whiteboard Header */}
+        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-1 lg:p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {/* Chat History Button */}
+              <button
+                onClick={() => setShowSidebar(true)}
+                className="bg-green-500 hover:bg-green-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
+                title="Chat History"
+              >
+                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </button>
+              
+              <div>
+                <h1 className="text-sm lg:text-2xl font-bold">🎓 AI Learning Board</h1>
+                <p className="text-green-100 text-xs lg:text-sm hidden sm:block">Interactive AI-Powered Classroom</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-1 lg:gap-2">
+              {/* Chat History Button */}
+              <button
+                onClick={handleSidebarToggle}
+                className="bg-purple-500 hover:bg-purple-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
+                title="Chat History"
+              >
+                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.013 8.013 0 01-7-4c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+                </svg>
+              </button>
+              
+              {/* Notes Button */}
+              <button
+                onClick={handleNotesToggle}
+                className="bg-yellow-500 hover:bg-yellow-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
+                title="Chat Notes"
+              >
+                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              
+              <button
+                onClick={handleNewChat}
+                className="bg-blue-500 hover:bg-blue-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
+                title="Start New Chat"
+              >
+                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </button>
             <button
               onClick={handleClearChat}
               disabled={chatHistory.length === 0}
@@ -253,9 +301,9 @@ export const UI = ({ hidden, ...props }) => {
                     </div>
                     <div className="flex-1">
                       <div className="bg-gray-50 rounded-lg p-2 lg:p-3 border border-gray-200">
-                        <p className="text-gray-800 leading-relaxed font-medium text-sm lg:text-base">
-                          {msg.text}
-                        </p>
+                        <div className="text-gray-800 leading-relaxed font-medium text-sm lg:text-base">
+                          <MessageDisplay message={msg.text} />
+                        </div>
                       </div>
                       <div className="mt-2 flex items-center justify-between">
                         {msg.played && (
@@ -371,5 +419,6 @@ export const UI = ({ hidden, ...props }) => {
         </div>
       </div>
     </div>
+    </>
   );
 };

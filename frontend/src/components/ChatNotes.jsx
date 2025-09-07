@@ -6,10 +6,14 @@ import jsPDF from 'jspdf';
 console.log('jsPDF imported:', jsPDF);
 
 export const ChatNotes = ({ isOpen, onClose }) => {
-  const { currentChatNotes, saveCurrentChatNotes, generateAINotes, chatSessions, currentChatId, chatHistory, loading } = useChat();
+  const { currentChatNotes, updateChatNotes, chatSessions, currentChatId } = useChat();
   const [notes, setNotes] = useState(currentChatNotes || '');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isGeneratingNotes, setIsGeneratingNotes] = useState(false);
+
+  // Safety check
+  if (!chatSessions || !currentChatId) {
+    return null;
+  }
 
   // Update local notes when switching chats
   useEffect(() => {
@@ -17,48 +21,19 @@ export const ChatNotes = ({ isOpen, onClose }) => {
     setHasUnsavedChanges(false);
   }, [currentChatNotes, currentChatId]);
 
-  // Safety check - return early after hooks
-  if (!chatSessions || !currentChatId) {
-    return null;
-  }
-
   const handleNotesChange = (e) => {
     setNotes(e.target.value);
     setHasUnsavedChanges(e.target.value !== currentChatNotes);
   };
 
-  const saveNotes = async () => {
-    await saveCurrentChatNotes(notes);
+  const saveNotes = () => {
+    updateChatNotes(notes);
     setHasUnsavedChanges(false);
   };
 
   const discardChanges = () => {
     setNotes(currentChatNotes);
     setHasUnsavedChanges(false);
-  };
-
-  const handleGenerateAINotes = async () => {
-    if (chatHistory.length === 0) {
-      alert('No conversation history available to generate notes from.');
-      return;
-    }
-
-    try {
-      setIsGeneratingNotes(true);
-      const aiNotes = await generateAINotes();
-      
-      if (aiNotes) {
-        // Append AI notes to existing notes if any
-        const newNotes = notes ? `${notes}\n\n## AI Generated Summary:\n\n${aiNotes}` : `## AI Generated Summary:\n\n${aiNotes}`;
-        setNotes(newNotes);
-        setHasUnsavedChanges(true);
-      }
-    } catch (error) {
-      console.error('Failed to generate AI notes:', error);
-      alert('Failed to generate AI notes. Please try again.');
-    } finally {
-      setIsGeneratingNotes(false);
-    }
   };
 
   const getCurrentChatTitle = () => {
@@ -154,23 +129,6 @@ export const ChatNotes = ({ isOpen, onClose }) => {
               <h2 className="text-lg font-semibold text-gray-800">Notes</h2>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleGenerateAINotes}
-                  disabled={isGeneratingNotes || chatHistory.length === 0}
-                  className="p-1 rounded-md hover:bg-blue-50 text-blue-600 disabled:text-gray-400 disabled:hover:bg-transparent"
-                  title="Generate AI notes summary"
-                >
-                  {isGeneratingNotes ? (
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                  )}
-                </button>
-                <button
                   onClick={exportNotes}
                   className="p-2 rounded-md hover:bg-blue-50 text-blue-600 border border-blue-200 transition-colors"
                   title="Export chat with notes as PDF"
@@ -182,8 +140,7 @@ export const ChatNotes = ({ isOpen, onClose }) => {
                 </button>
                 <button
                   onClick={onClose}
-                  className="p-1 rounded-md hover:bg-gray-100 text-gray-600"
-                  title="Close notes"
+                  className="md:hidden p-1 rounded-md hover:bg-gray-100"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -220,9 +177,6 @@ export const ChatNotes = ({ isOpen, onClose }) => {
               value={notes}
               onChange={handleNotesChange}
               placeholder="Add your notes about this conversation here...
-
-✏️ Manual notes: Type your own insights and thoughts
-💡 AI-generated: Click the lightbulb icon to generate summary notes automatically
 
 You can include:
 • Key points learned

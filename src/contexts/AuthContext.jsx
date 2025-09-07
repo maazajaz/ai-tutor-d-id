@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
     const getInitialSession = async () => {
       try {
         console.log('🔍 Checking for existing session...')
+        console.log('🔧 Supabase client available:', !!supabase)
         
         // Quick check for stored session
         const hasStored = sessionManager.hasStoredSession()
@@ -38,20 +39,33 @@ export const AuthProvider = ({ children }) => {
         
         console.log('✅ Found stored session, attempting to restore...')
         
-        // Single attempt to get session (instead of retries)
-        const { data: { session }, error } = await supabase.auth.getSession()
+        // Add timeout to prevent hanging
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session check timeout')), 5000)
+        )
         
-        if (error) {
-          console.error('Session check error:', error)
-          sessionManager.clearSession()
-          setUser(null)
-          setProfile(null)
-        } else if (session?.user) {
-          console.log('✅ Successfully restored session for:', session.user.email)
-          setUser(session.user)
-          await loadUserProfile(session.user.id)
-        } else {
-          console.log('❌ Session restoration failed - no valid session')
+        try {
+          const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise])
+          console.log('📊 Session check result:', { session: !!session, error })
+          
+          if (error) {
+            console.error('Session check error:', error)
+            sessionManager.clearSession()
+            setUser(null)
+            setProfile(null)
+          } else if (session?.user) {
+            console.log('✅ Successfully restored session for:', session.user.email)
+            setUser(session.user)
+            await loadUserProfile(session.user.id)
+          } else {
+            console.log('❌ Session restoration failed - no valid session')
+            sessionManager.clearSession()
+            setUser(null)
+            setProfile(null)
+          }
+        } catch (sessionError) {
+          console.error('❌ Session check failed or timed out:', sessionError)
           sessionManager.clearSession()
           setUser(null)
           setProfile(null)
@@ -63,6 +77,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null)
         setProfile(null)
       } finally {
+        console.log('🏁 Setting loading to false')
         setLoading(false)
         setSessionChecked(true)
         console.log('✅ Session check completed')

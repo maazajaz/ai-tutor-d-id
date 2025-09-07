@@ -145,6 +145,8 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
 
   console.log("Received chat request", req.body);
   const userMessage = req.body.message;
+  const chatHistory = req.body.chatHistory || []; // Include chat history
+  
   if (!userMessage) {
     console.log("No user message provided, sending intro messages.");
     res.send({
@@ -219,20 +221,43 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
   
   // Create dynamic system prompt based on detected language
   const createSystemPrompt = (language) => {
-    const basePrompt = `You are a helpful and friendly digital tutor for undergraduate (UG) students. You can teach any subject and answer questions related to these academic areas:\n${academicSyllabus.map((t,i)=>`${i+1}. ${t}`).join("\n")}.\n\nExplain concepts in very simple, easy-to-understand language suitable for undergraduate students. Break down complex topics into digestible parts and use everyday examples to make learning engaging and accessible.\n\n`;
+    const basePrompt = `You are an expert and comprehensive digital tutor. You can teach ANY subject and answer questions on ALL topics including but not limited to:\n${academicSyllabus.map((t,i)=>`${i+1}. ${t}`).join("\n")}\n\nAnd also: Programming (Python, JavaScript, Java, C++, etc.), Data Science, Machine Learning, Web Development, Software Engineering, Personal Development, Life Skills, Technology, Arts, Music, History, Philosophy, and more.\n\nProvide COMPLETE, DETAILED explanations. Always structure your responses with clear bullet points and numbered lists for better readability.\n\n`;
     
     let languageInstructions = '';
-    let offTopicResponse = '';
     
     if (language === 'hinglish') {
-      languageInstructions = `Respond in Hinglish (Hindi-English mix). When explaining concepts, use simple Hinglish naturally - mix Hindi and English words like: "Math ek interesting subject hai", "science mein hum nature ke baare mein sikhte hain", "complex concepts ko simple banake explain karte hain", etc. Make it conversational, friendly, and like talking to a friend. Use simple words that undergraduate students can easily understand, even for advanced topics.`;
-      offTopicResponse = 'Sorry yaar, main sirf academic subjects teach karta hun jo UG students ke liye helpful hai.';
+      languageInstructions = `Respond in Hinglish (Hindi-English mix). When explaining concepts, use simple Hinglish naturally - mix Hindi and English words like: "Programming ek interesting subject hai", "code mein hum logic use karte hain", "concepts ko step by step explain karte hain", etc. Make it conversational, friendly, and like talking to a knowledgeable friend.`;
     } else {
-      languageInstructions = `Respond in clear, simple English suitable for undergraduate students. Use easy-to-understand words and give real-life examples, even when explaining advanced concepts. Be conversational, encouraging, and friendly - like a helpful peer or approachable professor who knows how to make complex topics simple.`;
-      offTopicResponse = 'Sorry, I focus on teaching academic subjects that are helpful for undergraduate students.';
+      languageInstructions = `Respond in clear, detailed English. Use easy-to-understand words and give comprehensive real-life examples. Be conversational, encouraging, and friendly - like a knowledgeable mentor who provides complete, thorough explanations.`;
     }
     
-    return basePrompt + languageInstructions + `\n\nIf the user asks about something inappropriate or outside academic subjects, reply: '${offTopicResponse}'\n\nIMPORTANT: You MUST respond with ONLY a valid JSON array in this exact format:\n[{"text": "your complete response here", "facialExpression": "smile", "animation": "Talking_0"}]\n\nProvide complete, detailed explanations using simple language. Do NOT cut off mid-sentence. Always finish your thoughts completely. Include examples when relevant. Keep responses encouraging and positive.\nFacial expressions: smile, surprised, default. Animations: Talking_0, Talking_1, Idle. Maximum 3 messages.`;
+    return basePrompt + languageInstructions + `\n\nFORMATTING REQUIREMENTS:
+• Use bullet points and numbered lists for clarity
+• When providing code examples, format them clearly with proper indentation
+• Structure responses with headings when appropriate
+• Provide complete, detailed explanations - never cut off mid-sentence
+• Include practical examples and real-world applications
+• Always finish your thoughts completely
+• Remember previous conversation context and build upon it
+• Give personalized responses based on what the user has learned before
+
+CODE FORMATTING:
+When showing code, format it properly with clear structure:
+Example:
+\`\`\`python
+def hello_world():
+    print("Hello, World!")
+    return "Success"
+\`\`\`
+
+CONTEXT AWARENESS:
+- Remember what the user has asked before
+- Build upon previous explanations
+- Reference earlier examples when relevant
+- Provide continuity in learning progression
+
+CRITICAL: Always provide COMPLETE responses. Do NOT cut off mid-sentence or mid-explanation. Ensure your response is finished.
+Always provide thorough, complete explanations. Use markdown-style formatting for better readability.`;
   };
 
   const systemPrompt = createSystemPrompt(userLanguage);
@@ -243,13 +268,13 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
     const hasCodeRequest = /code|example|syntax|write|show|create|function|class|loop|how to|explain|teach/i.test(question);
     const hasComplexTopic = /function|class|loop|algorithm|project|object|list|dictionary|file|error|exception/i.test(question);
     
-    let baseTokens = 400; // Increased minimum for basic answers
+    let baseTokens = 1500; // Good base for complete responses
     
-    if (hasCodeRequest) baseTokens += 600; // Extra for code examples
-    if (hasComplexTopic) baseTokens += 400; // Extra for complex explanations
-    if (wordCount > 10) baseTokens += (wordCount - 10) * 30; // Scale with question length
+    if (hasCodeRequest) baseTokens += 1500; // More tokens for code examples with explanations
+    if (hasComplexTopic) baseTokens += 800; // More tokens for complex explanations
+    if (wordCount > 10) baseTokens += (wordCount - 10) * 40; // Scale with question length
     
-    return Math.min(Math.max(baseTokens, 500), 2000); // Between 500-2000 tokens
+    return Math.min(Math.max(baseTokens, 1500), 4000); // Between 1500-4000 tokens, respecting GPT-3.5 limit
   };
   
   const maxTokens = estimateRequiredTokens(userMessage);
@@ -259,29 +284,52 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
   try {
     console.log("Sending request to OpenAI with user message:", userMessage);
     console.log("Detected language:", userLanguage);
+    console.log("Chat history length:", chatHistory.length);
+    
+    // Build conversation context for OpenAI
+    const conversationMessages = [
+      { role: "system", content: systemPrompt }
+    ];
+    
+    // Add recent chat history (last 10 messages to avoid token limits)
+    const recentHistory = chatHistory.slice(-10);
+    for (const msg of recentHistory) {
+      if (msg.sender === 'user') {
+        conversationMessages.push({ role: "user", content: msg.text });
+      } else {
+        conversationMessages.push({ role: "assistant", content: msg.text });
+      }
+    }
+    
+    // Add current user message
+    conversationMessages.push({ role: "user", content: userMessage });
+    
+    console.log("Conversation context:", conversationMessages.length, "messages");
+    
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessage }
-      ],
+      model: "gpt-3.5-turbo", // Back to 3.5-turbo for cost efficiency
+      messages: conversationMessages,
       temperature: 0.7,
       max_tokens: maxTokens
     });
     
     console.log("OpenAI response:", completion.choices[0].message.content);
+    console.log("Response length:", completion.choices[0].message.content.length);
     
-    // Try to parse JSON response, with fallback
-    try {
-      let parsed = JSON.parse(completion.choices[0].message.content);
-      if (parsed.messages) messages = parsed.messages;
-      else messages = parsed;
-    } catch (parseError) {
-      console.log("JSON parse failed, using fallback response:", parseError);
-      // Language-aware fallback response
+    const responseContent = completion.choices[0].message.content;
+    
+    // Since we're no longer using JSON format, treat the response as plain text
+    if (responseContent && responseContent.trim().length > 0) {
+      messages = [{
+        text: responseContent.trim(),
+        facialExpression: "smile",
+        animation: "Talking_0"
+      }];
+    } else {
+      // Fallback for empty responses
       const fallbackText = userLanguage === 'hinglish' 
-        ? "Namaste! Main aapka digital teacher hun. Aaj kya subject ya topic sikhna chahte hain?"
-        : "Hi! I'm your digital tutor. What subject or topic would you like to learn today?";
+        ? "Sorry, kuch technical issue hai. Phir se try kijiye!"
+        : "Sorry, there was a technical issue. Please try again!";
       
       messages = [{
         text: fallbackText,
@@ -398,6 +446,61 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
 
   console.log("Sending response to client:", { messages });
   res.send({ messages });
+});
+
+// Generate AI notes from chat conversation
+app.post(["/api/generate-notes", "/generate-notes"], async (req, res) => {
+  try {
+    const { messages, chatTitle } = req.body;
+
+    if (!messages || messages.length === 0) {
+      return res.status(400).send({ error: "No messages provided" });
+    }
+
+    console.log('🤖 Generating notes for chat:', chatTitle);
+
+    const notesPrompt = `
+You are an AI assistant that creates concise, helpful study notes from educational conversations. 
+
+Based on the following conversation between a student and an AI tutor, create comprehensive study notes that:
+1. Summarize key concepts discussed
+2. List important formulas, definitions, or facts mentioned
+3. Highlight main learning objectives
+4. Include any examples or problem-solving steps
+5. Suggest areas for further study
+
+Chat Title: ${chatTitle}
+
+Conversation:
+${messages.map(msg => `${msg.role === 'user' ? 'Student' : 'AI Tutor'}: ${msg.content}`).join('\n')}
+
+Please provide the study notes in a clear, organized format using markdown. Focus on educational value and make it useful for review and study purposes.
+`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert educational content creator. Create clear, concise, and well-organized study notes from conversations."
+        },
+        {
+          role: "user",
+          content: notesPrompt
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.3,
+    });
+
+    const notes = completion.choices[0].message.content;
+    console.log('✅ AI notes generated successfully');
+
+    res.send({ notes });
+  } catch (error) {
+    console.error("❌ Error generating notes:", error);
+    res.status(500).send({ error: "Failed to generate notes" });
+  }
 });
 
 const readJsonTranscript = async (file) => {

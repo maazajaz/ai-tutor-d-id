@@ -187,11 +187,7 @@ const AppContent = () => {
 };
 
 function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
+  return <AppContent />;
 }
 
 export default App;
