@@ -2,15 +2,15 @@
   "name": "ai-digital-tutor",
   "version": "1.0.0",
   "description": "AI-powered digital tutor for grades 7-8 with multilingual support, voice synthesis, and 3D avatar",
-  "main": "server.js",
+  "main": "server/server.js",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:server": "nodemon server.js --ext js",
+    "dev:server": "nodemon server/server.js --ext js",
     "dev:client": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server.js"
+    "start": "node server/server.js"
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.12.2",

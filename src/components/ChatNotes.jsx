@@ -76,58 +76,141 @@ export const ChatNotes = ({ isOpen, onClose }) => {
 
     console.log('Creating PDF document'); // Debug log
     const doc = new jsPDF();
-    const margin = 20;
+    const margin = 25;
     const pageWidth = doc.internal.pageSize.getWidth();
     const maxLineWidth = pageWidth - (margin * 2);
     let yPosition = margin;
 
-    // Helper function to add text with automatic line wrapping
-    const addText = (text, fontSize = 12, isBold = false) => {
+    // Helper function to add text with automatic line wrapping and better formatting
+    const addText = (text, fontSize = 12, isBold = false, color = 'black') => {
       doc.setFontSize(fontSize);
       doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+      
+      // Set text color
+      if (color === 'gray') {
+        doc.setTextColor(100, 100, 100);
+      } else {
+        doc.setTextColor(0, 0, 0);
+      }
       
       const lines = doc.splitTextToSize(text, maxLineWidth);
       
       // Check if we need a new page
-      if (yPosition + (lines.length * fontSize * 0.5) > doc.internal.pageSize.getHeight() - margin) {
+      const lineHeight = fontSize * 0.6;
+      const totalHeight = lines.length * lineHeight;
+      
+      if (yPosition + totalHeight > doc.internal.pageSize.getHeight() - margin) {
         doc.addPage();
         yPosition = margin;
       }
       
       doc.text(lines, margin, yPosition);
-      yPosition += lines.length * fontSize * 0.5 + 5;
+      yPosition += totalHeight + 8;
+      
+      return yPosition;
     };
 
-    // Title
-    addText(`Notes for: ${currentSession.title}`, 16, true);
-    yPosition += 5;
+    // Function to process and format markdown-like text
+    const processNotesText = (text) => {
+      if (!text) return;
+      
+      const lines = text.split('\n');
+      
+      for (let line of lines) {
+        line = line.trim();
+        
+        if (!line) {
+          yPosition += 5; // Add space for empty lines
+          continue;
+        }
+        
+        // Handle different header levels
+        if (line.startsWith('## ')) {
+          // H2 - Medium header
+          const headerText = line.replace('## ', '');
+          addText(headerText, 16, true);
+        } else if (line.startsWith('# ')) {
+          // H1 - Large header
+          const headerText = line.replace('# ', '');
+          addText(headerText, 18, true);
+        } else if (line.startsWith('### ')) {
+          // H3 - Small header
+          const headerText = line.replace('### ', '');
+          addText(headerText, 14, true);
+        } else if (line.startsWith('- ')) {
+          // Bullet points
+          const bulletText = '• ' + line.replace('- ', '');
+          addText(bulletText, 11, false);
+        } else if (line.match(/^\d+\. /)) {
+          // Numbered lists
+          addText(line, 11, false);
+        } else if (line.startsWith('**') && line.endsWith('**')) {
+          // Bold text
+          const boldText = line.replace(/\*\*/g, '');
+          addText(boldText, 12, true);
+        } else if (line.startsWith('```')) {
+          // Code blocks - skip the markdown syntax
+          continue;
+        } else {
+          // Regular text
+          addText(line, 12, false);
+        }
+      }
+    };
 
-    // Metadata
-    addText(`Created: ${new Date(currentSession.createdAt).toLocaleString()}`, 10);
-    addText(`Last Updated: ${new Date(currentSession.updatedAt).toLocaleString()}`, 10);
-    yPosition += 10;
+    // Add a subtle line separator
+    const addSeparator = () => {
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 15;
+    };
 
-    // Chat Messages Section
-    addText('Chat Messages:', 14, true);
-    yPosition += 5;
-
-    currentSession.messages.forEach((msg, index) => {
-      const sender = msg.sender === 'user' ? 'You' : 'AI Tutor';
-      addText(`${sender}:`, 11, true);
-      addText(msg.text, 10);
-      yPosition += 5;
-    });
-
-    // Notes Section
-    yPosition += 10;
-    addText('My Notes:', 14, true);
+    // Title with better formatting
+    addText('📝 Learning Notes', 20, true);
     yPosition += 5;
     
-    const notesText = notes || 'No notes added yet.';
-    addText(notesText, 10);
+    // Session info
+    addText(`Topic: ${currentSession.title}`, 14, true);
+    
+    // Date with proper formatting
+    const createdDate = currentSession.createdAt ? new Date(currentSession.createdAt).toLocaleDateString() : new Date().toLocaleDateString();
+    addText(`Date: ${createdDate}`, 11, false, 'gray');
+    
+    addSeparator();
 
-    // Save the PDF
-    const fileName = `ai-tutor-notes-${currentSession.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`;
+    // Check if user has any notes
+    const userNotes = notes?.trim();
+    
+    if (userNotes && userNotes.length > 0) {
+      addText('My Personal Notes:', 16, true);
+      yPosition += 5;
+      
+      // Process the user's notes with proper markdown formatting
+      processNotesText(userNotes);
+    } else {
+      addText('My Personal Notes:', 16, true);
+      yPosition += 5;
+      addText('No personal notes added yet.', 12, false, 'gray');
+      yPosition += 20;
+      
+      // Add some helpful prompts
+      addText('Ideas for notes:', 14, true);
+      addText('• Key concepts you learned', 11, false);
+      addText('• Questions to explore further', 11, false);
+      addText('• Important formulas or code snippets', 11, false);
+      addText('• Personal insights and connections', 11, false);
+      addText('• Areas that need more practice', 11, false);
+    }
+
+    // Footer
+    const pageHeight = doc.internal.pageSize.getHeight();
+    yPosition = pageHeight - margin;
+    addText('Generated by AI Digital Tutor', 8, false, 'gray');
+
+    // Save the PDF with a cleaner filename
+    const topicName = currentSession.title.substring(0, 30).replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const fileName = `study-notes-${topicName}.pdf`;
     doc.save(fileName);
   };
 
@@ -173,7 +256,7 @@ export const ChatNotes = ({ isOpen, onClose }) => {
                 <button
                   onClick={exportNotes}
                   className="p-2 rounded-md hover:bg-blue-50 text-blue-600 border border-blue-200 transition-colors"
-                  title="Export chat with notes as PDF"
+                  title="Export your personal notes as PDF"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
