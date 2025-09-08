@@ -80,11 +80,7 @@ VITE_NODE_ENV=development
 
 ### 5. Running the Application
 ```bash
-# Terminal 1: Start Backend
-cd server
-npm start
-
-# Terminal 2: Start Frontend
+# Single command runs both frontend and backend
 npm run dev
 ```
 

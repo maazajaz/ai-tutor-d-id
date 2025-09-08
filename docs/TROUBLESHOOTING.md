@@ -157,13 +157,23 @@ npm install
 3. Test with anonymous chat first
 4. Check browser network tab for API errors
 
+#### "Email verification redirects to localhost instead of live app"
+**Problem**: Supabase Site URL configured for development
+**Solution**:
+1. Go to Supabase Dashboard → Authentication → Settings
+2. Change Site URL from `http://localhost:5173` to `https://ai-tutor-final-sepia.vercel.app`
+3. Add production redirect URL: `https://ai-tutor-final-sepia.vercel.app/auth/callback`
+4. Keep development URL for local testing: `http://localhost:5173/auth/callback`
+5. Save settings and test email verification again
+
 #### "User authentication not working"  
 **Problem**: Supabase auth configuration
 **Solution**:
 1. Check Supabase auth settings
-2. Verify site URL matches localhost:5173
-3. Check redirect URLs configured
+2. Verify site URL matches your deployment URL
+3. Check redirect URLs are configured correctly
 4. Clear browser localStorage
+5. For production: ensure Site URL is set to your Vercel domain
 
 ### 🖥️ Development Environment
 

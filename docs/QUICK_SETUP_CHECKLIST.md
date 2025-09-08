@@ -27,10 +27,7 @@ cd server && npm install && cd ..
 
 ## Running 🏃‍♂️
 ```bash
-# Terminal 1: Backend
-cd server && npm start
-
-# Terminal 2: Frontend  
+# Single command runs both frontend and backend
 npm run dev
 ```
 

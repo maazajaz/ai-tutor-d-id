@@ -46,22 +46,16 @@ cd ai-tutor-full-stack
 
 ### Step 2: Install Dependencies
 
-#### Frontend Dependencies
 ```bash
 npm install
 ```
 
-#### Backend Dependencies
-```bash
-cd server
-npm install
-cd ..
-```
+**Note**: This project uses a monorepo setup where all dependencies (frontend and backend) are managed from the root directory. There's no separate `server/package.json` file.
 
 ### Step 3: Environment Configuration
 
-#### Backend Environment (.env in server folder)
-Create `server/.env` file with the following content:
+Create a **single** `.env` file in the root directory with all configuration:
+
 ```env
 # OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key_here
@@ -72,24 +66,20 @@ ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 # Server Configuration
 PORT=3000
 NODE_ENV=development
-
-# CORS Configuration (for frontend)
 CORS_ORIGIN=http://localhost:5173
-```
 
-#### Frontend Environment (.env in root folder)
-Create `.env` file in the root directory:
-```env
-# Backend API URL
+# Frontend Configuration (VITE_ prefix required)
 VITE_API_URL=http://localhost:3000
-
-# Supabase Configuration
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Environment
 VITE_NODE_ENV=development
 ```
+
+**Important Notes**: 
+- Only **ONE** `.env` file in the root directory
+- Backend variables (OPENAI_API_KEY, ELEVENLABS_API_KEY) don't need VITE_ prefix
+- Frontend variables need `VITE_` prefix to be accessible in browser
+- Both frontend and backend read from the same `.env` file
 
 ### Step 4: Supabase Database Setup
 
@@ -132,63 +122,98 @@ create policy "Users can delete their own chat sessions"
 #### 4.2 Configure Supabase Authentication
 1. Go to Authentication > Settings in Supabase dashboard
 2. Enable Email authentication
-3. Configure site URL: `http://localhost:5173`
-4. Add redirect URLs: `http://localhost:5173/auth/callback`
+3. **Site URL Configuration:**
+   - For Development: `http://localhost:5173`
+   - For Production: `https://ai-tutor-final-sepia.vercel.app`
+4. **Redirect URLs Configuration:**
+   - Development: `http://localhost:5173/auth/callback`
+   - Production: `https://ai-tutor-final-sepia.vercel.app/auth/callback`
+   
+**Important for Production:**
+- Set Site URL to: `https://ai-tutor-final-sepia.vercel.app`
+- Add redirect URL: `https://ai-tutor-final-sepia.vercel.app/auth/callback`
+- This ensures email verification links redirect to your live app, not localhost
 
 ### Step 5: Project Structure Verification
 Ensure your project has this structure:
 ```
 ai-tutor-full-stack/
-├── frontend/
-│   ├── public/
-│   │   ├── models/
-│   │   │   ├── 64f1a714fe61576b46f27ca2.glb  # Main avatar
-│   │   │   └── animations.glb                # Avatar animations
-│   │   └── animations/                       # Additional animations
-│   └── src/
-│       ├── components/
-│       ├── hooks/
-│       └── lib/
+├── src/
+│   ├── components/
+│   │   ├── Avatar.jsx                       # 3D avatar with lip-sync
+│   │   ├── UI.jsx                           # User interface
+│   │   └── Experience.jsx                   # 3D scene setup
+│   ├── hooks/
+│   │   └── useChat.jsx                      # Chat logic and API integration
+│   └── lib/
+│       └── supabase.js                      # Supabase configuration
+├── public/
+│   ├── models/
+│   │   ├── 64f1a714fe61576b46f27ca2.glb     # Main avatar
+│   │   └── animations.glb                   # Avatar animations
+│   └── animations/                          # Additional animations
 ├── server/
-│   ├── server.js
-│   ├── package.json
-│   └── .env
+│   ├── server.js                            # Main backend file (NO package.json here)
+│   └── serverless-audio.js                  # Audio processing
 ├── bin/
-│   └── rhubarb.exe                          # Lip-sync tool
-├── audios/                                  # Generated audio files
-├── package.json
-├── .env
+│   └── rhubarb.exe                         # Lip-sync tool
+├── audios/                                 # Generated audio files
+├── package.json                            # ALL dependencies here
+├── .env                                    # SINGLE environment file
 └── COMPLETE_SETUP_GUIDE.md
+```
+└── COMPLETE_SETUP_GUIDE.md
+```
+
+## 🚀 Production Configuration (Vercel Deployment)
+
+### Update Supabase for Production
+To fix email verification redirecting to localhost instead of your live app:
+
+1. **Go to Supabase Dashboard** → Your Project → Authentication → Settings
+2. **Update Site URL:**
+   ```
+   https://ai-tutor-final-sepia.vercel.app
+   ```
+3. **Update Redirect URLs** (add both development and production):
+   ```
+   http://localhost:5173/auth/callback
+   https://ai-tutor-final-sepia.vercel.app/auth/callback
+   ```
+4. **Save Configuration**
+
+### Vercel Environment Variables
+In your Vercel dashboard, add these environment variables:
+```env
+OPENAI_API_KEY=your_openai_key_here
+ELEVENLABS_API_KEY=your_elevenlabs_key_here
+VITE_SUPABASE_URL=your_supabase_url_here
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+VITE_API_URL=https://ai-tutor-final-sepia.vercel.app
+CORS_ORIGIN=https://ai-tutor-final-sepia.vercel.app
+NODE_ENV=production
 ```
 
 ## 🏃‍♂️ Running the Application
 
-### Terminal 1: Start Backend Server
-```bash
-cd server
-npm start
-```
-Expected output:
-```
-🔧 Environment Check:
-OpenAI API Key present: true
-ElevenLabs API Key present: true
-Environment: development
-🎓 AI Digital Tutor listening on port 3000
-🌐 Frontend: http://localhost:5173
-🤖 Backend: http://localhost:3000
-```
-
-### Terminal 2: Start Frontend Development Server
+### Start the App (Single Terminal)
 ```bash
 npm run dev
 ```
+
+This command will:
+- Start the backend server on port 3000
+- Start the frontend development server on port 5173
+- Run both concurrently with live reload
+
 Expected output:
 ```
-  VITE v4.x.x  ready in xxx ms
-
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: use --host to expose
+[0] 🔧 Environment Check:
+[0] OpenAI API Key present: true
+[0] ElevenLabs API Key present: true
+[0] 🎓 AI Digital Tutor listening on port 3000
+[1] VITE v4.x.x  ready in xxx ms
+[1] ➜  Local:   http://localhost:5173/
 ```
 
 ### Step 6: Verify Installation
@@ -212,12 +237,7 @@ Should show the 3D avatar and chat interface
 #### Issue 1: "Module not found" errors
 **Solution:**
 ```bash
-# Clear node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
-
-# For server
-cd server
+# Clear node_modules and reinstall (single command)
 rm -rf node_modules package-lock.json
 npm install
 ```
@@ -232,8 +252,8 @@ npx kill-port 5173
 
 #### Issue 3: CORS errors
 **Solution:**
-- Ensure backend .env has `CORS_ORIGIN=http://localhost:5173`
-- Restart backend server after changing .env
+- Ensure `.env` file has `CORS_ORIGIN=http://localhost:5173`
+- Restart the application: `npm run dev`
 
 #### Issue 4: Avatar not loading
 **Solution:**
@@ -249,7 +269,7 @@ npx kill-port 5173
 
 #### Issue 6: Supabase connection issues
 **Solution:**
-- Verify Supabase URL and keys in frontend .env
+- Verify Supabase URL and keys in `.env` file
 - Check if tables are created correctly
 - Verify RLS policies are set up
 
@@ -257,12 +277,11 @@ npx kill-port 5173
 
 #### Check Environment Variables
 ```bash
-# Backend
-cd server
-node -e "console.log(require('dotenv').config())"
-
-# Frontend (check .env is loaded)
+# Check if .env file exists and is readable
 cat .env
+
+# Test if environment variables are loading
+node -e "require('dotenv').config(); console.log('OpenAI Key:', !!process.env.OPENAI_API_KEY, 'ElevenLabs Key:', !!process.env.ELEVENLABS_API_KEY)"
 ```
 
 #### Test API Endpoints
