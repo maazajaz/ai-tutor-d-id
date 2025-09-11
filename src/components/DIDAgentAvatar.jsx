@@ -15,6 +15,7 @@ const DIDAgentAvatar = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [lastConnectionTime, setLastConnectionTime] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false); // Prevent multiple inits
+  const [pendingMessages, setPendingMessages] = useState([]); // Queue messages until ready
   
   const { message, onMessagePlayed, loading } = useChat();
 
@@ -354,43 +355,46 @@ const DIDAgentAvatar = () => {
   // Send message to agent via chat
   const speakWithAgent = async (text) => {
     if (!agentId || !chatId || !streamId || !sessionId || !isConnected) {
-      console.warn('⚠️ Agent not ready for conversation');
+      console.warn('⚠️ Agent not ready; queueing message:', text);
+      setPendingMessages(prev => [...prev, text]);
       return;
     }
 
     try {
-      console.log('💬 Sending message to agent:', text);
-      
-      await fetchWithRetry(`${API_URL}/agents/${agentId}/chat/${chatId}`, {
+      console.log('💬 Sending message to agent (ready):', text);
+      const response = await fetchWithRetry(`${API_URL}/agents/${agentId}/chat/${chatId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${DID_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          streamId: streamId,
-          sessionId: sessionId,
+          stream_id: streamId,        // API expects snake_case
+          session_id: sessionId,      // API expects snake_case
           messages: [
             {
               role: 'user',
               content: text,
-              created_at: new Date().toLocaleString(),
+              created_at: new Date().toISOString(),
             }
           ],
         }),
       });
 
+      let data = {};
+      try { data = await response.clone().json(); } catch { /* non-JSON */ }
+      console.log('🗣️ Chat API response:', data);
       console.log('✅ Message sent to agent');
       
-      // Simulate processing time
+      // Simulate processing time (rough heuristic)
       setTimeout(() => {
         onMessagePlayed();
-      }, text.length * 50 + 2000);
+      }, Math.min(8000, text.length * 60 + 1500));
       
     } catch (error) {
       console.error('❌ Error sending message to agent:', error);
-      setError(`Chat error: ${error.message}`);
-      onMessagePlayed(); // Skip this message on error
+      setError(prev => prev || `Chat error: ${error.message}`);
+      onMessagePlayed(); // Avoid UI lock
     }
   };
 
@@ -442,10 +446,30 @@ const DIDAgentAvatar = () => {
     if (message && message.text && isConnected) {
       speakWithAgent(message.text);
     } else if (message && message.text && !isConnected) {
-      console.warn('⚠️ Message received but agent not connected, skipping...');
-      onMessagePlayed();
+      console.warn('⚠️ Message received but agent not connected yet; queued.');
+      setPendingMessages(prev => [...prev, message.text]);
     }
   }, [message, isConnected]);
+
+  // Flush queued messages once fully ready
+  useEffect(() => {
+    if (isConnected && chatId && pendingMessages.length > 0) {
+      console.log(`🚚 Flushing ${pendingMessages.length} queued message(s)...`);
+      const toSend = [...pendingMessages];
+      setPendingMessages([]);
+      toSend.forEach(txt => speakWithAgent(txt));
+    }
+  }, [isConnected, chatId, pendingMessages]);
+
+  // Auto-greet once connected (only once per session)
+  const greetedRef = useRef(false);
+  useEffect(() => {
+    if (isConnected && chatId && !greetedRef.current) {
+      greetedRef.current = true;
+      // Send a short greeting to verify audio pipeline
+      speakWithAgent('Hello! I am your AI learning tutor. How can I help you today?');
+    }
+  }, [isConnected, chatId]);
 
   // Reconnect function for manual retry
   const reconnect = async () => {
