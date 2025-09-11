@@ -1,19 +1,16 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "functions": {
-    "api/did-proxy.js": {
-      "maxDuration": 30
-    },
-    "server/server.js": {
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
+  "builds": [
     {
-      "source": "/api/((?!did-proxy).*)",
-      "destination": "/server/server.js"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "api/did-proxy.js",
+      "use": "@vercel/node"
     }
   ]
 }
