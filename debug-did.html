@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>D-ID Debug Test</title>
+</head>
+<body>
+    <h1>D-ID API Debug Test</h1>
+    <div id="status">Testing...</div>
+    <video id="video" width="400" height="400" autoplay></video>
+    
+    <script>
+        const DID_API_KEY = 'bWFhemFqYXoxMDZAZ21haWwuY29t:tAaPXGU8TNWbJaDDLtXVq';
+        const API_URL = 'https://api.d-id.com';
+        const statusDiv = document.getElementById('status');
+        const videoElement = document.getElementById('video');
+        
+        async function testTalksStreams() {
+            try {
+                statusDiv.innerHTML = 'Testing Talks Streams API...';
+                
+                // Test Talks Streams
+                const response = await fetch(`${API_URL}/talks/streams`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Basic ${DID_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        source_url: 'https://d-id-public-bucket.s3.amazonaws.com/alice.jpg',
+                    }),
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Stream session created:', data);
+                
+                statusDiv.innerHTML = `✅ Talks Streams works! Stream ID: ${data.id}`;
+                
+                return data;
+                
+            } catch (error) {
+                console.error('Talks Streams error:', error);
+                statusDiv.innerHTML = `❌ Talks Streams error: ${error.message}`;
+                return null;
+            }
+        }
+        
+        async function testAgentsAPI() {
+            try {
+                statusDiv.innerHTML += '<br>Testing Agents API...';
+                
+                // First, try to list agents
+                const agentsResponse = await fetch(`${API_URL}/agents`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Basic ${DID_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                console.log('Agents response status:', agentsResponse.status);
+                
+                if (!agentsResponse.ok) {
+                    const errorText = await agentsResponse.text();
+                    throw new Error(`HTTP ${agentsResponse.status}: ${errorText}`);
+                }
+                
+                const agentsData = await agentsResponse.json();
+                console.log('Agents list:', agentsData);
+                
+                statusDiv.innerHTML += `<br>✅ Agents API works! Found ${agentsData.agents?.length || 0} agents`;
+                
+                return agentsData;
+                
+            } catch (error) {
+                console.error('Agents API error:', error);
+                statusDiv.innerHTML += `<br>❌ Agents API error: ${error.message}`;
+                return null;
+            }
+        }
+        
+        async function runTests() {
+            const talksResult = await testTalksStreams();
+            const agentsResult = await testAgentsAPI();
+            
+            statusDiv.innerHTML += '<br><br>Test completed. Check console for details.';
+        }
+        
+        runTests();
+    </script>
+</body>
+</html>

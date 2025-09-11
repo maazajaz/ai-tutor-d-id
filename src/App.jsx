@@ -4,6 +4,7 @@ import { Canvas } from "@react-three/fiber";
 import { Leva } from "leva";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Experience } from "./components/Experience";
+import { DIDExperience } from "./components/DIDExperience";
 import { UI } from "./components/UI";
 import { Login } from "./components/Login";
 import { Sidebar } from "./components/Sidebar";
@@ -43,18 +44,16 @@ const AppContent = () => {
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      {/* Left Side - 3D Avatar */}
+      {/* Left Side - D-ID Avatar */}
       <div className="w-full lg:w-1/2 h-1/4 lg:h-full relative">
-        <Canvas shadows camera={{ position: [0, 0, 1], fov: 30 }}>
-          <Experience />
-        </Canvas>
+        <DIDExperience />
         
         {/* Avatar Section Header with Profile Button */}
         <div className="absolute top-2 left-2 lg:top-4 lg:left-4 backdrop-blur-md bg-white bg-opacity-80 p-2 lg:p-3 rounded-lg shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-bold text-sm lg:text-lg text-gray-800">🧑‍🏫 Digital Tutor</h2>
-              <p className="text-xs lg:text-sm text-gray-600">Your AI Learning Assistant</p>
+              <h2 className="font-bold text-sm lg:text-lg text-gray-800">🧑‍🏫 AI Tutor</h2>
+              <p className="text-xs lg:text-sm text-gray-600">Live Avatar Assistant</p>
             </div>
             <button
               onClick={() => setSidebarOpen(true)}

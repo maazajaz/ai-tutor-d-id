@@ -1,6 +1,6 @@
-# 🎓 AI Digital Tutor
+# 🎓 AI Digital Tutor with D-ID Live Avatar
 
-> An intelligent 3D avatar-based tutoring system with voice synthesis, multilingual support, and personalized learning experiences.
+> An intelligent live avatar-based tutoring system with D-ID's real-time video synthesis, multilingual support, and personalized learning experiences.
 
 [![Live Demo](https://img.shields.io/badge/🚀-Live%20Demo-success?style=for-the-badge)](https://ai-tutor-final-sepia.vercel.app/)
 [![GitHub](https://img.shields.io/badge/📁-GitHub-black?style=for-the-badge&logo=github)](https://github.com/maazajaz/ai-tutor-full-stack)
@@ -13,17 +13,18 @@
 - **Multilingual support** (English/Hinglish) with automatic language detection
 - **Personalized learning** with chat history and progress tracking
 
-### 🎭 **3D Avatar Experience**
-- **Realistic 3D avatar** with facial expressions and animations
-- **Lip-sync technology** synchronized with AI voice responses
-- **Interactive animations** for engaging learning sessions
-- **Mobile-optimized** rendering and performance
+### 🎭 **D-ID Live Avatar Experience**
+- **Real-time AI avatar** with live video synthesis
+- **Photorealistic human presenters** that speak and move naturally
+- **Advanced lip-sync** and facial expressions
+- **Live streaming** for real-time interaction
+- **Mobile-optimized** video streaming
 
 ### 🔊 **Voice & Audio**
-- **ElevenLabs TTS** for natural voice synthesis
-- **Real-time lip-sync** generation using Rhubarb tool
-- **Mobile-friendly** audio playback with autoplay handling
-- **High-quality voice** with emotion and expression
+- **Integrated TTS** through D-ID's voice synthesis
+- **Real-time audio streaming** with live avatar synchronization
+- **Natural voice** with emotion and expression
+- **Mobile-friendly** audio/video playback
 
 ### 💾 **Data Management**
 - **Supabase integration** for user authentication and data persistence
@@ -36,7 +37,7 @@
 ### Prerequisites
 - Node.js 18+ 
 - Git
-- API Keys: [OpenAI](https://platform.openai.com/), [ElevenLabs](https://elevenlabs.io/), [Supabase](https://supabase.com/)
+- API Keys: [OpenAI](https://platform.openai.com/), [D-ID](https://www.d-id.com/), [Supabase](https://supabase.com/)
 
 ### Installation
 ```bash
@@ -48,6 +49,63 @@ cd ai-tutor-full-stack
 npm install
 
 # Configure environment variables
+# Copy .env.example to .env and fill in your API keys:
+# - OPENAI_API_KEY (from OpenAI Platform)
+# - DID_API_KEY (from D-ID Dashboard) 
+# - VITE_DID_API_KEY (same as DID_API_KEY for frontend)
+# - VITE_SUPABASE_URL (from Supabase Project Settings)
+# - VITE_SUPABASE_ANON_KEY (from Supabase Project API Settings)
+
+# Start development servers
+npm run dev
+```
+
+The application will be available at:
+- **Frontend**: http://localhost:5173
+- **Backend**: http://localhost:3000
+
+## 🛠️ Technology Stack
+
+```
+Frontend:
+├── React 18 + Vite
+├── D-ID Client SDK for live avatars
+├── TailwindCSS + PostCSS
+├── Context-based state management
+└── Mobile-responsive design
+
+Backend:
+├── Express.js with CORS
+├── OpenAI API integration
+├── D-ID API for avatar synthesis
+└── Simplified text-to-avatar pipeline
+
+Database & Auth:
+├── Supabase (Auth + Database)
+├── Session management
+├── Chat history persistence
+└── User profiles
+```
+
+## 🎭 D-ID Integration
+
+This project uses D-ID's live streaming avatar technology to create photorealistic AI tutors. Key features:
+
+- **Real-time video synthesis**: Live avatar generation with natural movements
+- **Advanced lip-sync**: Perfect synchronization between text and avatar speech
+- **Multiple presenter options**: Choose from various avatar styles
+- **Live streaming**: Real-time interaction with minimal latency
+- **Mobile optimization**: Works seamlessly across all devices
+
+### D-ID API Configuration
+
+1. Sign up at [D-ID](https://www.d-id.com/)
+2. Get your API key from the dashboard
+3. Add to `.env` file:
+   ```
+   DID_API_KEY=your_d_id_api_key_here
+   VITE_DID_API_KEY=your_d_id_api_key_here
+   ```
 cp .env.example .env
 # Edit .env with your API keys
 

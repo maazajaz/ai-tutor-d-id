@@ -8,53 +8,8 @@ export const UI = ({ hidden, ...props }) => {
   const input = useRef();
   const whiteboardRef = useRef();
   const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, clearChatHistory, startNewChat } = useChat();
-  const [audioInitialized, setAudioInitialized] = useState(false);
-  const [showMobileAudioPrompt, setShowMobileAudioPrompt] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
-
-  // Check if mobile and show audio initialization prompt
-  useEffect(() => {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const wasInitialized = localStorage.getItem('mobileAudioInitialized') === 'true';
-    
-    if (isMobile && !audioInitialized && !wasInitialized) {
-      setShowMobileAudioPrompt(true);
-    } else if (wasInitialized) {
-      setAudioInitialized(true);
-    }
-  }, [audioInitialized]);
-
-  const initializeMobileAudio = async () => {
-    try {
-      // Simple audio unlock
-      const audioElement = new Audio();
-      audioElement.src = 'data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAAW1wM1BST1YgdjMuOTggcmVsLiAxLjA3NgD/80DEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v///////////////////8AAAAATGF2YzMuOTgAAAAAAAAAAAAAAAAkAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA';
-      audioElement.volume = 0.01;
-      audioElement.playsInline = true;
-      
-      // Simple audio unlock attempt
-      audioElement.play().catch(() => {
-        // Silent audio blocked (normal on iOS) - continue anyway
-      });
-      
-      // Create AudioContext
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
-      
-      setAudioInitialized(true);
-      setShowMobileAudioPrompt(false);
-      localStorage.setItem('mobileAudioInitialized', 'true');
-      
-    } catch (error) {
-      // Still close the prompt to avoid infinite loop
-      setAudioInitialized(true);
-      setShowMobileAudioPrompt(false);
-      localStorage.setItem('mobileAudioInitialized', 'true');
-    }
-  };
 
   const handleClearChat = () => {
     if (chatHistory.length === 0) {
@@ -238,35 +193,6 @@ export const UI = ({ hidden, ...props }) => {
                 <p>• "Python code to write factorial function"</p>
                 <p>• "What is a node in data structure?"</p>
                 <p>• "What are classes and objects in C++?"</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile Audio Initialization Prompt */}
-        {showMobileAudioPrompt && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl p-6 max-w-sm mx-auto shadow-2xl">
-              <div className="text-center">
-                <div className="text-4xl mb-4">🔊</div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                  Enable Audio
-                </h3>
-                <p className="text-gray-600 mb-6 text-sm leading-relaxed">
-                  To hear your AI teacher speak, please tap the button below to enable audio on your mobile device.
-                </p>
-                <button
-                  onClick={initializeMobileAudio}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-                >
-                  🎵 Enable Audio
-                </button>
-                <button
-                  onClick={() => setShowMobileAudioPrompt(false)}
-                  className="w-full mt-2 text-gray-500 text-sm underline"
-                >
-                  Skip (text only)
-                </button>
               </div>
             </div>
           </div>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D-ID Test Page</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        #video { 
+            width: 100%; 
+            max-width: 400px; 
+            border-radius: 10px; 
+            background: #000;
+        }
+        button { 
+            background: #4CAF50; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            margin: 5px; 
+            border-radius: 5px; 
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { 
+            background: #45a049; 
+        }
+        button:disabled { 
+            background: #ccc; 
+            cursor: not-allowed;
+        }
+        .status { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            background: rgba(255,255,255,0.2);
+        }
+        input { 
+            width: 100%; 
+            padding: 10px; 
+            margin: 10px 0; 
+            border: none; 
+            border-radius: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 D-ID Avatar Test</h1>
+        
+        <div class="status" id="status">
+            Status: Ready to connect
+        </div>
+        
+        <video id="video" autoplay playsInline muted></video>
+        
+        <div style="margin: 20px 0;">
+            <button onclick="connect()" id="connectBtn">Connect Avatar</button>
+            <button onclick="disconnect()" id="disconnectBtn" disabled>Disconnect</button>
+        </div>
+        
+        <div>
+            <input type="text" id="textInput" placeholder="Enter text for avatar to speak..." 
+                   value="Hello! I'm your new AI tutor. How can I help you learn today?">
+            <button onclick="speak()" id="speakBtn" disabled>Make Avatar Speak</button>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h3>Test Results:</h3>
+            <div id="log" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px; font-family: monospace; font-size: 14px;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // D-ID Direct API Implementation (no SDK needed)
+        let peerConnection = null;
+        let streamId = null;
+        let sessionId = null;
+        let isConnected = false;
+        
+        const DID_API_KEY = 'bWFhemFqYXoxMDZAZ21haWwuY29t:tAaPXGU8TNWbJaDDLtXVq';
+        const API_URL = 'https://api.d-id.com';
+        const PRESENTER_URL = 'https://d-id-public-bucket.s3.amazonaws.com/alice.jpg';
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function updateStatus(status) {
+            document.getElementById('status').textContent = `Status: ${status}`;
+        }
+        
+        function updateButtons() {
+            document.getElementById('connectBtn').disabled = isConnected;
+            document.getElementById('disconnectBtn').disabled = !isConnected;
+            document.getElementById('speakBtn').disabled = !isConnected;
+        }
+
+        // Utility function for API calls with retry
+        async function fetchWithRetry(url, options, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response;
+                } catch (error) {
+                    log(`Attempt ${i + 1} failed: ${error.message}`);
+                    if (i === retries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                }
+            }
+        }
+
+        // Create WebRTC peer connection
+        async function createPeerConnection(offer, iceServers) {
+            if (peerConnection) {
+                peerConnection.close();
+            }
+
+            peerConnection = new RTCPeerConnection({ iceServers });
+
+            // Event listeners
+            peerConnection.addEventListener('icegatheringstatechange', () => {
+                log(`🧊 ICE gathering state: ${peerConnection.iceGatheringState}`);
+            });
+
+            peerConnection.addEventListener('icecandidate', async (event) => {
+                if (event.candidate && streamId) {
+                    log('🧊 Sending ICE candidate...');
+                    try {
+                        await fetchWithRetry(`${API_URL}/talks/streams/${streamId}/ice`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Basic ${DID_API_KEY}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                candidate: event.candidate.candidate,
+                                sdpMid: event.candidate.sdpMid,
+                                sdpMLineIndex: event.candidate.sdpMLineIndex,
+                                session_id: sessionId,
+                            }),
+                        });
+                        log('✅ ICE candidate sent');
+                    } catch (error) {
+                        log(`❌ Failed to send ICE candidate: ${error.message}`);
+                    }
+                }
+            });
+
+            peerConnection.addEventListener('iceconnectionstatechange', () => {
+                log(`🔗 ICE connection state: ${peerConnection.iceConnectionState}`);
+                if (peerConnection.iceConnectionState === 'connected' || 
+                    peerConnection.iceConnectionState === 'completed') {
+                    isConnected = true;
+                    updateStatus('Connected');
+                    updateButtons();
+                    log('✅ WebRTC connection established');
+                } else if (peerConnection.iceConnectionState === 'failed' || 
+                           peerConnection.iceConnectionState === 'disconnected') {
+                    isConnected = false;
+                    updateStatus('Disconnected');
+                    updateButtons();
+                    log('❌ WebRTC connection failed/disconnected');
+                }
+            });
+
+            peerConnection.addEventListener('track', (event) => {
+                log('📺 Received media track');
+                const videoElement = document.getElementById('video');
+                if (videoElement && event.streams[0]) {
+                    videoElement.srcObject = event.streams[0];
+                    log('🎥 Video stream attached to element');
+                }
+            });
+
+            // Set remote description and create answer
+            await peerConnection.setRemoteDescription(offer);
+            const sessionClientAnswer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(sessionClientAnswer);
+
+            return sessionClientAnswer;
+        }
+        
+        window.connect = async function() {
+            try {
+                updateStatus('Connecting...');
+                log('🔄 Creating D-ID streaming session...');
+                
+                // Step 1: Create a new stream
+                const sessionResponse = await fetchWithRetry(`${API_URL}/talks/streams`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Basic ${DID_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        source_url: PRESENTER_URL,
+                    }),
+                });
+
+                const sessionData = await sessionResponse.json();
+                log(`✅ Stream session created: ${sessionData.id}`);
+
+                streamId = sessionData.id;
+                sessionId = sessionData.session_id;
+
+                // Step 2: Create peer connection and get SDP answer
+                const sdpAnswer = await createPeerConnection(
+                    sessionData.offer, 
+                    sessionData.ice_servers
+                );
+
+                // Step 3: Send SDP answer to start the connection
+                log('📤 Sending SDP answer...');
+                await fetchWithRetry(`${API_URL}/talks/streams/${sessionData.id}/sdp`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Basic ${DID_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        answer: sdpAnswer,
+                        session_id: sessionData.session_id,
+                    }),
+                });
+
+                log('✅ SDP answer sent, waiting for connection...');
+                
+            } catch (error) {
+                log(`❌ Connection failed: ${error.message}`);
+                updateStatus('Connection failed');
+                updateButtons();
+            }
+        };
+        
+        window.disconnect = async function() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+
+            if (streamId) {
+                try {
+                    log('🔄 Closing stream session...');
+                    await fetchWithRetry(`${API_URL}/talks/streams/${streamId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Basic ${DID_API_KEY}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ session_id: sessionId }),
+                    });
+                    log('✅ Stream session closed');
+                } catch (error) {
+                    log(`❌ Error closing stream: ${error.message}`);
+                }
+            }
+
+            streamId = null;
+            sessionId = null;
+            isConnected = false;
+            updateStatus('Disconnected');
+            updateButtons();
+        };
+        
+        window.speak = async function() {
+            if (!streamId || !sessionId || !isConnected) {
+                log('⚠️ Avatar not connected');
+                return;
+            }
+            
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                log('⚠️ No text to speak');
+                return;
+            }
+            
+            try {
+                log(`🗣️ Making avatar speak: "${text}"`);
+                const response = await fetchWithRetry(`${API_URL}/talks/streams/${streamId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Basic ${DID_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        script: {
+                            type: 'text',
+                            input: text,
+                            provider: {
+                                type: 'microsoft',
+                                voice_id: 'en-US-JennyNeural',
+                                voice_config: {
+                                    style: 'cheerful'
+                                }
+                            }
+                        },
+                        config: {
+                            fluent: true,
+                            pad_audio: 0.0,
+                            stitch: true,
+                            align_driver: true
+                        },
+                        session_id: sessionId,
+                    }),
+                });
+                
+                const responseData = await response.json();
+                log('✅ Speech command sent successfully');
+            } catch (error) {
+                log(`❌ Speech error: ${error.message}`);
+            }
+        };
+        
+        // Initialize
+        updateButtons();
+        log('🚀 D-ID Direct API Test Page loaded successfully');
+        log('📋 Click "Connect Avatar" to start testing');
+    </script>
+</body>
+</html>
