@@ -4,6 +4,7 @@ import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
   console.log('🚀 Proxy function called:', req.method, req.url);
+  console.log('📝 Request headers:', req.headers);
   
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,6 +14,17 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     console.log('✅ Handling OPTIONS request');
     return res.status(200).end();
+  }
+
+  // Add a simple health check
+  if (req.method === 'GET') {
+    console.log('✅ Health check request');
+    return res.status(200).json({ 
+      status: 'OK', 
+      message: 'D-ID Proxy is working',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'unknown'
+    });
   }
 
   try {

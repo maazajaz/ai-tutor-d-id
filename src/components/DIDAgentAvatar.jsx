@@ -20,7 +20,7 @@ const DIDAgentAvatar = () => {
 
   // D-ID API configuration
   const DID_API_KEY = import.meta.env.VITE_DID_API_KEY;
-  const API_URL = import.meta.env.PROD ? "/api/did-proxy" : "https://api.d-id.com";
+  const API_URL = "https://api.d-id.com"; // Always use the full URL
   const IS_PRODUCTION = import.meta.env.PROD;
 
   // Debug environment variables in production
@@ -59,6 +59,8 @@ const DIDAgentAvatar = () => {
         if (IS_PRODUCTION) {
           // In production, use our proxy
           const apiPath = url.replace('https://api.d-id.com', '');
+          console.log(`🎯 API path for proxy: ${apiPath}`);
+          
           finalUrl = '/api/did-proxy';
           finalOptions = {
             method: 'POST',
@@ -72,6 +74,8 @@ const DIDAgentAvatar = () => {
               body: options.body ? JSON.parse(options.body) : undefined,
             }),
           };
+          
+          console.log(`📤 Calling proxy with:`, JSON.parse(finalOptions.body));
         } else {
           // In development, call D-ID API directly
           finalUrl = url;
@@ -261,7 +265,7 @@ const DIDAgentAvatar = () => {
         throw new Error('D-ID API key not found. Please check environment variables.');
       }
 
-      console.log(`🎭 Using API URL: ${API_URL} (Production: ${IS_PRODUCTION})`);
+      console.log(`🎭 Using API URL: ${API_URL} (Production: ${IS_PRODUCTION}, will use proxy: ${IS_PRODUCTION ? 'YES' : 'NO'})`);
       
       // Step 1: Setup or get agent
       const currentAgentId = await setupAgent();
