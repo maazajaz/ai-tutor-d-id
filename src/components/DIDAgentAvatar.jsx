@@ -261,20 +261,7 @@ const DIDAgentAvatar = () => {
         throw new Error('D-ID API key not found. Please check environment variables.');
       }
 
-      console.log('🔍 Testing D-ID API connectivity...');
-      // Test basic API connectivity first
-      try {
-        await fetchWithRetry(`${API_URL}/agents`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Basic ${DID_API_KEY}`,
-          },
-        });
-        console.log('✅ D-ID API is reachable');
-      } catch (apiError) {
-        console.error('❌ D-ID API connectivity test failed:', apiError);
-        throw new Error(`D-ID API is not accessible: ${apiError.message}. This may be a CORS issue in production.`);
-      }
+      console.log(`🎭 Using API URL: ${API_URL} (Production: ${IS_PRODUCTION})`);
       
       // Step 1: Setup or get agent
       const currentAgentId = await setupAgent();
