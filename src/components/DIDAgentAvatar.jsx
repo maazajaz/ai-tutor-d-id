@@ -22,6 +22,17 @@ const DIDAgentAvatar = () => {
   const DID_API_KEY = import.meta.env.VITE_DID_API_KEY;
   const API_URL = "https://api.d-id.com";
 
+  // Debug environment variables in production
+  useEffect(() => {
+    console.log('🔧 Environment Debug:', {
+      hasApiKey: !!DID_API_KEY,
+      apiKeyLength: DID_API_KEY?.length || 0,
+      isDev: import.meta.env.DEV,
+      mode: import.meta.env.MODE,
+      prod: import.meta.env.PROD
+    });
+  }, []);
+
   // Use your specific agent ID instead of creating new ones
   const CUSTOM_AGENT_ID = "v2_agt_IgDqbqGR"; // Your educational tutor agent
 
@@ -175,12 +186,24 @@ const DIDAgentAvatar = () => {
 
   // Initialize agent and streaming
   const initializeAgent = async () => {
+    // Prevent multiple initializations
+    if (isInitialized) {
+      console.log('🚫 Agent already initialized, skipping...');
+      return;
+    }
+
     try {
+      setIsInitialized(true);
       setIsConnecting(true);
       setError(null);
       setConnectionStatus('connecting');
       
       console.log('🎭 Creating D-ID Agent streaming session...');
+
+      // Production-specific checks
+      if (!DID_API_KEY) {
+        throw new Error('D-ID API key not found. Please check environment variables.');
+      }
       
       // Step 1: Setup or get agent
       const currentAgentId = await setupAgent();
@@ -262,6 +285,7 @@ const DIDAgentAvatar = () => {
       setError(`Failed to initialize agent: ${error.message}`);
       setIsConnecting(false);
       setConnectionStatus('error');
+      setIsInitialized(false); // Reset flag on error to allow retry
     }
   };
 
@@ -340,6 +364,7 @@ const DIDAgentAvatar = () => {
     setSessionId(null);
     setAgentId(null);
     setChatId(null);
+    setIsInitialized(false); // Reset initialization flag for fresh start
   };
 
   // Initialize agent on component mount
