@@ -24,13 +24,24 @@ const DIDAgentAvatar = () => {
 
   // Debug environment variables in production
   useEffect(() => {
-    console.log('🔧 Environment Debug:', {
+    const debugData = {
       hasApiKey: !!DID_API_KEY,
       apiKeyLength: DID_API_KEY?.length || 0,
+      apiKeyFirst10: DID_API_KEY?.substring(0, 10) || 'Not found',
       isDev: import.meta.env.DEV,
       mode: import.meta.env.MODE,
-      prod: import.meta.env.PROD
-    });
+      prod: import.meta.env.PROD,
+      allViteEnv: Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')),
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('🔧 Environment Debug:', debugData);
+    
+    // Force alert in production to see what's happening
+    if (import.meta.env.PROD && !DID_API_KEY) {
+      alert('🚨 PRODUCTION DEBUG: D-ID API Key is missing!\n\nEnvironment variables available: ' + 
+            JSON.stringify(debugData.allViteEnv, null, 2));
+    }
   }, []);
 
   // Use your specific agent ID instead of creating new ones
