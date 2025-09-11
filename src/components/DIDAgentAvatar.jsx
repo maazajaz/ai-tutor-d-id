@@ -14,16 +14,13 @@ const DIDAgentAvatar = () => {
   const [chatId, setChatId] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [lastConnectionTime, setLastConnectionTime] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false); // Prevent multiple inits
   
   const { message, onMessagePlayed, loading } = useChat();
 
   // D-ID API configuration
   const DID_API_KEY = import.meta.env.VITE_DID_API_KEY;
   const API_URL = "https://api.d-id.com";
-
-  // Debug API key
-  console.log('🔑 D-ID API Key present:', !!DID_API_KEY);
-  console.log('🔑 API Key length:', DID_API_KEY?.length || 0);
 
   // Use your specific agent ID instead of creating new ones
   const CUSTOM_AGENT_ID = "v2_agt_IgDqbqGR"; // Your educational tutor agent
@@ -55,36 +52,9 @@ const DIDAgentAvatar = () => {
   // Use your specific agent directly
   const setupAgent = async () => {
     try {
-      console.log('🤖 Setting up D-ID Agent...');
-      
-      // First try to use the custom agent
-      if (CUSTOM_AGENT_ID) {
-        console.log('Using custom educational agent:', CUSTOM_AGENT_ID);
-        setAgentId(CUSTOM_AGENT_ID);
-        return CUSTOM_AGENT_ID;
-      }
-      
-      // If custom agent fails, try to list existing agents
-      const agentsResponse = await fetchWithRetry(`${API_URL}/agents`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${DID_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const agentsData = await agentsResponse.json();
-      console.log('Available agents:', agentsData);
-
-      // Use the first available agent
-      if (agentsData.agents && agentsData.agents.length > 0) {
-        const agent = agentsData.agents[0];
-        setAgentId(agent.id);
-        console.log('✅ Using existing agent:', agent.id);
-        return agent.id;
-      } else {
-        throw new Error('No agents available. Please create an agent in D-ID Studio.');
-      }
+      console.log('🤖 Using custom educational agent:', CUSTOM_AGENT_ID);
+      setAgentId(CUSTOM_AGENT_ID);
+      return CUSTOM_AGENT_ID;
     } catch (error) {
       console.error('❌ Failed to setup agent:', error);
       throw new Error(`Agent setup failed: ${error.message}`);
@@ -206,11 +176,6 @@ const DIDAgentAvatar = () => {
   // Initialize agent and streaming
   const initializeAgent = async () => {
     try {
-      // Check if API key is available
-      if (!DID_API_KEY) {
-        throw new Error('D-ID API key is missing. Please check your environment variables.');
-      }
-
       setIsConnecting(true);
       setError(null);
       setConnectionStatus('connecting');
