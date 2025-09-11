@@ -20,7 +20,8 @@ const DIDAgentAvatar = () => {
 
   // D-ID API configuration
   const DID_API_KEY = import.meta.env.VITE_DID_API_KEY;
-  const API_URL = "https://api.d-id.com";
+  const API_URL = import.meta.env.PROD ? "/api/did-proxy" : "https://api.d-id.com";
+  const IS_PRODUCTION = import.meta.env.PROD;
 
   // Debug environment variables in production
   useEffect(() => {
@@ -52,15 +53,59 @@ const DIDAgentAvatar = () => {
     for (let i = 0; i < retries; i++) {
       try {
         console.log(`🔄 API call attempt ${i + 1}/${retries}: ${url}`);
-        const response = await fetch(url, options);
+        
+        let finalUrl, finalOptions;
+        
+        if (IS_PRODUCTION) {
+          // In production, use our proxy
+          const apiPath = url.replace('https://api.d-id.com', '');
+          finalUrl = '/api/did-proxy';
+          finalOptions = {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              path: apiPath,
+              method: options.method || 'GET',
+              headers: options.headers || {},
+              body: options.body ? JSON.parse(options.body) : undefined,
+            }),
+          };
+        } else {
+          // In development, call D-ID API directly
+          finalUrl = url;
+          finalOptions = {
+            ...options,
+            headers: {
+              ...options.headers,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            mode: 'cors',
+            credentials: 'omit',
+          };
+        }
+        
+        const response = await fetch(finalUrl, finalOptions);
+        
         if (!response.ok) {
           const errorText = await response.text();
+          console.error(`❌ HTTP ${response.status} Response:`, errorText);
           throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         console.log(`✅ API call successful: ${url}`);
         return response;
       } catch (error) {
         console.error(`❌ Attempt ${i + 1} failed:`, error);
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          url: url,
+          attempt: i + 1
+        });
+        
         if (i === retries - 1) throw error;
         
         // Exponential backoff: 1s, 2s, 4s, 8s, 16s
@@ -214,6 +259,21 @@ const DIDAgentAvatar = () => {
       // Production-specific checks
       if (!DID_API_KEY) {
         throw new Error('D-ID API key not found. Please check environment variables.');
+      }
+
+      console.log('🔍 Testing D-ID API connectivity...');
+      // Test basic API connectivity first
+      try {
+        await fetchWithRetry(`${API_URL}/agents`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${DID_API_KEY}`,
+          },
+        });
+        console.log('✅ D-ID API is reachable');
+      } catch (apiError) {
+        console.error('❌ D-ID API connectivity test failed:', apiError);
+        throw new Error(`D-ID API is not accessible: ${apiError.message}. This may be a CORS issue in production.`);
       }
       
       // Step 1: Setup or get agent

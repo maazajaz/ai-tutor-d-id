@@ -19,6 +19,10 @@
   ],
   "routes": [
     {
+      "src": "/api/did-proxy",
+      "dest": "/api/did-proxy.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server/server.js"
     },
