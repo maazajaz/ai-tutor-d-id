@@ -8,6 +8,7 @@ import { DIDExperience } from "./components/DIDExperience";
 import { UI } from "./components/UI";
 import { Login } from "./components/Login";
 import { Sidebar } from "./components/Sidebar";
+import DebugInfo from "./components/DebugInfo";
 
 // Main App Content (when authenticated)
 const AppContent = () => {
@@ -40,6 +41,9 @@ const AppContent = () => {
     <div className="h-screen w-screen flex flex-col lg:flex-row bg-gradient-to-br from-blue-50 to-indigo-100">
       <Loader />
       <Leva hidden/>
+      
+      {/* Debug Info - only show in production to debug Vercel issues */}
+      {import.meta.env.PROD && <DebugInfo />}
       
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />

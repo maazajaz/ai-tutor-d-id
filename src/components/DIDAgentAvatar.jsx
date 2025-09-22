@@ -15,22 +15,35 @@ const DIDAgentAvatar = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [lastConnectionTime, setLastConnectionTime] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false); // Prevent multiple inits
+  const [pendingMessages, setPendingMessages] = useState([]); // Queue messages until ready
   
   const { message, onMessagePlayed, loading } = useChat();
 
   // D-ID API configuration
   const DID_API_KEY = import.meta.env.VITE_DID_API_KEY;
-  const API_URL = "https://api.d-id.com";
+  const API_URL = "https://api.d-id.com"; // Always use the full URL
+  const IS_PRODUCTION = import.meta.env.PROD;
 
   // Debug environment variables in production
   useEffect(() => {
-    console.log('🔧 Environment Debug:', {
+    const debugData = {
       hasApiKey: !!DID_API_KEY,
       apiKeyLength: DID_API_KEY?.length || 0,
+      apiKeyFirst10: DID_API_KEY?.substring(0, 10) || 'Not found',
       isDev: import.meta.env.DEV,
       mode: import.meta.env.MODE,
-      prod: import.meta.env.PROD
-    });
+      prod: import.meta.env.PROD,
+      allViteEnv: Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')),
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('🔧 Environment Debug:', debugData);
+    
+    // Force alert in production to see what's happening
+    if (import.meta.env.PROD && !DID_API_KEY) {
+      alert('🚨 PRODUCTION DEBUG: D-ID API Key is missing!\n\nEnvironment variables available: ' + 
+            JSON.stringify(debugData.allViteEnv, null, 2));
+    }
   }, []);
 
   // Use your specific agent ID instead of creating new ones
@@ -41,15 +54,63 @@ const DIDAgentAvatar = () => {
     for (let i = 0; i < retries; i++) {
       try {
         console.log(`🔄 API call attempt ${i + 1}/${retries}: ${url}`);
-        const response = await fetch(url, options);
+        
+        let finalUrl, finalOptions;
+        
+        if (IS_PRODUCTION) {
+          // In production, use our proxy
+          const apiPath = url.replace('https://api.d-id.com', '');
+          console.log(`🎯 API path for proxy: ${apiPath}`);
+          
+          finalUrl = '/api/did-proxy';
+          finalOptions = {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              path: apiPath,
+              method: options.method || 'GET',
+              headers: options.headers || {},
+              body: options.body ? JSON.parse(options.body) : undefined,
+            }),
+          };
+          
+          console.log(`📤 Calling proxy with:`, JSON.parse(finalOptions.body));
+        } else {
+          // In development, call D-ID API directly
+          finalUrl = url;
+          finalOptions = {
+            ...options,
+            headers: {
+              ...options.headers,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            mode: 'cors',
+            credentials: 'omit',
+          };
+        }
+        
+        const response = await fetch(finalUrl, finalOptions);
+        
         if (!response.ok) {
           const errorText = await response.text();
+          console.error(`❌ HTTP ${response.status} Response:`, errorText);
           throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         console.log(`✅ API call successful: ${url}`);
         return response;
       } catch (error) {
         console.error(`❌ Attempt ${i + 1} failed:`, error);
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          url: url,
+          attempt: i + 1
+        });
+        
         if (i === retries - 1) throw error;
         
         // Exponential backoff: 1s, 2s, 4s, 8s, 16s
@@ -204,6 +265,8 @@ const DIDAgentAvatar = () => {
       if (!DID_API_KEY) {
         throw new Error('D-ID API key not found. Please check environment variables.');
       }
+
+      console.log(`🎭 Using API URL: ${API_URL} (Production: ${IS_PRODUCTION}, will use proxy: ${IS_PRODUCTION ? 'YES' : 'NO'})`);
       
       // Step 1: Setup or get agent
       const currentAgentId = await setupAgent();
@@ -292,43 +355,46 @@ const DIDAgentAvatar = () => {
   // Send message to agent via chat
   const speakWithAgent = async (text) => {
     if (!agentId || !chatId || !streamId || !sessionId || !isConnected) {
-      console.warn('⚠️ Agent not ready for conversation');
+      console.warn('⚠️ Agent not ready; queueing message:', text);
+      setPendingMessages(prev => [...prev, text]);
       return;
     }
 
     try {
-      console.log('💬 Sending message to agent:', text);
-      
-      await fetchWithRetry(`${API_URL}/agents/${agentId}/chat/${chatId}`, {
+      console.log('💬 Sending message to agent (ready):', text);
+      const response = await fetchWithRetry(`${API_URL}/agents/${agentId}/chat/${chatId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${DID_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          streamId: streamId,
-          sessionId: sessionId,
+          stream_id: streamId,        // API expects snake_case
+          session_id: sessionId,      // API expects snake_case
           messages: [
             {
               role: 'user',
               content: text,
-              created_at: new Date().toLocaleString(),
+              created_at: new Date().toISOString(),
             }
           ],
         }),
       });
 
+      let data = {};
+      try { data = await response.clone().json(); } catch { /* non-JSON */ }
+      console.log('🗣️ Chat API response:', data);
       console.log('✅ Message sent to agent');
       
-      // Simulate processing time
+      // Simulate processing time (rough heuristic)
       setTimeout(() => {
         onMessagePlayed();
-      }, text.length * 50 + 2000);
+      }, Math.min(8000, text.length * 60 + 1500));
       
     } catch (error) {
       console.error('❌ Error sending message to agent:', error);
-      setError(`Chat error: ${error.message}`);
-      onMessagePlayed(); // Skip this message on error
+      setError(prev => prev || `Chat error: ${error.message}`);
+      onMessagePlayed(); // Avoid UI lock
     }
   };
 
@@ -380,10 +446,30 @@ const DIDAgentAvatar = () => {
     if (message && message.text && isConnected) {
       speakWithAgent(message.text);
     } else if (message && message.text && !isConnected) {
-      console.warn('⚠️ Message received but agent not connected, skipping...');
-      onMessagePlayed();
+      console.warn('⚠️ Message received but agent not connected yet; queued.');
+      setPendingMessages(prev => [...prev, message.text]);
     }
   }, [message, isConnected]);
+
+  // Flush queued messages once fully ready
+  useEffect(() => {
+    if (isConnected && chatId && pendingMessages.length > 0) {
+      console.log(`🚚 Flushing ${pendingMessages.length} queued message(s)...`);
+      const toSend = [...pendingMessages];
+      setPendingMessages([]);
+      toSend.forEach(txt => speakWithAgent(txt));
+    }
+  }, [isConnected, chatId, pendingMessages]);
+
+  // Auto-greet once connected (only once per session)
+  const greetedRef = useRef(false);
+  useEffect(() => {
+    if (isConnected && chatId && !greetedRef.current) {
+      greetedRef.current = true;
+      // Send a short greeting to verify audio pipeline
+      speakWithAgent('Hello! I am your AI learning tutor. How can I help you today?');
+    }
+  }, [isConnected, chatId]);
 
   // Reconnect function for manual retry
   const reconnect = async () => {
