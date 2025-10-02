@@ -38,7 +38,8 @@ const saveChatSessions = (sessions) => {
 };
 
 const generateChatId = () => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  // Generate a proper UUID v4 for Supabase compatibility
+  return crypto.randomUUID();
 };
 
 export const ChatProvider = ({ children }) => {
@@ -216,7 +217,7 @@ export const ChatProvider = ({ children }) => {
       
       if (error) {
         console.error('Error updating chat session in Supabase:', error);
-        console.log('Current sessions before fallback:', prevSessions);
+        console.log('Current sessions before fallback:', chatSessions);
         // Fallback to localStorage update
         setChatSessions(prevSessions => {
           const updatedSessions = prevSessions.map(session => {
@@ -439,6 +440,9 @@ export const ChatProvider = ({ children }) => {
     console.log('Current chat ID:', currentChatId);
     console.log('Current user:', user?.email || 'Anonymous');
     
+    // Store the original user question
+    const originalUserQuestion = message;
+    
     // Add user message to chat history
     const userMsg = { text: message, sender: 'user', timestamp: Date.now() };
     setChatHistory(prev => [...prev, userMsg]);
@@ -465,7 +469,16 @@ export const ChatProvider = ({ children }) => {
       }
 
       const response = await data.json();
-      const resp = response.messages;
+      let resp = response.messages;
+      
+      // Process messages to ensure clean delivery to D-ID agent
+      resp = resp.map(msg => ({
+        ...msg,
+        // Strip any meta-commentary prefixes if they exist
+        text: msg.text.trim(),
+        // Include the original user question so agent can respond to it
+        userQuestion: originalUserQuestion
+      }));
       
       // Add AI responses to chat history
       const aiMessages = resp.map(msg => ({

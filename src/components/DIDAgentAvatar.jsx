@@ -3,7 +3,10 @@ import { useChat } from '../hooks/useChat';
 
 const DIDAgentAvatar = () => {
   const videoRef = useRef(null);
+  const idleVideoRef = useRef(null); // For continuous idle animation
   const peerConnectionRef = useRef(null);
+  const initializingRef = useRef(false); // Prevent double initialization
+  const cleanupCalledRef = useRef(false); // Track cleanup state
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState(null);
@@ -14,27 +17,43 @@ const DIDAgentAvatar = () => {
   const [chatId, setChatId] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [lastConnectionTime, setLastConnectionTime] = useState(null);
-  const [isInitialized, setIsInitialized] = useState(false); // Prevent multiple inits
+  const [isPlaying, setIsPlaying] = useState(false); // Track if agent is speaking
+  const [idleVideoUrl, setIdleVideoUrl] = useState(null); // Store idle video URL
+  const [audioEnabled, setAudioEnabled] = useState(false); // Track if audio is enabled by user
+  const sessionTimeoutRef = useRef(null); // Track session timeout
   
   const { message, onMessagePlayed, loading } = useChat();
 
   // D-ID API configuration
   const DID_API_KEY = import.meta.env.VITE_DID_API_KEY;
   const API_URL = "https://api.d-id.com";
+  
+  // Session expires after 5 minutes of inactivity, so refresh after 4 minutes
+  const SESSION_TIMEOUT = 4 * 60 * 1000; // 4 minutes
 
   // Debug environment variables in production
   useEffect(() => {
     console.log('🔧 Environment Debug:', {
       hasApiKey: !!DID_API_KEY,
       apiKeyLength: DID_API_KEY?.length || 0,
+      apiKeyPreview: DID_API_KEY ? `${DID_API_KEY.substring(0, 10)}...` : 'NOT FOUND',
       isDev: import.meta.env.DEV,
       mode: import.meta.env.MODE,
-      prod: import.meta.env.PROD
+      prod: import.meta.env.PROD,
+      agentId: CUSTOM_AGENT_ID
     });
+    
+    if (!DID_API_KEY) {
+      console.error('❌ CRITICAL: VITE_DID_API_KEY not found in environment!');
+      console.log('💡 Make sure .env file has: VITE_DID_API_KEY=your_key');
+      setError('API key not configured. Please check your .env file.');
+      setConnectionStatus('error');
+    }
   }, []);
 
-  // Use your specific agent ID instead of creating new ones
-  const CUSTOM_AGENT_ID = "v2_agt_IgDqbqGR"; // Your educational tutor agent
+  // Use Amber agent (Important: Agent ID is tied to the API key - if you change the API key, update this ID too!)
+  // To find agents for your current API key: run `node server/createAgent.js list`
+  const CUSTOM_AGENT_ID = "v2_agt_a5qVtD8v"; // Amber - Live streaming agent with idle animations (New account)
 
   // Utility function for API calls with better retry logic
   const fetchWithRetry = async (url, options, retries = 5, backoffMs = 1000) => {
@@ -167,8 +186,57 @@ const DIDAgentAvatar = () => {
 
     peerConnection.addEventListener('track', (event) => {
       console.log('🎥 Received video track');
-      if (videoRef.current) {
-        videoRef.current.srcObject = event.streams[0];
+      if (videoRef.current && event.streams && event.streams[0]) {
+        console.log('📺 Setting video source');
+        const stream = event.streams[0];
+        const [track] = stream.getVideoTracks();
+        
+        videoRef.current.srcObject = stream;
+        // Ensure video plays
+        videoRef.current.play().catch(e => console.error('❌ Video play error:', e));
+        
+        // Monitor video activity to switch between idle and speaking
+        if (track) {
+          let lastBytes = 0;
+          const checkInterval = setInterval(async () => {
+            if (!peerConnection || peerConnection.connectionState === 'closed') {
+              clearInterval(checkInterval);
+              return;
+            }
+            
+            try {
+              const receiver = peerConnection.getReceivers().find(r => r.track === track);
+              if (!receiver) return;
+              
+              const stats = await receiver.getStats();
+              stats.forEach((report) => {
+                if (report.type === 'inbound-rtp' && report.kind === 'video') {
+                  const nowPlaying = report.bytesReceived > lastBytes;
+                  if (nowPlaying !== isPlaying) {
+                    console.log('🎬 Stream playing state changed:', nowPlaying);
+                    setIsPlaying(nowPlaying);
+                    
+                    // Switch video visibility
+                    if (videoRef.current && idleVideoRef.current) {
+                      if (nowPlaying) {
+                        // Agent is speaking - show streaming video
+                        videoRef.current.style.opacity = '1';
+                        idleVideoRef.current.style.opacity = '0';
+                      } else {
+                        // Agent is idle - show idle video
+                        videoRef.current.style.opacity = '0';
+                        idleVideoRef.current.style.opacity = '1';
+                      }
+                    }
+                  }
+                  lastBytes = report.bytesReceived;
+                }
+              });
+            } catch (err) {
+              console.error('❌ Error checking video stats:', err);
+            }
+          }, 400); // Check every 400ms
+        }
       }
     });
 
@@ -187,13 +255,14 @@ const DIDAgentAvatar = () => {
   // Initialize agent and streaming
   const initializeAgent = async () => {
     // Prevent multiple initializations
-    if (isInitialized) {
-      console.log('🚫 Agent already initialized, skipping...');
+    if (initializingRef.current || isConnecting) {
+      console.log('🚫 Already initializing or connecting, skipping...');
       return;
     }
 
     try {
-      setIsInitialized(true);
+      initializingRef.current = true;
+      cleanupCalledRef.current = false;
       setIsConnecting(true);
       setError(null);
       setConnectionStatus('connecting');
@@ -207,6 +276,25 @@ const DIDAgentAvatar = () => {
       
       // Step 1: Setup or get agent
       const currentAgentId = await setupAgent();
+      
+      // Step 1.5: Fetch agent info to get idle video URL
+      console.log('📥 Fetching agent info for idle video...');
+      const agentInfoResponse = await fetchWithRetry(`${API_URL}/agents/${currentAgentId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${DID_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const agentInfo = await agentInfoResponse.json();
+      console.log('✅ Agent info received:', agentInfo);
+      
+      // Set idle video if available
+      if (agentInfo.presenter && agentInfo.presenter.idle_video) {
+        console.log('🎬 Setting idle video URL:', agentInfo.presenter.idle_video);
+        setIdleVideoUrl(agentInfo.presenter.idle_video);
+      }
       
       // Step 2: Create a new stream for the agent
       const sessionResponse = await fetchWithRetry(`${API_URL}/agents/${currentAgentId}/streams`, {
@@ -267,6 +355,12 @@ const DIDAgentAvatar = () => {
       setChatId(chatData.id);
       console.log('✅ Chat session created:', chatData.id);
       
+      // Start session timeout tracker
+      resetSessionTimeout();
+      
+      // Initial greeting removed to save credits
+      // Agent will show idle animation and wait for user input
+      
       // Add connection timeout with longer duration for better reliability
       const connectionTimeout = setTimeout(() => {
         if (!isConnected && isConnecting) {
@@ -285,7 +379,10 @@ const DIDAgentAvatar = () => {
       setError(`Failed to initialize agent: ${error.message}`);
       setIsConnecting(false);
       setConnectionStatus('error');
-      setIsInitialized(false); // Reset flag on error to allow retry
+      initializingRef.current = false; // Reset flag on error to allow retry
+    } finally {
+      // Always reset initializing flag when done
+      initializingRef.current = false;
     }
   };
 
@@ -327,36 +424,99 @@ const DIDAgentAvatar = () => {
       
     } catch (error) {
       console.error('❌ Error sending message to agent:', error);
-      setError(`Chat error: ${error.message}`);
+      
+      // Check if it's a session error
+      if (error.message.includes('SessionError') || error.message.includes('session_id')) {
+        console.warn('🔄 Session expired, attempting to reconnect...');
+        setError('Session expired. Reconnecting...');
+        
+        // Attempt to reconnect
+        setTimeout(() => {
+          reconnect();
+        }, 1000);
+      } else {
+        setError(`Chat error: ${error.message}`);
+      }
       onMessagePlayed(); // Skip this message on error
     }
+    
+    // Reset session timeout after successful message
+    resetSessionTimeout();
+  };
+  
+  // Reset session timeout to prevent expiration
+  const resetSessionTimeout = () => {
+    // Clear existing timeout
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current);
+    }
+    
+    // Set new timeout to refresh session before it expires
+    sessionTimeoutRef.current = setTimeout(() => {
+      console.log('⏰ Session timeout approaching, refreshing connection...');
+      if (isConnected) {
+        reconnect();
+      }
+    }, SESSION_TIMEOUT);
   };
 
   // Cleanup function
   const cleanup = async () => {
+    // Prevent multiple cleanup calls
+    if (cleanupCalledRef.current) {
+      console.log('🚫 Cleanup already called, skipping...');
+      return;
+    }
+    
+    cleanupCalledRef.current = true;
     console.log('🧹 Cleaning up D-ID Agent...');
     
+    // Clear session timeout
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current);
+      console.log('✅ Session timeout cleared');
+    }
+    
+    // Close peer connection
     if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
+      try {
+        peerConnectionRef.current.close();
+        console.log('✅ Peer connection closed');
+      } catch (err) {
+        console.error('❌ Error closing peer connection:', err);
+      }
       peerConnectionRef.current = null;
     }
 
-    if (agentId && streamId && sessionId) {
+    // Stop video streams
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = videoRef.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+
+    // Delete stream session if exists
+    const currentAgentId = agentId;
+    const currentStreamId = streamId;
+    const currentSessionId = sessionId;
+    
+    if (currentAgentId && currentStreamId && currentSessionId) {
       try {
-        await fetchWithRetry(`${API_URL}/agents/${agentId}/streams/${streamId}`, {
+        await fetchWithRetry(`${API_URL}/agents/${currentAgentId}/streams/${currentStreamId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Basic ${DID_API_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ session_id: sessionId }),
+          body: JSON.stringify({ session_id: currentSessionId }),
         });
-        console.log('✅ Agent stream session closed');
+        console.log('✅ Agent stream session deleted');
       } catch (error) {
-        console.error('❌ Error closing agent stream session:', error);
+        console.error('❌ Error deleting agent stream session:', error);
       }
     }
 
+    // Reset all state
     setIsConnected(false);
     setIsConnecting(false);
     setConnectionStatus('disconnected');
@@ -364,52 +524,122 @@ const DIDAgentAvatar = () => {
     setSessionId(null);
     setAgentId(null);
     setChatId(null);
-    setIsInitialized(false); // Reset initialization flag for fresh start
+    setIsPlaying(false);
+    setIdleVideoUrl(null);
+    initializingRef.current = false;
   };
 
   // Initialize agent on component mount
   useEffect(() => {
-    initializeAgent();
+    console.log('🎬 Component mounted, initializing agent...');
+    
+    // Simple initialization without cleanup first
+    if (!initializingRef.current) {
+      initializeAgent();
+    }
     
     // Cleanup on unmount
-    return cleanup;
-  }, []);
+    return () => {
+      console.log('🔚 Component unmounting, cleaning up...');
+      cleanup();
+    };
+  }, []); // Empty dependency array - only run once on mount
 
   // Handle incoming messages
   useEffect(() => {
-    if (message && message.text && isConnected) {
+    if (message && message.userQuestion && isConnected) {
+      // Send the original user question to the agent, not the AI response
+      console.log('📝 Sending user question to agent:', message.userQuestion);
+      speakWithAgent(message.userQuestion);
+    } else if (message && message.text && !message.userQuestion && isConnected) {
+      // Fallback: if no userQuestion, send the message text (for backward compatibility)
+      console.log('📝 No userQuestion found, sending message text:', message.text);
       speakWithAgent(message.text);
-    } else if (message && message.text && !isConnected) {
+    } else if (message && !isConnected) {
       console.warn('⚠️ Message received but agent not connected, skipping...');
       onMessagePlayed();
     }
   }, [message, isConnected]);
+
+  // Handle idle video playback
+  useEffect(() => {
+    if (idleVideoUrl && idleVideoRef.current) {
+      console.log('🎬 Loading idle video:', idleVideoUrl);
+      idleVideoRef.current.src = idleVideoUrl;
+      idleVideoRef.current.load();
+      idleVideoRef.current.play().catch(e => {
+        console.error('❌ Idle video autoplay failed:', e);
+        // Try again after user interaction
+        setTimeout(() => {
+          idleVideoRef.current?.play().catch(err => console.error('❌ Retry failed:', err));
+        }, 1000);
+      });
+    }
+  }, [idleVideoUrl]);
 
   // Reconnect function for manual retry
   const reconnect = async () => {
     console.log('🔄 Manual reconnection initiated...');
     setRetryCount(0); // Reset retry count for manual reconnection
     setError(null);
+    cleanupCalledRef.current = false; // Allow cleanup to run again
     await cleanup();
     setTimeout(() => {
+      cleanupCalledRef.current = false; // Reset before reinitializing
       initializeAgent();
     }, 1000);
   };
 
+  // Enable audio after user interaction
+  const enableAudio = () => {
+    console.log('🔊 Enabling audio after user interaction...');
+    setAudioEnabled(true);
+    
+    // Unmute videos
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.play().catch(e => console.error('❌ Video play error:', e));
+    }
+    if (idleVideoRef.current) {
+      idleVideoRef.current.muted = false;
+      idleVideoRef.current.play().catch(e => console.error('❌ Idle video play error:', e));
+    }
+  };
+
   return (
     <div className="relative w-full h-full bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center">
-      {/* Video element for D-ID agent stream */}
+      {/* Idle video element - shows when agent is not speaking */}
+      <video
+        ref={idleVideoRef}
+        src={idleVideoUrl}
+        autoPlay
+        loop
+        playsInline
+        muted={true}
+        className="w-full h-full object-cover absolute inset-0"
+        style={{
+          transform: 'scaleX(-1)', // Mirror the video horizontally
+          opacity: idleVideoUrl && !isPlaying ? 1 : 0,
+          transition: 'opacity 0.3s ease-in-out',
+        }}
+        onLoadedMetadata={() => console.log('🎬 Idle video metadata loaded')}
+        onPlay={() => console.log('▶️ Idle video started playing')}
+      />
+      
+      {/* Streaming video element - shows when agent is speaking */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        muted={false}
-        className={`w-full h-full object-cover ${
-          isConnected ? 'opacity-100' : 'opacity-0'
-        } transition-opacity duration-500`}
+        muted={true}
+        className="w-full h-full object-cover absolute inset-0"
         style={{
           transform: 'scaleX(-1)', // Mirror the video horizontally
+          opacity: isPlaying ? 1 : 0,
+          transition: 'opacity 0.3s ease-in-out',
         }}
+        onLoadedMetadata={() => console.log('📹 Streaming video metadata loaded')}
+        onPlay={() => console.log('▶️ Streaming video started playing')}
       />
 
       {/* Loading overlay */}
@@ -419,6 +649,32 @@ const DIDAgentAvatar = () => {
           <p className="text-white text-lg font-semibold">
             {isConnecting ? 'Connecting to AI Agent...' : 'Processing...'}
           </p>
+        </div>
+      )}
+
+      {/* Click to enable audio overlay - shows when connected but audio not enabled */}
+      {isConnected && !audioEnabled && !isConnecting && (
+        <div 
+          className="absolute inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center cursor-pointer z-50"
+          onClick={enableAudio}
+        >
+          <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-full p-8 mb-4 hover:bg-opacity-20 transition-all">
+            <svg 
+              className="w-24 h-24 text-white" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" 
+              />
+            </svg>
+          </div>
+          <p className="text-white text-xl font-semibold mb-2">Click to Enable Audio</p>
+          <p className="text-white text-sm opacity-80">Tap anywhere to start the conversation</p>
         </div>
       )}
 

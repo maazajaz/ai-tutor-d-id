@@ -1,60 +1,64 @@
 # 🎓 AI Digital Tutor with D-ID Live Avatar
 
-> An intelligent live avatar-based tutoring system with D-ID's real-time video synthesis, multilingual support, and personalized learning experiences.
+> An intelligent live avatar-based tutoring system with D-ID's real-time video synthesis, emotion detection, multilingual support, and personalized learning experiences.
 
 [![Live Demo](https://img.shields.io/badge/🚀-Live%20Demo-success?style=for-the-badge)](https://ai-tutor-final-sepia.vercel.app/)
-[![GitHub](https://img.shields.io/badge/📁-GitHub-black?style=for-the-badge&logo=github)](https://github.com/maazajaz/ai-tutor-full-stack)
+[![GitHub](https://img.shields.io/badge/📁-GitHub-black?style=for-the-badge&logo=github)](https://github.com/maazajaz/ai-avatar-final)
 
-## ✨ Features
+## ✨ Latest Features (October 2025)
 
-### 🤖 **Intelligent AI Tutoring**
-- **GPT-powered conversations** with context-aware responses
-- **Programming & CS focused** with support for all academic subjects
-- **Multilingual support** (English/Hinglish) with automatic language detection
-- **Personalized learning** with chat history and progress tracking
+### 🎭 **Advanced Emotion Detection**
+- **Real-time facial emotion recognition** using face-api.js
+- **Automatic mood detection** (sad, angry, happy, neutral, surprised, fearful, disgusted)
+- **Smart intervention system** - Agent proactively helps when detecting:
+  - 😢 **Sadness**: Offers jokes and encouragement
+  - 😠 **Frustration**: Provides targeted help and explanations
+  - 😊 **Happiness**: Positive reinforcement and praise
+- **Live camera preview** with face detection status
+- **Pattern-based detection** (3+ consecutive emotions trigger response)
+- **Cooldown system** to prevent spam (2 min for sad/angry, 5 min for happy)
+
+### 🤖 **Intelligent Dual-AI System**
+- **OpenAI GPT** for detailed text responses and explanations
+- **D-ID Live Avatar** for personalized video responses
+- **Smart message routing**: Agent receives user questions directly, not AI responses
+- **Context-aware conversations** with chat history
+- **Session persistence** with automatic reconnection
 
 ### 🎭 **D-ID Live Avatar Experience**
 - **Real-time AI avatar** with live video synthesis
-- **Photorealistic human presenters** that speak and move naturally
+- **Photorealistic human presenters** with natural movements
 - **Advanced lip-sync** and facial expressions
-- **Live streaming** for real-time interaction
+- **Session management** with auto-refresh (prevents 5-min expiration)
+- **Idle animations** when not speaking
 - **Mobile-optimized** video streaming
 
-### 🔊 **Voice & Audio**
-- **Integrated TTS** through D-ID's voice synthesis
-- **Real-time audio streaming** with live avatar synchronization
-- **Natural voice** with emotion and expression
-- **Mobile-friendly** audio/video playback
-
-### 💾 **Data Management**
-- **Supabase integration** for user authentication and data persistence
-- **Chat history** with automatic saving and retrieval
-- **Session management** with multiple chat support
-- **AI-generated notes** and study summaries
+### 💾 **Enhanced Data Management**
+- **Supabase integration** for authentication and persistence
+- **Automatic chat saving** with session management
+- **AI-generated study notes** from conversations
+- **Multiple chat sessions** support
+- **Export chat as PDF** functionality
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - Git
 - API Keys: [OpenAI](https://platform.openai.com/), [D-ID](https://www.d-id.com/), [Supabase](https://supabase.com/)
 
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/maazajaz/ai-tutor-full-stack.git
-cd ai-tutor-full-stack
+git clone https://github.com/maazajaz/ai-avatar-final.git
+cd ai-avatar-final
 
 # Install dependencies
 npm install
 
 # Configure environment variables
-# Copy .env.example to .env and fill in your API keys:
-# - OPENAI_API_KEY (from OpenAI Platform)
-# - DID_API_KEY (from D-ID Dashboard) 
-# - VITE_DID_API_KEY (same as DID_API_KEY for frontend)
-# - VITE_SUPABASE_URL (from Supabase Project Settings)
-# - VITE_SUPABASE_ANON_KEY (from Supabase Project API Settings)
+cp .env.example .env
+# Edit .env and add your API keys
 
 # Start development servers
 npm run dev
@@ -70,6 +74,7 @@ The application will be available at:
 Frontend:
 ├── React 18 + Vite
 ├── D-ID Client SDK for live avatars
+├── face-api.js for emotion detection
 ├── TailwindCSS + PostCSS
 ├── Context-based state management
 └── Mobile-responsive design
@@ -78,14 +83,43 @@ Backend:
 ├── Express.js with CORS
 ├── OpenAI API integration
 ├── D-ID API for avatar synthesis
-└── Simplified text-to-avatar pipeline
+└── RESTful API endpoints
 
 Database & Auth:
-├── Supabase (Auth + Database)
+├── Supabase (Auth + PostgreSQL)
 ├── Session management
 ├── Chat history persistence
-└── User profiles
+└── User profiles with roles
+
+AI & ML:
+├── OpenAI GPT-4 for conversations
+├── TensorFlow.js (via face-api.js)
+├── Face detection & recognition
+└── Emotion classification models
 ```
+
+## 🎭 Key Features Explained
+
+### Emotion Detection System
+The system uses face-api.js with TensorFlow.js to detect 7 base emotions in real-time:
+
+**Detection Flow:**
+1. Camera captures video feed (640x480)
+2. TinyFaceDetector locates face
+3. FaceExpressionNet analyzes emotions
+4. Pattern detection (analyzes last 5 readings)
+5. Triggers intervention when 3+ consecutive same emotions
+
+**Smart Interventions:**
+- **Sadness Detected** → "I am feeling a bit sad. Can you crack some jokes to cheer me up? 😄"
+- **Frustration Detected** → "I am feeling frustrated with this topic. Can you help me understand it better? 🎯"
+- **Happiness Detected** → "Great energy! You're doing amazing! Keep it up! 🌟"
+
+### Session Management
+- **Auto-refresh**: Sessions refresh after 4 minutes (before 5-min D-ID expiration)
+- **Error recovery**: Automatic reconnection on session errors
+- **Timeout tracking**: Resets on each message sent
+- **Clean cleanup**: Proper resource management on unmount
 
 ## 🎭 D-ID Integration
 

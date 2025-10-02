@@ -8,12 +8,21 @@ import { DIDExperience } from "./components/DIDExperience";
 import { UI } from "./components/UI";
 import { Login } from "./components/Login";
 import { Sidebar } from "./components/Sidebar";
+import { EmotionDebug } from "./components/EmotionDebug";
 
 // Main App Content (when authenticated)
 const AppContent = () => {
   const { user, profile, signOut, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+
+  // Check if we're in debug mode
+  const isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'emotion';
+
+  // Show debug page if in debug mode
+  if (isDebugMode) {
+    return <EmotionDebug />;
+  }
 
   const handleSignOut = async () => {
     if (window.confirm('Are you sure you want to sign out?')) {
