@@ -24,23 +24,59 @@ export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) 
   const isLiveModeRef = useRef(false);
   const chatRef = useRef(chat);
   
-  // Yawn detection handler
+  // Yawn detection handler - sends engagement message with quiz instruction
   const handleYawnDetected = (detectionType, message) => {
-    console.log(`😮 Yawn/drowsiness detected: ${detectionType}`);
+    console.log(`😮 Yawn detected from student: ${detectionType}`);
     
-    // Automatically send the message to the AI tutor
+    // Add system instruction for the agent to create an interactive quiz
+    const enhancedMessage = `${message}\n\n[SYSTEM INSTRUCTION: The student is showing signs of fatigue/boredom by yawning repeatedly. Your response should:
+1. Acknowledge their tiredness in a friendly, encouraging way
+2. Create a SHORT, FUN, INTERACTIVE quiz question (only 1 question) about the current topic we're discussing
+3. Make it multiple choice (A, B, C, D) if possible
+4. Keep it simple and engaging - NOT difficult
+5. After they answer, give immediate positive feedback and briefly explain the correct answer
+6. Then ask if they want to continue learning or take a break
+
+Example format:
+"Hey! I see you're getting a bit tired 😊 Let's wake up your brain with a quick question!
+
+🎯 Quick Quiz: [Question about current topic]
+A) [Option 1]
+B) [Option 2]  
+C) [Option 3]
+D) [Option 4]
+
+What's your answer? Type A, B, C, or D!"]`;
+    
+    // Send to agent if not already processing
     if (!loading) {
-      chat(message);
+      chat(enhancedMessage);
     }
   };
 
-  // Drowsiness detection handler (separate for microsleep/tired state)
+  // Drowsiness detection handler - sends re-engagement message with quiz
   const handleDrowsinessDetected = (detectionType, message) => {
-    console.log(`💤 Drowsiness detected: ${detectionType}`);
+    console.log(`💤 Drowsiness detected from student: ${detectionType}`);
     
-    // Automatically send the message to the AI tutor
+    // Add system instruction for urgent engagement
+    const enhancedMessage = `${message}\n\n[SYSTEM INSTRUCTION: The student's eyes are closing - they're very drowsy! Your response should:
+1. Use an energetic, attention-grabbing tone (emojis, exclamation marks)
+2. Create a super quick, FUN question (easier than normal)
+3. Keep it very short - the student needs to stay awake!
+4. Use their name if you know it
+5. After they answer, suggest a 5-minute stretch break
+
+Example:
+"⚠️ Hey! Wake up! 👀 Your brain needs some action!
+
+⚡ QUICK QUESTION: [Very simple question about what we just talked about]
+A) [Option 1]
+B) [Option 2]
+
+Come on, you got this! What's your answer? 🎮"]`;
+    
     if (!loading) {
-      chat(message);
+      chat(enhancedMessage);
     }
   };
   

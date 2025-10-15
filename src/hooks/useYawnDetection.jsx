@@ -62,13 +62,13 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
     RIGHT_EYE_RIGHT: 263
   };
 
-  // Thresholds (tuned based on the repository)
+  // Thresholds (tuned for educational engagement monitoring)
   const THRESHOLDS = {
     MAR_YAWN: 0.6,           // Mouth Aspect Ratio threshold for yawn
     EAR_CLOSED: 0.2,          // Eye Aspect Ratio threshold for closed eyes
-    YAWN_DURATION_ALERT: 7.0, // Seconds of continuous yawning before alert
-    MICROSLEEP_ALERT: 4.0,    // Seconds of eyes closed before alert
-    ALERT_COOLDOWN: 120000    // 2 minutes between same type of alerts
+    YAWN_DURATION_ALERT: 3.0, // Seconds of continuous yawning before alert (reduced from 7.0)
+    MICROSLEEP_ALERT: 2.5,    // Seconds of eyes closed before alert (reduced from 4.0)
+    ALERT_COOLDOWN: 180000    // 3 minutes between same type of alerts (was 2 minutes)
   };
 
   /**
@@ -160,7 +160,7 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
         if (duration > THRESHOLDS.YAWN_DURATION_ALERT) {
           if (!lastAlertTimeRef.current.yawn || now - lastAlertTimeRef.current.yawn > THRESHOLDS.ALERT_COOLDOWN) {
             console.log('⚠️ Prolonged yawning detected - user might be tired');
-            onYawnDetected?.('prolonged_yawn', 'I notice you\'re yawning a lot. Would you like to take a break or should I explain things more clearly? 😴');
+            onYawnDetected?.('prolonged_yawn', 'I notice YOU are yawning a lot. Let\'s take a quick break! How about a fun quiz to refresh your mind? I\'ll ask you a simple question about what we just covered. Ready? 🎯');
             lastAlertTimeRef.current.yawn = now;
           }
         }
@@ -196,7 +196,7 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
         if (duration > THRESHOLDS.MICROSLEEP_ALERT) {
           if (!lastAlertTimeRef.current.microsleep || now - lastAlertTimeRef.current.microsleep > THRESHOLDS.ALERT_COOLDOWN) {
             console.log('⚠️ Prolonged eye closure detected - user might be drowsy');
-            onDrowsinessDetected?.('microsleep', 'You seem tired. Shall we take a quick break? Or would you like me to make the lesson more engaging? 💤');
+            onDrowsinessDetected?.('microsleep', 'Hey! I notice YOUR eyes are getting heavy. 💤 Let\'s wake you up with a quick interactive question! This will help you stay focused. Should I start? 🎮');
             lastAlertTimeRef.current.microsleep = now;
           }
         }
