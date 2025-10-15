@@ -407,8 +407,8 @@ Come on, you got this! What's your answer? 🎮"]`;
       <ChatNotes isOpen={showNotes} onClose={() => setShowNotes(false)} />
       
       <div className="h-full flex flex-col bg-white shadow-2xl">
-        {/* Whiteboard Header */}
-        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-2 lg:p-4 shadow-lg">
+        {/* Whiteboard Header - Transparent overlay on mobile */}
+        <div className="bg-gradient-to-r from-green-600/80 to-green-700/80 lg:from-green-600 lg:to-green-700 backdrop-blur-sm text-white p-2 lg:p-4 shadow-lg absolute lg:relative top-0 left-0 right-0 z-40">
           <div className="flex items-center justify-between gap-2">
             {/* Left: Title */}
             <div className="flex items-center gap-1 lg:gap-2 min-w-0">
@@ -530,10 +530,10 @@ Come on, you got this! What's your answer? 🎮"]`;
           </div>
         </div>
 
-      {/* Whiteboard Content Area */}
+      {/* Whiteboard Content Area - Add padding top on mobile for overlaid header */}
       <div 
         ref={whiteboardRef}
-        className="flex-1 p-2 lg:p-6 overflow-y-auto bg-white whiteboard-scroll whiteboard-grid"
+        className="flex-1 p-2 lg:p-6 pt-16 lg:pt-2 overflow-y-auto bg-white whiteboard-scroll whiteboard-grid"
       >
         {/* Live Mode Indicator */}
         {isLiveMode && (
