@@ -62,9 +62,9 @@ const AppContent = () => {
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      {/* Mobile Top Navbar - Glassmorphism overlay */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/10 border-b border-white/20 shadow-lg">
-        <div className="flex items-center justify-between p-3">
+      {/* Mobile Top Navbar - More transparent glassmorphism */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/5 border-b border-white/10 shadow-lg">
+        <div className="flex items-center justify-between p-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <h1 className="text-white font-bold text-base whitespace-nowrap">🎓 AI Tutor</h1>
             
@@ -215,10 +215,10 @@ const AppContent = () => {
         )}
       </div>
       
-      {/* Left Side - D-ID Avatar - Full height with navbar overlay */}
+      {/* Left Side - D-ID Avatar - Optimized mobile height */}
       <div className={`${
         showChat ? 'w-full lg:w-1/2' : 'w-full'
-      } h-1/3 lg:h-full relative transition-all duration-500 ease-in-out`}>
+      } h-[40vh] lg:h-full relative transition-all duration-500 ease-in-out`}>
         <DIDExperience />
         
         {/* Desktop Avatar Section Header - Hidden on Mobile */}
@@ -350,10 +350,10 @@ const AppContent = () => {
         </div>
       </div>
       
-      {/* Right Side - Whiteboard (slides in from right) */}
+      {/* Right Side - Whiteboard - Optimized mobile height */}
       <div className={`${
         showChat ? 'translate-x-0 w-full lg:w-1/2' : 'translate-x-full w-0'
-      } h-3/4 lg:h-full flex flex-col transition-all duration-500 ease-in-out overflow-hidden`}>
+      } h-[60vh] lg:h-full flex flex-col transition-all duration-500 ease-in-out overflow-hidden`}>
         <UI 
           showChat={showChat} 
           setShowChat={setShowChat} 
