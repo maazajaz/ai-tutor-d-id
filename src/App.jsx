@@ -55,7 +55,7 @@ const AppContent = () => {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col lg:flex-row bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden">
+    <div className="h-screen w-screen flex flex-col lg:flex-row bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden fixed inset-0">
       <Loader />
       <Leva hidden/>
       
