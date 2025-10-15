@@ -215,10 +215,10 @@ const AppContent = () => {
         )}
       </div>
       
-      {/* Left Side - D-ID Avatar - Optimized mobile height */}
+      {/* Left Side - D-ID Avatar - Back to original ratio */}
       <div className={`${
         showChat ? 'w-full lg:w-1/2' : 'w-full'
-      } h-[40vh] lg:h-full relative transition-all duration-500 ease-in-out`}>
+      } h-1/3 lg:h-full relative transition-all duration-500 ease-in-out`}>
         <DIDExperience />
         
         {/* Desktop Avatar Section Header - Hidden on Mobile */}
@@ -350,10 +350,10 @@ const AppContent = () => {
         </div>
       </div>
       
-      {/* Right Side - Whiteboard - Optimized mobile height */}
+      {/* Right Side - Whiteboard - Back to original ratio */}
       <div className={`${
         showChat ? 'translate-x-0 w-full lg:w-1/2' : 'translate-x-full w-0'
-      } h-[60vh] lg:h-full flex flex-col transition-all duration-500 ease-in-out overflow-hidden`}>
+      } h-2/3 lg:h-full flex flex-col transition-all duration-500 ease-in-out overflow-hidden`}>
         <UI 
           showChat={showChat} 
           setShowChat={setShowChat} 

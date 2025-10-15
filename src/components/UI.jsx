@@ -633,8 +633,8 @@ Come on, you got this! What's your answer? 🎮"]`;
         )}
       </div>
 
-      {/* Input Area */}
-      <div className="border-t-2 border-gray-200 p-1 lg:p-4 bg-gray-50">
+      {/* Input Area - Sticky at bottom on mobile */}
+      <div className="border-t-2 border-gray-200 p-1 lg:p-4 bg-gray-50 sticky bottom-0 left-0 right-0 z-30">
         <div className="flex items-center gap-1 lg:gap-2">
           <div className="flex-1 relative">
             <input
