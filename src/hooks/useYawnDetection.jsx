@@ -9,6 +9,9 @@ import { useEffect, useRef, useState } from 'react';
  * - EAR (Eye Aspect Ratio) to detect drowsiness/microsleep
  * 
  * This replaces the previous emotion detection system.
+ * 
+ * NOTE: MediaPipe is loaded from CDN (not npm) to avoid bundling issues
+ * and ensure proper browser compatibility.
  */
 export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled = true }) => {
   const videoRef = useRef(null);
@@ -295,12 +298,24 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
         }
         console.log('📍 Step 3: getUserMedia is available');
 
-        // Dynamically import MediaPipe (no Camera utility - use native API)
-        console.log('📍 Step 4: Importing MediaPipe Face Mesh...');
-        const { FaceMesh } = await import('@mediapipe/face_mesh');
-        console.log('📍 Step 5: MediaPipe imported successfully');
+        // Load MediaPipe Face Mesh from CDN
+        console.log('📍 Step 4: Loading MediaPipe Face Mesh from CDN...');
+        
+        // Load the script if not already loaded
+        if (!window.FaceMesh) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js';
+            script.crossOrigin = 'anonymous';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        }
+        
+        console.log('📍 Step 5: MediaPipe loaded successfully');
 
-        const faceMesh = new FaceMesh({
+        const faceMesh = new window.FaceMesh({
           locateFile: (file) => {
             return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
           }
