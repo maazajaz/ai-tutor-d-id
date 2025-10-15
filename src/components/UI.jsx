@@ -1,11 +1,11 @@
 import { useRef, useEffect, useState } from "react";
 import { useChat } from "../hooks/useChat";
-import { useEmotionDetection } from "../hooks/useEmotionDetection";
+import { useYawnDetection } from "../hooks/useYawnDetection";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatNotes } from "./ChatNotes";
 import { MessageDisplay } from "./MessageDisplay";
 
-export const UI = ({ hidden, ...props }) => {
+export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) => {
   const input = useRef();
   const whiteboardRef = useRef();
   const previewVideoRef = useRef(); // Separate ref for preview video
@@ -18,27 +18,49 @@ export const UI = ({ hidden, ...props }) => {
   const [inputValue, setInputValue] = useState(''); // Track input value for button switching
   const [emotionDetectionEnabled, setEmotionDetectionEnabled] = useState(true);
   const [cameraStreamReady, setCameraStreamReady] = useState(false); // Track when camera is ready
+  const [showCameraPreview, setShowCameraPreview] = useState(true); // Toggle camera preview
   
   // Use refs to access current values in speech recognition callbacks
   const isLiveModeRef = useRef(false);
   const chatRef = useRef(chat);
   
-  // Emotion detection handler
-  const handleEmotionDetected = (emotionType, message) => {
-    console.log(`🎭 Emotion detected: ${emotionType}`);
+  // Yawn detection handler
+  const handleYawnDetected = (detectionType, message) => {
+    console.log(`😮 Yawn/drowsiness detected: ${detectionType}`);
     
     // Automatically send the message to the AI tutor
-    if (!loading && emotionType !== 'happy') {
-      // For non-happy emotions, trigger the AI response
+    if (!loading) {
+      chat(message);
+    }
+  };
+
+  // Drowsiness detection handler (separate for microsleep/tired state)
+  const handleDrowsinessDetected = (detectionType, message) => {
+    console.log(`💤 Drowsiness detected: ${detectionType}`);
+    
+    // Automatically send the message to the AI tutor
+    if (!loading) {
       chat(message);
     }
   };
   
-  // Initialize emotion detection
-  const { videoRef, isModelLoaded, currentEmotion } = useEmotionDetection({
-    onEmotionDetected: handleEmotionDetected,
+  // Initialize yawn detection
+  const { videoRef, canvasRef, isInitialized, isLoading, error, detectionStats } = useYawnDetection({
+    onYawnDetected: handleYawnDetected,
+    onDrowsinessDetected: handleDrowsinessDetected,
     enabled: emotionDetectionEnabled
   });
+
+  // Debug log for yawn detection state
+  useEffect(() => {
+    console.log('📊 Yawn Detection State:', {
+      emotionDetectionEnabled,
+      isInitialized,
+      isLoading,
+      error,
+      hasVideoRef: !!videoRef.current
+    });
+  }, [emotionDetectionEnabled, isInitialized, isLoading, error]);
   
   // Update preview video when the main video starts playing
   useEffect(() => {
@@ -96,6 +118,19 @@ export const UI = ({ hidden, ...props }) => {
       setCameraStreamReady(false);
     };
   }, [emotionDetectionEnabled]);
+  
+  // Notify parent about camera status changes
+  useEffect(() => {
+    if (onCameraStatus) {
+      onCameraStatus({
+        isEnabled: emotionDetectionEnabled,
+        isInitialized,
+        hasStream: !!videoRef.current?.srcObject,
+        isReady: cameraStreamReady,
+        detectionStats
+      });
+    }
+  }, [emotionDetectionEnabled, isInitialized, cameraStreamReady, detectionStats, onCameraStatus]);
   
   // Keep refs in sync with state
   useEffect(() => {
@@ -337,34 +372,25 @@ export const UI = ({ hidden, ...props }) => {
       
       <div className="h-full flex flex-col bg-white shadow-2xl">
         {/* Whiteboard Header */}
-        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-1 lg:p-4 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {/* Chat History Button */}
-              <button
-                onClick={() => setShowSidebar(true)}
-                className="bg-green-500 hover:bg-green-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
-                title="Chat History"
-              >
-                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-              </button>
-              
-              <div>
-                <h1 className="text-sm lg:text-2xl font-bold">🎓 AI Learning Board</h1>
-                <p className="text-green-100 text-xs lg:text-sm hidden sm:block">Interactive AI-Powered Classroom</p>
+        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-2 lg:p-4 shadow-lg">
+          <div className="flex items-center justify-between gap-2">
+            {/* Left: Title */}
+            <div className="flex items-center gap-1 lg:gap-2 min-w-0">
+              <div className="min-w-0">
+                <h1 className="text-xs lg:text-2xl font-bold truncate">🎓 AI Board</h1>
+                <p className="text-green-100 text-[10px] lg:text-sm hidden sm:block">Interactive AI Classroom</p>
               </div>
             </div>
             
-            <div className="flex gap-1 lg:gap-2">
-              {/* Chat History Button */}
+            {/* Right: Action Buttons */}
+            <div className="flex gap-1 flex-shrink-0 flex-wrap">
+              {/* History Button */}
               <button
                 onClick={handleSidebarToggle}
                 className="bg-purple-500 hover:bg-purple-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
                 title="Chat History"
               >
-                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.013 8.013 0 01-7-4c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
                 </svg>
               </button>
@@ -375,55 +401,98 @@ export const UI = ({ hidden, ...props }) => {
                 className="bg-yellow-500 hover:bg-yellow-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
                 title="Chat Notes"
               >
-                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
               
-              {/* Emotion Detection Toggle */}
+              {/* Emotion Toggle */}
               <button
                 onClick={() => setEmotionDetectionEnabled(!emotionDetectionEnabled)}
-                className={`p-1 lg:p-2 rounded-lg transition-all ${
+                className={`p-1 lg:p-2 rounded-lg transition-all relative ${
                   emotionDetectionEnabled 
                     ? "bg-green-500 hover:bg-green-400" 
                     : "bg-gray-500 hover:bg-gray-400"
                 } text-white`}
-                title={emotionDetectionEnabled ? "Emotion Detection: ON" : "Emotion Detection: OFF"}
+                title={emotionDetectionEnabled ? "Emotion: ON" : "Emotion: OFF"}
               >
-                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                {isModelLoaded && emotionDetectionEnabled && (
+                {isInitialized && emotionDetectionEnabled && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                 )}
               </button>
               
+              {/* Camera Preview Toggle - Only when emotion enabled */}
+              {emotionDetectionEnabled && (
+                <button
+                  onClick={() => setShowCameraPreview(!showCameraPreview)}
+                  className={`p-1 lg:p-2 rounded-lg transition-all ${
+                    showCameraPreview 
+                      ? "bg-blue-500 hover:bg-blue-400" 
+                      : "bg-gray-500 hover:bg-gray-400"
+                  } text-white`}
+                  title={showCameraPreview ? "Hide Camera" : "Show Camera"}
+                >
+                  <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {showCameraPreview ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    )}
+                  </svg>
+                </button>
+              )}
+              
+              {/* Chat Toggle - Desktop only */}
+              <button
+                onClick={() => setShowChat(!showChat)}
+                className={`hidden lg:flex p-1 lg:p-2 rounded-lg transition-all ${
+                  showChat 
+                    ? "bg-indigo-500 hover:bg-indigo-400" 
+                    : "bg-gray-500 hover:bg-gray-400"
+                } text-white`}
+                title={showChat ? "Hide Chat" : "Show Chat"}
+              >
+                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {showChat ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  )}
+                </svg>
+              </button>
+              
+              {/* New Chat */}
               <button
                 onClick={handleNewChat}
                 className="bg-blue-500 hover:bg-blue-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
-                title="Start New Chat"
+                title="New Chat"
               >
-                <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </button>
-            <button
-              onClick={handleClearChat}
-              disabled={chatHistory.length === 0}
-              className={`p-1 lg:p-2 rounded-lg transition-colors ${
-                chatHistory.length === 0 
-                  ? "bg-gray-400 cursor-not-allowed text-gray-200" 
-                  : "bg-red-500 hover:bg-red-400 text-white"
-              }`}
-              title={chatHistory.length === 0 ? "No chat to clear" : "Clear Chat History"}
-            >
-              <svg className="w-3 h-3 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+              
+              {/* Clear Chat */}
+              <button
+                onClick={handleClearChat}
+                disabled={chatHistory.length === 0}
+                className={`p-1 lg:p-2 rounded-lg transition-colors ${
+                  chatHistory.length === 0 
+                    ? "bg-gray-400 cursor-not-allowed text-gray-200" 
+                    : "bg-red-500 hover:bg-red-400 text-white"
+                }`}
+                title={chatHistory.length === 0 ? "No chat to clear" : "Clear Chat History"}
+              >
+                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Whiteboard Content Area */}
       <div 
@@ -642,40 +711,40 @@ export const UI = ({ hidden, ...props }) => {
           )}
         </div>
         
-        {/* Quick Actions */}
-        <div className="mt-1 lg:mt-3 flex flex-wrap gap-1 lg:gap-2">
+        {/* Quick Actions - Mobile optimized */}
+        <div className="mt-1 lg:mt-3 flex flex-wrap gap-1 lg:gap-2 justify-center">
           <button 
             onClick={() => handleQuickAction("Python code to write factorial function")}
             disabled={loading || message}
-            className={`text-xs px-2 lg:px-3 py-1 rounded-full transition-colors ${
+            className={`text-[10px] lg:text-xs px-1.5 lg:px-3 py-0.5 lg:py-1 rounded-full transition-colors ${
               loading || message 
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
                 : "bg-blue-100 hover:bg-blue-200 text-blue-700"
             }`}
           >
-            Python factorial code
+            Python code
           </button>
           <button 
             onClick={() => handleQuickAction("What is a node in data structure?")}
             disabled={loading || message}
-            className={`text-xs px-2 lg:px-3 py-1 rounded-full transition-colors ${
+            className={`text-[10px] lg:text-xs px-1.5 lg:px-3 py-0.5 lg:py-1 rounded-full transition-colors ${
               loading || message 
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
                 : "bg-purple-100 hover:bg-purple-200 text-purple-700"
             }`}
           >
-            Data structure nodes
+            Data structures
           </button>
           <button 
             onClick={() => handleQuickAction("What are classes and objects in C++?")}
             disabled={loading || message}
-            className={`text-xs px-2 lg:px-3 py-1 rounded-full transition-colors ${
+            className={`text-[10px] lg:text-xs px-1.5 lg:px-3 py-0.5 lg:py-1 rounded-full transition-colors ${
               loading || message 
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
                 : "bg-green-100 hover:bg-green-200 text-green-700"
             }`}
           >
-            C++ classes & objects
+            C++ classes
           </button>
         </div>
       </div>
@@ -696,17 +765,28 @@ export const UI = ({ hidden, ...props }) => {
         onPlay={() => console.log('▶️ Emotion detection video playing')}
       />
       
-      {/* Debug: Camera Preview (visible when emotion detection is enabled) */}
-      {emotionDetectionEnabled && (
-        <div className="fixed bottom-32 left-4 z-50">
-          <div className="bg-white border-2 border-green-500 rounded-lg p-2 shadow-lg">
-            <div className="text-xs text-gray-600 mb-1 font-semibold">Camera Preview</div>
+      {/* Camera Preview - Mobile optimized with Yawn Detection Stats */}
+      {emotionDetectionEnabled && showCameraPreview && (
+        <div className="fixed bottom-20 lg:bottom-32 left-2 lg:left-4 z-50 transition-all duration-300">
+          <div className="bg-white border-2 border-green-500 rounded-lg p-1.5 lg:p-2 shadow-lg">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-[10px] lg:text-xs text-gray-600 font-semibold">Yawn Detection</div>
+              <button
+                onClick={() => setShowCameraPreview(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="Hide Preview"
+              >
+                <svg className="w-3 h-3 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             <video
               ref={previewVideoRef}
               autoPlay
               muted
               playsInline
-              className="w-48 h-36 rounded border border-gray-300 object-cover bg-gray-100"
+              className="w-32 h-24 lg:w-48 lg:h-36 rounded border border-gray-300 object-cover bg-gray-100"
               onLoadedMetadata={() => {
                 console.log('🎬 Preview video metadata loaded');
                 // Force play on metadata load
@@ -718,55 +798,49 @@ export const UI = ({ hidden, ...props }) => {
               onPause={() => console.log('⏸️ Preview video paused')}
               onError={(e) => console.error('❌ Preview video error:', e)}
             />
-            <div className="text-xs text-gray-500 mt-1 text-center">
-              {cameraStreamReady ? 'Face detection active' : 'Waiting for camera...'}
+            {/* Yawn Detection Stats */}
+            <div className="text-[9px] lg:text-[10px] text-gray-600 mt-1 space-y-0.5">
+              {error ? (
+                <div className="text-red-600 font-semibold text-center">
+                  ❌ {error}
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span>😮 Yawns:</span>
+                    <span className="font-semibold">{detectionStats.yawns}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>👁️ Blinks:</span>
+                    <span className="font-semibold">{detectionStats.blinks}</span>
+                  </div>
+                  {detectionStats.yawnDuration > 0 && (
+                    <div className="text-orange-600 font-semibold animate-pulse">
+                      ⚠️ Yawn: {detectionStats.yawnDuration.toFixed(1)}s
+                    </div>
+                  )}
+                  {detectionStats.microsleepDuration > 0 && (
+                    <div className="text-red-600 font-semibold animate-pulse">
+                      💤 Eyes: {detectionStats.microsleepDuration.toFixed(1)}s
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className={`text-[10px] lg:text-xs mt-1 text-center font-semibold ${
+              error ? 'text-red-500' : 
+              isInitialized ? 'text-green-500' : 
+              isLoading ? 'text-yellow-500' :
+              emotionDetectionEnabled ? 'text-blue-500' :
+              'text-gray-400'
+            }`}>
+              {error ? '❌ Error' : 
+               isInitialized ? '✅ Active' : 
+               isLoading ? '⏳ Loading...' :
+               emotionDetectionEnabled ? '🔵 Starting...' :
+               '⚪ Disabled'}
             </div>
           </div>
-        </div>
-      )}
-      
-      {/* Emotion Detection Status Indicator */}
-      {emotionDetectionEnabled && (
-        <div className="fixed bottom-20 right-4 bg-white border-2 border-green-500 rounded-lg p-3 shadow-lg z-50">
-          {!isModelLoaded ? (
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm text-gray-600">Loading models...</span>
-            </div>
-          ) : !videoRef.current?.srcObject ? (
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-600">Waiting for camera...</span>
-              <button 
-                onClick={() => window.location.reload()}
-                className="text-xs text-blue-500 hover:underline"
-              >
-                Reload if stuck
-              </button>
-            </div>
-          ) : !currentEmotion ? (
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-4 h-4 bg-yellow-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-600">Detecting face...</span>
-              <span className="text-xs text-gray-500">Position your face in frame</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="text-2xl">
-                {currentEmotion.emotion === 'happy' && '😊'}
-                {currentEmotion.emotion === 'sad' && '😢'}
-                {currentEmotion.emotion === 'angry' && '😠'}
-                {currentEmotion.emotion === 'surprised' && '😮'}
-                {currentEmotion.emotion === 'fearful' && '😨'}
-                {currentEmotion.emotion === 'disgusted' && '🤢'}
-                {currentEmotion.emotion === 'neutral' && '😐'}
-              </div>
-              <div className="text-xs">
-                <div className="font-semibold text-gray-800 capitalize">{currentEmotion.emotion}</div>
-                <div className="text-gray-500">{Math.round(currentEmotion.confidence * 100)}%</div>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

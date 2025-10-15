@@ -38,8 +38,17 @@ const saveChatSessions = (sessions) => {
 };
 
 const generateChatId = () => {
-  // Generate a proper UUID v4 for Supabase compatibility
-  return crypto.randomUUID();
+  // Generate a UUID v4 compatible with older browsers
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  
+  // Fallback for browsers that don't support crypto.randomUUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 };
 
 export const ChatProvider = ({ children }) => {
@@ -62,37 +71,61 @@ export const ChatProvider = ({ children }) => {
     if (userId) {
       console.log('🔍 Fetching from Supabase...');
       
-      const { data, error } = await chatHelpers.getChatSessions(userId);
-      if (error) {
-        console.error('❌ Error loading chat sessions:', error);
-        // Fallback to localStorage
-        const localSessions = loadChatSessions() || [];
-        console.log('💾 Fallback to localStorage:', localSessions.length, 'sessions');
-        setChatSessions(localSessions);
-      } else {
-        console.log('✅ Loaded from Supabase:', data?.length || 0, 'sessions');
-        console.log('📊 Sessions data:', data);
-        setChatSessions(data || []);
+      try {
+        const { data, error } = await chatHelpers.getChatSessions(userId);
         
-        // If we have sessions and no current chat, set the latest one as current
-        if (data && data.length > 0 && !currentChatId) {
-          const latestSession = data[0];
-          console.log('🎯 Setting current chat to latest session:', latestSession.id);
+        if (error) {
+          console.error('❌ Error loading chat sessions:', error);
+          // Fallback to localStorage
+          const localSessions = loadChatSessions() || [];
+          console.log('💾 Fallback to localStorage:', localSessions.length, 'sessions');
+          setChatSessions(localSessions);
+          
+          // Set first session as current if available
+          if (localSessions.length > 0 && !currentChatId) {
+            const latestSession = localSessions[0];
+            setCurrentChatId(latestSession.id);
+            setChatHistory(latestSession.messages || []);
+            setCurrentChatNotes(latestSession.notes || '');
+          }
+        } else {
+          console.log('✅ Loaded from Supabase:', data?.length || 0, 'sessions');
+          console.log('📊 Sessions data:', data);
+          setChatSessions(data || []);
+          
+          // If we have sessions and no current chat, set the latest one as current
+          if (data && data.length > 0 && !currentChatId) {
+            const latestSession = data[0];
+            console.log('🎯 Setting current chat to latest session:', latestSession.id);
+            setCurrentChatId(latestSession.id);
+            setChatHistory(latestSession.messages || []);
+            setCurrentChatNotes(latestSession.notes || '');
+          }
+          
+          // Clean up empty sessions (sessions with no messages)
+          const emptySessions = data?.filter(session => !session.messages || session.messages.length === 0) || [];
+          if (emptySessions.length > 0) {
+            console.log('🗑️ Found', emptySessions.length, 'empty sessions, cleaning up...');
+            emptySessions.forEach(async (session) => {
+              await chatHelpers.deleteChatSession(session.id);
+            });
+            // Reload sessions after cleanup
+            const { data: cleanData } = await chatHelpers.getChatSessions(userId);
+            setChatSessions(cleanData || []);
+          }
+        }
+      } catch (err) {
+        console.error('❌ Exception loading chat sessions:', err);
+        // Fallback to localStorage on any error
+        const localSessions = loadChatSessions() || [];
+        console.log('💾 Using localStorage after error:', localSessions.length, 'sessions');
+        setChatSessions(localSessions);
+        
+        if (localSessions.length > 0 && !currentChatId) {
+          const latestSession = localSessions[0];
           setCurrentChatId(latestSession.id);
           setChatHistory(latestSession.messages || []);
           setCurrentChatNotes(latestSession.notes || '');
-        }
-        
-        // Clean up empty sessions (sessions with no messages)
-        const emptySessions = data?.filter(session => !session.messages || session.messages.length === 0) || [];
-        if (emptySessions.length > 0) {
-          console.log('🗑️ Found', emptySessions.length, 'empty sessions, cleaning up...');
-          emptySessions.forEach(async (session) => {
-            await chatHelpers.deleteChatSession(session.id);
-          });
-          // Reload sessions after cleanup
-          const { data: cleanData } = await chatHelpers.getChatSessions(userId);
-          setChatSessions(cleanData || []);
         }
       }
     } else {
@@ -447,50 +480,34 @@ export const ChatProvider = ({ children }) => {
     const userMsg = { text: message, sender: 'user', timestamp: Date.now() };
     setChatHistory(prev => [...prev, userMsg]);
     
-    console.log('Making request to:', `${backendUrl}/api/chat`);
-    
-    // Only send last 10 messages for context to avoid payload size issues
-    const recentHistory = chatHistory.slice(-10);
+    // Send message directly to D-ID Agent - the agent will process it with GPT-4
+    // and respond through the video stream automatically
+    console.log('📤 Sending message to D-ID Agent:', message);
     
     try {
-      const data = await fetch(`${backendUrl}/api/chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          message,
-          chatHistory: recentHistory // Include only recent chat history for context
-        }),
-      });
-
-      if (!data.ok) {
-        throw new Error(`HTTP error! status: ${data.status}`);
-      }
-
-      const response = await data.json();
-      let resp = response.messages;
+      // Queue the message for the avatar to speak
+      // The DIDAgentAvatar component will handle sending this to the agent
+      const messageForAgent = {
+        text: message,
+        userQuestion: originalUserQuestion,
+        type: "text"
+      };
       
-      // Process messages to ensure clean delivery to D-ID agent
-      resp = resp.map(msg => ({
-        ...msg,
-        // Strip any meta-commentary prefixes if they exist
-        text: msg.text.trim(),
-        // Include the original user question so agent can respond to it
-        userQuestion: originalUserQuestion
-      }));
+      // Set message for avatar to process
+      setMessages((messages) => [...messages, messageForAgent]);
       
-      // Add AI responses to chat history
-      const aiMessages = resp.map(msg => ({
-        ...msg,
+      // The agent will respond automatically through WebRTC
+      // We'll add a placeholder response that will be updated when agent speaks
+      const placeholderResponse = {
+        text: "...", // Placeholder while agent is thinking
         sender: 'ai',
-        timestamp: Date.now() + Math.random(), // Ensure unique timestamps
-        played: false
-      }));
-      setChatHistory(prev => [...prev, ...aiMessages]);
+        timestamp: Date.now(),
+        played: false,
+        isPlaceholder: true
+      };
+      setChatHistory(prev => [...prev, placeholderResponse]);
       
-      // Set messages for avatar animation (separate from history)
-      setMessages((messages) => [...messages, ...resp]);
+      setLoading(false);
     } catch (error) {
       console.error('❌ Chat request failed:', error);
       // Add error message to chat
@@ -501,7 +518,6 @@ export const ChatProvider = ({ children }) => {
         played: false
       };
       setChatHistory(prev => [...prev, errorMsg]);
-    } finally {
       setLoading(false);
     }
   };
@@ -528,6 +544,25 @@ export const ChatProvider = ({ children }) => {
     if (currentChatId) {
       updateCurrentSession({ messages: [], title: 'New Chat' });
     }
+  };
+
+  // Function to update agent response in chat history
+  const updateAgentResponse = (responseText) => {
+    console.log('📝 Updating agent response in chat history:', responseText);
+    
+    // Remove placeholder and add actual response
+    setChatHistory(prev => {
+      const filtered = prev.filter(msg => !msg.isPlaceholder);
+      return [
+        ...filtered,
+        {
+          text: responseText,
+          sender: 'ai',
+          timestamp: Date.now(),
+          played: true
+        }
+      ];
+    });
   };
 
   useEffect(() => {
@@ -557,6 +592,7 @@ export const ChatProvider = ({ children }) => {
         currentChatNotes,
         saveCurrentChatNotes,
         generateAINotes,
+        updateAgentResponse, // Add this for DIDAgentAvatar to update responses
         user: user, // Pass user from auth context
         authHelpers
       }}

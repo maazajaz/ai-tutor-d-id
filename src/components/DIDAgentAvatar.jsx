@@ -22,11 +22,22 @@ const DIDAgentAvatar = () => {
   const [audioEnabled, setAudioEnabled] = useState(false); // Track if audio is enabled by user
   const sessionTimeoutRef = useRef(null); // Track session timeout
   
-  const { message, onMessagePlayed, loading } = useChat();
+  const { message, onMessagePlayed, loading, updateAgentResponse } = useChat();
 
   // D-ID API configuration
   const DID_API_KEY = import.meta.env.VITE_DID_API_KEY;
   const API_URL = "https://api.d-id.com";
+  
+  // Backend URL for proxying D-ID requests (to avoid CORS)
+  const getBackendUrl = () => {
+    const envUrl = import.meta.env.VITE_API_URL;
+    if (typeof window !== 'undefined' && 
+        (!envUrl || envUrl.includes('your-app-name') || envUrl.includes('localhost'))) {
+      return window.location.origin.replace(':5173', ':3000'); // Frontend port to backend port
+    }
+    return envUrl || "http://localhost:3000";
+  };
+  const backendUrl = getBackendUrl();
   
   // Session expires after 5 minutes of inactivity, so refresh after 4 minutes
   const SESSION_TIMEOUT = 4 * 60 * 1000; // 4 minutes
@@ -53,7 +64,7 @@ const DIDAgentAvatar = () => {
 
   // Use Amber agent (Important: Agent ID is tied to the API key - if you change the API key, update this ID too!)
   // To find agents for your current API key: run `node server/createAgent.js list`
-  const CUSTOM_AGENT_ID = "v2_agt_a5qVtD8v"; // Amber - Live streaming agent with idle animations (New account)
+  const CUSTOM_AGENT_ID = "v2_agt_PdcWgZLL"; // Amber - Live streaming agent with idle animations (New account)
 
   // Utility function for API calls with better retry logic
   const fetchWithRetry = async (url, options, retries = 5, backoffMs = 1000) => {
@@ -102,6 +113,37 @@ const DIDAgentAvatar = () => {
 
     const peerConnection = new RTCPeerConnection({ iceServers });
     peerConnectionRef.current = peerConnection;
+
+    // Create data channel to receive agent responses
+    const dataChannel = peerConnection.createDataChannel('JanusDataChannel');
+    dataChannel.onopen = () => {
+      console.log('📡 Data channel opened');
+    };
+    dataChannel.onmessage = (event) => {
+      console.log('📨 Data channel message:', event.data);
+      let msg = event.data;
+      
+      // Agent responses come through as 'chat/answer:' messages
+      if (msg.includes('chat/answer')) {
+        const responseText = decodeURIComponent(msg.replace('chat/answer:', ''));
+        console.log('🤖 Agent response via data channel:', responseText);
+        // Update chatbox immediately with the response
+        updateAgentResponse(responseText);
+      }
+      
+      // Stream started event (for fluent agents)
+      if (msg.includes('stream/started')) {
+        console.log('🎬 Stream started');
+      }
+      
+      // Stream done event
+      if (msg.includes('stream/done')) {
+        console.log('✅ Stream done');
+      }
+    };
+    dataChannel.onerror = (error) => {
+      console.error('❌ Data channel error:', error);
+    };
 
     // Event listeners
     peerConnection.addEventListener('icegatheringstatechange', (event) => {
@@ -396,6 +438,7 @@ const DIDAgentAvatar = () => {
     try {
       console.log('💬 Sending message to agent:', text);
       
+      // Send message to D-ID Agent - response will come via WebRTC data channel
       await fetchWithRetry(`${API_URL}/agents/${agentId}/chat/${chatId}`, {
         method: 'POST',
         headers: {
@@ -415,12 +458,17 @@ const DIDAgentAvatar = () => {
         }),
       });
 
-      console.log('✅ Message sent to agent');
+      console.log('✅ Message sent to agent - response will come via data channel');
       
-      // Simulate processing time
+      // The agent will:
+      // 1. Process with GPT-4
+      // 2. Send response text via WebRTC data channel (handled in peerConnection setup)
+      // 3. Speak the response through video stream
+      
+      // Mark message as played after reasonable time
       setTimeout(() => {
         onMessagePlayed();
-      }, text.length * 50 + 2000);
+      }, text.length * 80 + 3000);
       
     } catch (error) {
       console.error('❌ Error sending message to agent:', error);
