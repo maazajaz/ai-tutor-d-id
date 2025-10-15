@@ -850,6 +850,23 @@ Come on, you got this! What's your answer? 🎮"]`;
                     <span>👁️ Blinks:</span>
                     <span className="font-semibold">{detectionStats.blinks}</span>
                   </div>
+                  {/* Live Metrics for Calibration */}
+                  {detectionStats.currentMAR > 0 && (
+                    <div className="flex justify-between items-center border-t border-gray-300 pt-0.5 mt-0.5">
+                      <span className="text-gray-500">MAR:</span>
+                      <span className={`font-mono font-semibold ${detectionStats.currentMAR > 0.5 ? 'text-orange-600' : 'text-green-600'}`}>
+                        {detectionStats.currentMAR.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {detectionStats.currentEAR > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">EAR:</span>
+                      <span className={`font-mono font-semibold ${detectionStats.currentEAR < 0.15 ? 'text-red-600' : 'text-green-600'}`}>
+                        {detectionStats.currentEAR.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                   {detectionStats.yawnDuration > 0 && (
                     <div className="text-orange-600 font-semibold animate-pulse">
                       ⚠️ Yawn: {detectionStats.yawnDuration.toFixed(1)}s

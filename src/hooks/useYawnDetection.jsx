@@ -24,7 +24,10 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
     blinks: 0,
     microsleeps: 0,
     yawnDuration: 0,
-    microsleepDuration: 0
+    microsleepDuration: 0,
+    // Live metrics for debugging/calibration
+    currentMAR: 0,
+    currentEAR: 0
   });
 
   const detectionIntervalRef = useRef(null);
@@ -63,12 +66,13 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
   };
 
   // Thresholds (tuned for educational engagement monitoring)
+  // Note: Mobile cameras typically have different angles than desktop webcams
   const THRESHOLDS = {
-    MAR_YAWN: 0.6,           // Mouth Aspect Ratio threshold for yawn
-    EAR_CLOSED: 0.2,          // Eye Aspect Ratio threshold for closed eyes
-    YAWN_DURATION_ALERT: 3.0, // Seconds of continuous yawning before alert (reduced from 7.0)
-    MICROSLEEP_ALERT: 2.5,    // Seconds of eyes closed before alert (reduced from 4.0)
-    ALERT_COOLDOWN: 180000    // 3 minutes between same type of alerts (was 2 minutes)
+    MAR_YAWN: 0.5,            // Mouth Aspect Ratio threshold for yawn (lowered for mobile)
+    EAR_CLOSED: 0.15,         // Eye Aspect Ratio threshold for closed eyes (lowered for mobile angles)
+    YAWN_DURATION_ALERT: 3.0, // Seconds of continuous yawning before alert
+    MICROSLEEP_ALERT: 3.5,    // Seconds of eyes closed before alert (increased to reduce false positives)
+    ALERT_COOLDOWN: 180000    // 3 minutes between same type of alerts
   };
 
   /**
@@ -136,12 +140,25 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
     const rightEAR = calculateEAR(landmarks, false);
     const avgEAR = (leftEAR + rightEAR) / 2;
 
-    console.log('👁️ Detection metrics:', {
-      MAR: mar.toFixed(3),
-      leftEAR: leftEAR.toFixed(3),
-      rightEAR: rightEAR.toFixed(3),
-      avgEAR: avgEAR.toFixed(3)
-    });
+    // Update live metrics for debugging
+    setDetectionStats(prev => ({
+      ...prev,
+      currentMAR: mar,
+      currentEAR: avgEAR
+    }));
+
+    // Log detection metrics every 30 frames for debugging (reduce console spam)
+    if (Math.random() < 0.03) { // ~3% of frames = every 30 frames at 30fps
+      console.log('👁️ Detection metrics:', {
+        MAR: mar.toFixed(3),
+        'MAR > threshold?': mar > THRESHOLDS.MAR_YAWN ? '✅ YAWN' : '❌',
+        leftEAR: leftEAR.toFixed(3),
+        rightEAR: rightEAR.toFixed(3),
+        avgEAR: avgEAR.toFixed(3),
+        'Eyes closed?': (leftEAR < THRESHOLDS.EAR_CLOSED && rightEAR < THRESHOLDS.EAR_CLOSED) ? '✅ CLOSED' : '❌',
+        thresholds: `MAR>${THRESHOLDS.MAR_YAWN}, EAR<${THRESHOLDS.EAR_CLOSED}`
+      });
+    }
 
     // Yawn Detection
     if (mar > THRESHOLDS.MAR_YAWN) {
