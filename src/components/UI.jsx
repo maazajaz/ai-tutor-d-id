@@ -801,18 +801,18 @@ Come on, you got this! What's your answer? 🎮"]`;
         onPlay={() => console.log('▶️ Emotion detection video playing')}
       />
       
-      {/* Camera Preview - Mobile optimized with Yawn Detection Stats */}
+      {/* Camera Preview - Much smaller mobile optimized with Yawn Detection Stats */}
       {emotionDetectionEnabled && showCameraPreview && (
-        <div className="fixed bottom-20 lg:bottom-32 left-2 lg:left-4 z-50 transition-all duration-300">
-          <div className="bg-white border-2 border-green-500 rounded-lg p-1.5 lg:p-2 shadow-lg">
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-[10px] lg:text-xs text-gray-600 font-semibold">Yawn Detection</div>
+        <div className="fixed bottom-20 lg:bottom-32 left-1 lg:left-4 z-50 transition-all duration-300">
+          <div className="bg-white border-2 border-green-500 rounded-lg p-1 lg:p-2 shadow-lg">
+            <div className="flex items-center justify-between mb-0.5">
+              <div className="text-[8px] lg:text-xs text-gray-600 font-semibold">Detection</div>
               <button
                 onClick={() => setShowCameraPreview(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
                 title="Hide Preview"
               >
-                <svg className="w-3 h-3 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -822,7 +822,7 @@ Come on, you got this! What's your answer? 🎮"]`;
               autoPlay
               muted
               playsInline
-              className="w-32 h-24 lg:w-48 lg:h-36 rounded border border-gray-300 object-cover bg-gray-100"
+              className="w-20 h-16 lg:w-48 lg:h-36 rounded border border-gray-300 object-cover bg-gray-100"
               onLoadedMetadata={() => {
                 console.log('🎬 Preview video metadata loaded');
                 // Force play on metadata load
@@ -834,25 +834,25 @@ Come on, you got this! What's your answer? 🎮"]`;
               onPause={() => console.log('⏸️ Preview video paused')}
               onError={(e) => console.error('❌ Preview video error:', e)}
             />
-            {/* Yawn Detection Stats */}
-            <div className="text-[9px] lg:text-[10px] text-gray-600 mt-1 space-y-0.5">
+            {/* Yawn Detection Stats - Smaller text */}
+            <div className="text-[7px] lg:text-[10px] text-gray-600 mt-0.5 space-y-0.5">
               {error ? (
-                <div className="text-red-600 font-semibold text-center">
+                <div className="text-red-600 font-semibold text-center text-[7px]">
                   ❌ {error}
                 </div>
               ) : (
                 <>
-                  <div className="flex justify-between items-center">
-                    <span>😮 Yawns:</span>
+                  <div className="flex justify-between items-center gap-1">
+                    <span>😮:</span>
                     <span className="font-semibold">{detectionStats.yawns}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span>👁️ Blinks:</span>
+                  <div className="flex justify-between items-center gap-1">
+                    <span>👁️:</span>
                     <span className="font-semibold">{detectionStats.blinks}</span>
                   </div>
                   {/* Live Metrics for Calibration */}
                   {detectionStats.currentMAR > 0 && (
-                    <div className="flex justify-between items-center border-t border-gray-300 pt-0.5 mt-0.5">
+                    <div className="flex justify-between items-center border-t border-gray-300 pt-0.5 mt-0.5 gap-1">
                       <span className="text-gray-500">MAR:</span>
                       <span className={`font-mono font-semibold ${detectionStats.currentMAR > 0.5 ? 'text-orange-600' : 'text-green-600'}`}>
                         {detectionStats.currentMAR.toFixed(2)}
@@ -860,7 +860,7 @@ Come on, you got this! What's your answer? 🎮"]`;
                     </div>
                   )}
                   {detectionStats.currentEAR > 0 && (
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center gap-1">
                       <span className="text-gray-500">EAR:</span>
                       <span className={`font-mono font-semibold ${detectionStats.currentEAR < 0.15 ? 'text-red-600' : 'text-green-600'}`}>
                         {detectionStats.currentEAR.toFixed(2)}
@@ -868,13 +868,13 @@ Come on, you got this! What's your answer? 🎮"]`;
                     </div>
                   )}
                   {detectionStats.yawnDuration > 0 && (
-                    <div className="text-orange-600 font-semibold animate-pulse">
-                      ⚠️ Yawn: {detectionStats.yawnDuration.toFixed(1)}s
+                    <div className="text-orange-600 font-semibold animate-pulse text-[7px]">
+                      ⚠️ {detectionStats.yawnDuration.toFixed(1)}s
                     </div>
                   )}
                   {detectionStats.microsleepDuration > 0 && (
-                    <div className="text-red-600 font-semibold animate-pulse">
-                      💤 Eyes: {detectionStats.microsleepDuration.toFixed(1)}s
+                    <div className="text-red-600 font-semibold animate-pulse text-[7px]">
+                      💤 {detectionStats.microsleepDuration.toFixed(1)}s
                     </div>
                   )}
                 </>
