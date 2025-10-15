@@ -153,10 +153,10 @@ Come on, you got this! What's your answer? 🎮"]`;
     if (onCameraStatus) {
       onCameraStatus({
         isEnabled: emotionDetectionEnabled,
-        isInitialized,
+        isModelLoaded: isInitialized,
         hasStream: !!videoRef.current?.srcObject,
         isReady: cameraStreamReady,
-        detectionStats
+        currentEmotion: detectionStats
       });
     }
   }, [emotionDetectionEnabled, isInitialized, cameraStreamReady, detectionStats, onCameraStatus]);
