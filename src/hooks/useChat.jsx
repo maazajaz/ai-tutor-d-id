@@ -71,61 +71,37 @@ export const ChatProvider = ({ children }) => {
     if (userId) {
       console.log('🔍 Fetching from Supabase...');
       
-      try {
-        const { data, error } = await chatHelpers.getChatSessions(userId);
-        
-        if (error) {
-          console.error('❌ Error loading chat sessions:', error);
-          // Fallback to localStorage
-          const localSessions = loadChatSessions() || [];
-          console.log('💾 Fallback to localStorage:', localSessions.length, 'sessions');
-          setChatSessions(localSessions);
-          
-          // Set first session as current if available
-          if (localSessions.length > 0 && !currentChatId) {
-            const latestSession = localSessions[0];
-            setCurrentChatId(latestSession.id);
-            setChatHistory(latestSession.messages || []);
-            setCurrentChatNotes(latestSession.notes || '');
-          }
-        } else {
-          console.log('✅ Loaded from Supabase:', data?.length || 0, 'sessions');
-          console.log('📊 Sessions data:', data);
-          setChatSessions(data || []);
-          
-          // If we have sessions and no current chat, set the latest one as current
-          if (data && data.length > 0 && !currentChatId) {
-            const latestSession = data[0];
-            console.log('🎯 Setting current chat to latest session:', latestSession.id);
-            setCurrentChatId(latestSession.id);
-            setChatHistory(latestSession.messages || []);
-            setCurrentChatNotes(latestSession.notes || '');
-          }
-          
-          // Clean up empty sessions (sessions with no messages)
-          const emptySessions = data?.filter(session => !session.messages || session.messages.length === 0) || [];
-          if (emptySessions.length > 0) {
-            console.log('🗑️ Found', emptySessions.length, 'empty sessions, cleaning up...');
-            emptySessions.forEach(async (session) => {
-              await chatHelpers.deleteChatSession(session.id);
-            });
-            // Reload sessions after cleanup
-            const { data: cleanData } = await chatHelpers.getChatSessions(userId);
-            setChatSessions(cleanData || []);
-          }
-        }
-      } catch (err) {
-        console.error('❌ Exception loading chat sessions:', err);
-        // Fallback to localStorage on any error
+      const { data, error } = await chatHelpers.getChatSessions(userId);
+      if (error) {
+        console.error('❌ Error loading chat sessions:', error);
+        // Fallback to localStorage
         const localSessions = loadChatSessions() || [];
-        console.log('💾 Using localStorage after error:', localSessions.length, 'sessions');
+        console.log('💾 Fallback to localStorage:', localSessions.length, 'sessions');
         setChatSessions(localSessions);
+      } else {
+        console.log('✅ Loaded from Supabase:', data?.length || 0, 'sessions');
+        console.log('📊 Sessions data:', data);
+        setChatSessions(data || []);
         
-        if (localSessions.length > 0 && !currentChatId) {
-          const latestSession = localSessions[0];
+        // If we have sessions and no current chat, set the latest one as current
+        if (data && data.length > 0 && !currentChatId) {
+          const latestSession = data[0];
+          console.log('🎯 Setting current chat to latest session:', latestSession.id);
           setCurrentChatId(latestSession.id);
           setChatHistory(latestSession.messages || []);
           setCurrentChatNotes(latestSession.notes || '');
+        }
+        
+        // Clean up empty sessions (sessions with no messages)
+        const emptySessions = data?.filter(session => !session.messages || session.messages.length === 0) || [];
+        if (emptySessions.length > 0) {
+          console.log('🗑️ Found', emptySessions.length, 'empty sessions, cleaning up...');
+          emptySessions.forEach(async (session) => {
+            await chatHelpers.deleteChatSession(session.id);
+          });
+          // Reload sessions after cleanup
+          const { data: cleanData } = await chatHelpers.getChatSessions(userId);
+          setChatSessions(cleanData || []);
         }
       }
     } else {
