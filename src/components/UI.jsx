@@ -407,8 +407,8 @@ Come on, you got this! What's your answer? 🎮"]`;
       <ChatNotes isOpen={showNotes} onClose={() => setShowNotes(false)} />
       
       <div className="h-full flex flex-col bg-white shadow-2xl relative">
-        {/* Whiteboard Header - Transparent overlay on mobile */}
-        <div className="bg-gradient-to-r from-green-600/60 to-green-700/60 lg:from-green-600 lg:to-green-700 backdrop-blur-md text-white p-2 lg:p-4 shadow-lg fixed lg:relative top-0 left-0 right-0 z-50 lg:z-auto">
+        {/* Whiteboard Header - Fully transparent overlay on mobile */}
+        <div className="bg-transparent lg:bg-gradient-to-r lg:from-green-600 lg:to-green-700 text-white p-2 lg:p-4 fixed lg:relative top-0 left-0 right-0 z-50 lg:z-auto">
           <div className="flex items-center justify-between gap-2">
             {/* Left: Title */}
             <div className="flex items-center gap-1 lg:gap-2 min-w-0">
