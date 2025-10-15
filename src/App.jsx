@@ -62,8 +62,8 @@ const AppContent = () => {
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      {/* Mobile Top Navbar - Semi-transparent overlay */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-green-600/70 to-green-700/70 backdrop-blur-md shadow-lg">
+      {/* Mobile Top Navbar - Glassmorphism overlay */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/10 border-b border-white/20 shadow-lg">
         <div className="flex items-center justify-between p-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <h1 className="text-white font-bold text-base whitespace-nowrap">🎓 AI Tutor</h1>
