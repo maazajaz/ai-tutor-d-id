@@ -406,9 +406,9 @@ Come on, you got this! What's your answer? 🎮"]`;
       {/* Notes Panel */}
       <ChatNotes isOpen={showNotes} onClose={() => setShowNotes(false)} />
       
-      <div className="h-full flex flex-col bg-white shadow-2xl relative">
-        {/* Whiteboard Header - Fully transparent overlay on mobile */}
-        <div className="bg-transparent lg:bg-gradient-to-r lg:from-green-600 lg:to-green-700 text-white p-2 lg:p-4 fixed lg:relative top-0 left-0 right-0 z-50 lg:z-auto">
+      <div className="h-full flex flex-col bg-white shadow-2xl">
+        {/* Whiteboard Header */}
+        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-2 lg:p-4 shadow-lg">
           <div className="flex items-center justify-between gap-2">
             {/* Left: Title */}
             <div className="flex items-center gap-1 lg:gap-2 min-w-0">
@@ -530,10 +530,10 @@ Come on, you got this! What's your answer? 🎮"]`;
           </div>
         </div>
 
-      {/* Whiteboard Content Area - Add padding top on mobile for overlaid header */}
+      {/* Whiteboard Content Area */}
       <div 
         ref={whiteboardRef}
-        className="flex-1 p-2 lg:p-6 pt-16 lg:pt-2 overflow-y-auto bg-white whiteboard-scroll whiteboard-grid"
+        className="flex-1 p-2 lg:p-6 overflow-y-auto bg-white whiteboard-scroll whiteboard-grid"
       >
         {/* Live Mode Indicator */}
         {isLiveMode && (
