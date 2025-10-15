@@ -743,7 +743,7 @@ const DIDAgentAvatar = () => {
       )}
 
       {/* Connection status indicator */}
-      <div className="absolute top-4 left-4 flex items-center space-x-2">
+      <div className="absolute bottom-4 left-4 flex items-center space-x-2">
         <div
           className={`w-3 h-3 rounded-full ${
             connectionStatus === 'connected'

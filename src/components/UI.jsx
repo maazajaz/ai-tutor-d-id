@@ -98,22 +98,20 @@ Come on, you got this! What's your answer? 🎮"]`;
     });
   }, [emotionDetectionEnabled, isInitialized, isLoading, error]);
   
-  // Update preview video when the main video starts playing
+  // Update preview video when the main video starts playing OR when preview is toggled
   useEffect(() => {
-    if (!emotionDetectionEnabled || !videoRef.current || !previewVideoRef.current) return;
+    if (!emotionDetectionEnabled || !videoRef.current || !previewVideoRef.current || !showCameraPreview) return;
     
     const mainVideo = videoRef.current;
     const previewVideo = previewVideoRef.current;
-    let isSetup = false;
     
     const setupPreview = () => {
       const stream = mainVideo.srcObject;
-      console.log('🔍 Checking for stream:', !!stream, 'Already setup:', isSetup);
+      console.log('🔍 Checking for stream:', !!stream, 'Preview visible:', showCameraPreview);
       
-      if (stream && !isSetup) {
+      if (stream) {
         console.log('🎥 Setting up preview video with stream');
         previewVideo.srcObject = stream;
-        isSetup = true;
         setCameraStreamReady(true); // Update state to trigger re-render
         
         previewVideo.play()
@@ -129,19 +127,16 @@ Come on, you got this! What's your answer? 🎮"]`;
     };
     
     // Listen for when the main video starts playing
+    
     mainVideo.addEventListener('playing', setupPreview);
     mainVideo.addEventListener('loadedmetadata', setupPreview);
     
-    // Try immediately
+    // Try immediately when preview is shown
     setupPreview();
     
     // Fallback: check every 500ms for first 5 seconds
     const checkInterval = setInterval(() => {
-      if (!isSetup) {
-        setupPreview();
-      } else {
-        clearInterval(checkInterval);
-      }
+      setupPreview();
     }, 500);
     
     // Clean up after 5 seconds
@@ -153,9 +148,7 @@ Come on, you got this! What's your answer? 🎮"]`;
       clearInterval(checkInterval);
       setCameraStreamReady(false);
     };
-  }, [emotionDetectionEnabled]);
-  
-  // Notify parent about camera status changes
+  }, [emotionDetectionEnabled, showCameraPreview]); // Added showCameraPreview  // Notify parent about camera status changes
   useEffect(() => {
     if (onCameraStatus) {
       onCameraStatus({
