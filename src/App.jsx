@@ -9,10 +9,13 @@ import { UI } from "./components/UI";
 import { Login } from "./components/Login";
 import { Sidebar } from "./components/Sidebar";
 import { EmotionDebug } from "./components/EmotionDebug";
+import { Dashboard } from "./components/Dashboard";
+import LoadingScreen from "./components/LoadingScreen";
 
 // Main App Content (when authenticated)
 const AppContent = () => {
   const { user, profile, signOut, loading } = useAuth();
+  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' or 'chat'
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showChat, setShowChat] = useState(true); // Chat visibility state
@@ -39,21 +42,60 @@ const AppContent = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-green-400 via-blue-500 to-purple-600">
-        <div className="text-white text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-lg font-semibold">Loading your AI tutor...</p>
-        </div>
-      </div>
-    );
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingText, setLoadingText] = useState('Loading your AI tutor...');
+
+  useEffect(() => {
+    if (!loading) return;
+
+    // Simulate loading progress
+    const interval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 10;
+      });
+
+      // Update loading text based on progress
+      if (loadingProgress < 30) {
+        setLoadingText('Initializing AI tutor...');
+      } else if (loadingProgress < 60) {
+        setLoadingText('Loading user profile...');
+      } else if (loadingProgress < 90) {
+        setLoadingText('Preparing chat interface...');
+      } else {
+        setLoadingText('Almost ready...');
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  if (loading && !user) {
+    return <LoadingScreen isLoading={loading} />;
   }
 
   if (!user) {
     return <Login />;
   }
 
+  // Show Dashboard view
+  if (currentView === 'dashboard') {
+    return (
+      <Dashboard 
+        onNavigateToChat={() => setCurrentView('chat')}
+        onNavigateToCustomize={() => {
+          // Navigate to chat and open sidebar with settings
+          setCurrentView('chat');
+          setSidebarOpen(true);
+        }}
+      />
+    );
+  }
+
+  // Show Chat view (existing interface)
   return (
     <div className="w-screen flex flex-col lg:flex-row bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden fixed inset-0" style={{ height: '100dvh' }}>
       <Loader />
@@ -155,6 +197,24 @@ const AppContent = () => {
                 {/* Menu Items */}
                 <button
                   onClick={() => {
+                    setCurrentView('dashboard');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3"
+                >
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Dashboard</p>
+                    <p className="text-xs text-gray-500">Go back to home</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
                     setSidebarOpen(true);
                     setMobileMenuOpen(false);
                   }}
@@ -216,21 +276,32 @@ const AppContent = () => {
       </div>
       
       {/* Left Side - D-ID Avatar - Fills available space */}
-      <div className={`${
-        showChat ? 'w-full lg:w-1/2' : 'w-full'
-      } flex-[1] lg:h-full relative transition-all duration-500 ease-in-out min-h-0`}>
+      <div className={`
+        w-full lg:h-full relative transition-all duration-500 ease-in-out min-h-0
+        ${showChat ? 'lg:w-1/2 lg:flex-[1]' : 'lg:w-full lg:flex-1'}
+      `}>
         <DIDExperience />
         
         {/* Desktop Avatar Section Header - Hidden on Mobile */}
         <div className="hidden lg:block absolute top-4 left-4 backdrop-blur-md bg-white bg-opacity-80 p-3 rounded-lg shadow-lg">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
+            {/* Back to Dashboard Button */}
+            <button
+              onClick={() => setCurrentView('dashboard')}
+              className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors shadow-sm"
+              title="Back to Dashboard"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
             <div>
               <h2 className="font-bold text-lg text-gray-800">🧑‍🏫 AI Tutor</h2>
               <p className="text-sm text-gray-600">Live Avatar Assistant</p>
             </div>
             <button
               onClick={() => setSidebarOpen(true)}
-              className="ml-4 p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors shadow-md"
+              className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors shadow-md"
               title="Open Profile & Settings"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -351,9 +422,10 @@ const AppContent = () => {
       </div>
       
       {/* Right Side - Whiteboard - Fills available space */}
-      <div className={`${
-        showChat ? 'translate-x-0 w-full lg:w-1/2' : 'translate-x-full w-0'
-      } flex-[2] lg:h-full flex flex-col transition-all duration-500 ease-in-out overflow-hidden min-h-0`}>
+      <div className={`
+        lg:h-full flex flex-col transition-all duration-500 ease-in-out overflow-hidden min-h-0
+        ${showChat ? 'translate-x-0 w-full lg:w-1/2 lg:flex-[2]' : 'translate-x-full w-0 lg:flex-none'}
+      `}>
         <UI 
           showChat={showChat} 
           setShowChat={setShowChat} 

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #output {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Test - Quiz & Notes Generation</h1>
+    
+    <div>
+        <button onclick="testQuiz()">Test Quiz Generation</button>
+        <button onclick="testNotes()">Test Notes Generation</button>
+    </div>
+
+    <div id="output"></div>
+
+    <script>
+        const backendUrl = 'http://localhost:3000';
+        const outputDiv = document.getElementById('output');
+
+        const testMessages = [
+            { role: 'user', content: 'What is Python?' },
+            { role: 'assistant', content: 'Python is a high-level, interpreted programming language known for its simplicity and readability. It supports multiple programming paradigms and has a vast ecosystem of libraries.' },
+            { role: 'user', content: 'What are lists in Python?' },
+            { role: 'assistant', content: 'Lists in Python are ordered, mutable collections that can hold items of different types. They are created using square brackets []. For example: my_list = [1, 2, 3, "hello"]' }
+        ];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            outputDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        async function testQuiz() {
+            outputDiv.innerHTML = '';
+            log('🎯 Testing Quiz Generation...');
+            log('Backend URL: ' + backendUrl);
+            
+            try {
+                log('📤 Sending request...');
+                const response = await fetch(`${backendUrl}/api/generate-quiz`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ messages: testMessages })
+                });
+
+                log(`Response status: ${response.status}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                log('✅ Quiz generated successfully!', 'success');
+                log(JSON.stringify(data, null, 2));
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+
+        async function testNotes() {
+            outputDiv.innerHTML = '';
+            log('📝 Testing Notes Generation...');
+            log('Backend URL: ' + backendUrl);
+            
+            try {
+                log('📤 Sending request...');
+                const response = await fetch(`${backendUrl}/api/generate-notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        messages: testMessages,
+                        chatTitle: 'Python Basics'
+                    })
+                });
+
+                log(`Response status: ${response.status}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                log('✅ Notes generated successfully!', 'success');
+                log(data.notes);
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

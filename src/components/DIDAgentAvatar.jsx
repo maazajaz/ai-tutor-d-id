@@ -30,12 +30,8 @@ const DIDAgentAvatar = () => {
   
   // Backend URL for proxying D-ID requests (to avoid CORS)
   const getBackendUrl = () => {
-    const envUrl = import.meta.env.VITE_API_URL;
-    if (typeof window !== 'undefined' && 
-        (!envUrl || envUrl.includes('your-app-name') || envUrl.includes('localhost'))) {
-      return window.location.origin.replace(':5173', ':3000'); // Frontend port to backend port
-    }
-    return envUrl || "http://localhost:3000";
+    // Always use http for local development
+    return "http://localhost:3000";
   };
   const backendUrl = getBackendUrl();
   
@@ -64,7 +60,7 @@ const DIDAgentAvatar = () => {
 
   // Use Amber agent (Important: Agent ID is tied to the API key - if you change the API key, update this ID too!)
   // To find agents for your current API key: run `node server/createAgent.js list`
-  const CUSTOM_AGENT_ID = "v2_agt_6C18PueU"; // Amber - Live streaming agent with idle animations (New account)
+  const CUSTOM_AGENT_ID = "v2_agt_i6X8SR91"; // Amber - Live streaming agent with idle animations (New account)
 
   // Utility function for API calls with better retry logic
   const fetchWithRetry = async (url, options, retries = 5, backoffMs = 1000) => {

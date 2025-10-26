@@ -15,9 +15,7 @@ export default defineConfig({
       'localhost',
       '.local'
     ],
-    hmr: {
-      clientPort: 443 // For ngrok HTTPS
-    },
+    hmr: true,
     proxy: {
       '/api': {
         target: 'http://localhost:3000',

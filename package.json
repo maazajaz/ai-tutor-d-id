@@ -26,12 +26,15 @@
     "jspdf": "^3.0.2",
     "leva": "^0.9.35",
     "node-fetch": "^3.3.2",
+    "openai": "^6.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^15.6.6",
     "remark-gfm": "^4.0.1",
-    "three": "0.153.0"
+    "three": "0.153.0",
+    "youtube-transcript": "^1.2.1",
+    "youtubei.js": "^10.1.0"
   },
   "devDependencies": {
     "@types/react": "^18.0.27",

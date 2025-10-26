@@ -6,13 +6,12 @@ import { useAuth } from "../contexts/AuthContext";
 const getBackendUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
   
-  // If in production and no proper URL is set, use current domain
-  if (typeof window !== 'undefined' && 
-      (!envUrl || envUrl.includes('your-app-name') || envUrl.includes('localhost'))) {
-    return window.location.origin;
+  // Always use the configured API URL or default to localhost:3000
+  if (envUrl && !envUrl.includes('your-app-name')) {
+    return envUrl;
   }
   
-  return envUrl || "http://localhost:3000";
+  return "http://localhost:3000";
 };
 
 const backendUrl = getBackendUrl();
@@ -52,56 +51,95 @@ const generateChatId = () => {
 };
 
 export const ChatProvider = ({ children }) => {
-  const { user, loading: authLoading } = useAuth(); // Use existing auth context
+  const { user, loading: authLoading, profile } = useAuth(); // Use existing auth context
   const [chatSessions, setChatSessions] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [currentChatNotes, setCurrentChatNotes] = useState('');
   const [chatHistory, setChatHistory] = useState([]); // Current session chat history
   const [messages, setMessages] = useState([]); // Messages for avatar animation
   const [message, setMessage] = useState(); // Current message being played
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Start with loading false - only set true when actually loading
+  const [dataLoaded, setDataLoaded] = useState(false); // Track if data is loaded
   const [cameraZoomed, setCameraZoomed] = useState(true);
 
   console.log('🚀 ChatProvider initialized. Current chat ID:', currentChatId);
   console.log('👤 Auth state - User:', user?.email || 'Anonymous', 'Loading:', authLoading);
 
-  // Load chat sessions from Supabase or localStorage
+  // Utility function for delay with exponential backoff
+  const delay = (attempt) => {
+    const baseDelay = 1000; // Start with 1 second
+    const maxDelay = 10000; // Max 10 seconds between retries
+    return Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+  };
+
+  // Load chat sessions from Supabase or localStorage with timeout and retries
   const loadUserChatSessions = async (userId) => {
     console.log('📂 Loading chat sessions for user:', userId);
     if (userId) {
       console.log('🔍 Fetching from Supabase...');
       
-      const { data, error } = await chatHelpers.getChatSessions(userId);
-      if (error) {
-        console.error('❌ Error loading chat sessions:', error);
-        // Fallback to localStorage
-        const localSessions = loadChatSessions() || [];
-        console.log('💾 Fallback to localStorage:', localSessions.length, 'sessions');
-        setChatSessions(localSessions);
-      } else {
-        console.log('✅ Loaded from Supabase:', data?.length || 0, 'sessions');
-        console.log('📊 Sessions data:', data);
-        setChatSessions(data || []);
+      const maxRetries = 3;
+      let lastError = null;
+      
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          if (attempt > 0) {
+            console.log(`🔄 Retry attempt ${attempt} of ${maxRetries}...`);
+            await new Promise(resolve => setTimeout(resolve, delay(attempt)));
+          }
+          
+          // Add timeout to prevent hanging (30 seconds)
+          const fetchPromise = chatHelpers.getChatSessions(userId);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Chat sessions loading timeout')), 30000)
+          );
+          
+          const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+          
+          if (error) {
+            lastError = error;
+            console.error(`❌ Attempt ${attempt + 1} failed:`, error);
+            continue; // Try next attempt
+          }
         
-        // If we have sessions and no current chat, set the latest one as current
-        if (data && data.length > 0 && !currentChatId) {
-          const latestSession = data[0];
-          console.log('🎯 Setting current chat to latest session:', latestSession.id);
-          setCurrentChatId(latestSession.id);
-          setChatHistory(latestSession.messages || []);
-          setCurrentChatNotes(latestSession.notes || '');
-        }
-        
-        // Clean up empty sessions (sessions with no messages)
-        const emptySessions = data?.filter(session => !session.messages || session.messages.length === 0) || [];
-        if (emptySessions.length > 0) {
-          console.log('🗑️ Found', emptySessions.length, 'empty sessions, cleaning up...');
-          emptySessions.forEach(async (session) => {
-            await chatHelpers.deleteChatSession(session.id);
-          });
-          // Reload sessions after cleanup
-          const { data: cleanData } = await chatHelpers.getChatSessions(userId);
-          setChatSessions(cleanData || []);
+          console.log('✅ Loaded from Supabase:', data?.length || 0, 'sessions');
+          console.log('📊 Sessions data:', data);
+          setChatSessions(data || []);
+          
+          // If we have sessions and no current chat, set the latest one as current
+          if (data && data.length > 0 && !currentChatId) {
+            const latestSession = data[0];
+            console.log('🎯 Setting current chat to latest session:', latestSession.id);
+            setCurrentChatId(latestSession.id);
+            setChatHistory(latestSession.messages || []);
+            setCurrentChatNotes(latestSession.notes || '');
+          }
+          
+          // Clean up empty sessions (sessions with no messages)
+          const emptySessions = data?.filter(session => !session.messages || session.messages.length === 0) || [];
+          if (emptySessions.length > 0) {
+            console.log('🗑️ Found', emptySessions.length, 'empty sessions, cleaning up...');
+            await Promise.all(emptySessions.map(session => chatHelpers.deleteChatSession(session.id)));
+            // Reload sessions after cleanup
+            const { data: cleanData } = await chatHelpers.getChatSessions(userId);
+            setChatSessions(cleanData || []);
+          }
+          
+          // Success - break out of retry loop
+          break;
+          
+        } catch (error) {
+          lastError = error;
+          console.error(`❌ Attempt ${attempt + 1} failed:`, error);
+          
+          // If this was the last attempt, fall back to localStorage
+          if (attempt === maxRetries) {
+            console.error('Error loading chat sessions after all retries:', error);
+            // Load from localStorage as fallback
+            const localSessions = loadChatSessions() || [];
+            console.log('💾 Loading from localStorage as fallback:', localSessions.length, 'sessions');
+            setChatSessions(localSessions);
+          }
         }
       }
     } else {
@@ -287,6 +325,7 @@ export const ChatProvider = ({ children }) => {
 
     try {
       console.log('🤖 Generating AI notes summary...');
+      console.log('📡 Backend URL:', backendUrl);
       setLoading(true);
 
       // Prepare chat history for API
@@ -295,6 +334,7 @@ export const ChatProvider = ({ children }) => {
         content: msg.text
       }));
 
+      console.log('📤 Sending request to:', `${backendUrl}/api/generate-notes`);
       const response = await fetch(`${backendUrl}/api/generate-notes`, {
         method: 'POST',
         headers: {
@@ -307,7 +347,8 @@ export const ChatProvider = ({ children }) => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate notes');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
 
       const data = await response.json();
@@ -316,6 +357,7 @@ export const ChatProvider = ({ children }) => {
       return data.notes;
     } catch (error) {
       console.error('❌ Error generating AI notes:', error);
+      console.error('Error details:', error.message);
       setLoading(false);
       throw error;
     }
@@ -437,7 +479,7 @@ export const ChatProvider = ({ children }) => {
     }
   }, [chatHistory, currentChatId]);
 
-  const chat = async (message) => {
+  const chat = async (message, options = {}) => {
     setLoading(true);
     
     // Ensure we have a chat session started
@@ -449,39 +491,108 @@ export const ChatProvider = ({ children }) => {
     console.log('Current chat ID:', currentChatId);
     console.log('Current user:', user?.email || 'Anonymous');
     
-    // Store the original user question
-    const originalUserQuestion = message;
+    // Store the original user input
+    const originalInput = message;
+    
+    // Check if this is a YouTube URL
+    const isYouTubeUrl = typeof message === 'string' && message.includes('youtu');
     
     // Add user message to chat history
-    const userMsg = { text: message, sender: 'user', timestamp: Date.now() };
+    const userMsg = { 
+      text: message, 
+      sender: 'user', 
+      timestamp: Date.now(),
+      type: isYouTubeUrl ? 'youtube' : 'text'
+    };
     setChatHistory(prev => [...prev, userMsg]);
-    
-    // Send message directly to D-ID Agent - the agent will process it with GPT-4
-    // and respond through the video stream automatically
-    console.log('📤 Sending message to D-ID Agent:', message);
-    
+
     try {
-      // Queue the message for the avatar to speak
-      // The DIDAgentAvatar component will handle sending this to the agent
-      const messageForAgent = {
-        text: message,
-        userQuestion: originalUserQuestion,
-        type: "text"
-      };
-      
-      // Set message for avatar to process
-      setMessages((messages) => [...messages, messageForAgent]);
-      
-      // The agent will respond automatically through WebRTC
-      // We'll add a placeholder response that will be updated when agent speaks
-      const placeholderResponse = {
-        text: "...", // Placeholder while agent is thinking
-        sender: 'ai',
-        timestamp: Date.now(),
-        played: false,
-        isPlaceholder: true
-      };
-      setChatHistory(prev => [...prev, placeholderResponse]);
+      // If it's a YouTube URL, handle it differently
+      if (isYouTubeUrl) {
+        console.log('🎥 Processing YouTube URL:', message);
+        
+        const placeholderResponse = {
+          text: "I'll help you summarize this video...",
+          sender: 'ai',
+          timestamp: Date.now(),
+          played: false,
+          isPlaceholder: true
+        };
+        setChatHistory(prev => [...prev, placeholderResponse]);
+        
+        try {
+          // Call backend to get video summary
+          const response = await fetch(`${backendUrl}/api/summarize-youtube`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: message })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to get video summary');
+          }
+
+          const data = await response.json();
+          
+          // Update chat with summary
+          const summaryResponse = {
+            text: data.summary,
+            sender: 'ai',
+            timestamp: Date.now(),
+            type: 'youtube-summary',
+            played: false
+          };
+          
+          // Replace placeholder with actual summary
+          setChatHistory(prev => prev.map(msg => 
+            msg.isPlaceholder ? summaryResponse : msg
+          ));
+          
+          // Queue the summary for the avatar to speak
+          setMessages(prev => [...prev, {
+            text: data.summary,
+            type: "youtube-summary"
+          }]);
+          
+        } catch (error) {
+          console.error('Failed to get video summary:', error);
+          const errorMsg = {
+            text: "Sorry, I couldn't process that YouTube video. Please try another video or ask me something else.",
+            sender: 'ai',
+            timestamp: Date.now(),
+            played: false
+          };
+          // Replace placeholder with error message
+          setChatHistory(prev => prev.map(msg => 
+            msg.isPlaceholder ? errorMsg : msg
+          ));
+        }
+      } else {
+        // Regular chat message - send to D-ID Agent
+        console.log('📤 Sending message to D-ID Agent:', message);
+        
+        // Queue the message for the avatar to speak
+        const messageForAgent = {
+          text: message,
+          userQuestion: originalInput,
+          type: "text"
+        };
+        
+        // Set message for avatar to process
+        setMessages(prev => [...prev, messageForAgent]);
+        
+        // Add placeholder response
+        const placeholderResponse = {
+          text: "...",
+          sender: 'ai',
+          timestamp: Date.now(),
+          played: false,
+          isPlaceholder: true
+        };
+        setChatHistory(prev => [...prev, placeholderResponse]);
+      }
       
       setLoading(false);
     } catch (error) {
@@ -559,6 +670,7 @@ export const ChatProvider = ({ children }) => {
         cameraZoomed,
         setCameraZoomed,
         chatHistory,
+        setChatHistory, // Add this for direct chat history manipulation
         clearCurrentChat,
         chatSessions,
         currentChatId,

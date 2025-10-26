@@ -9,7 +9,7 @@ export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) 
   const input = useRef();
   const whiteboardRef = useRef();
   const previewVideoRef = useRef(); // Separate ref for preview video
-  const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, clearChatHistory, startNewChat } = useChat();
+  const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, setChatHistory, clearChatHistory, startNewChat } = useChat();
   const [showSidebar, setShowSidebar] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -200,6 +200,20 @@ Come on, you got this! What's your answer? 🎮"]`;
             isProcessing = true;
             console.log('📤 Sending in live mode:', transcript);
             chatRef.current(transcript);
+            
+            // Stop live mode after sending the message
+            console.log('🛑 Stopping live mode after message sent');
+            setIsLiveMode(false);
+            setIsListening(false);
+            isLiveModeRef.current = false;
+            
+            // Stop recognition
+            try {
+              recognitionInstance.stop();
+            } catch (e) {
+              console.error('Error stopping recognition:', e);
+            }
+            
             setTimeout(() => {
               isProcessing = false;
               if (input.current) {
@@ -294,12 +308,123 @@ Come on, you got this! What's your answer? 🎮"]`;
     setShowNotes(!showNotes);
   };
 
-  const sendMessage = () => {
+  const addMessageToHistory = (message) => {
+    const newMessage = {
+      ...message,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setChatHistory(prev => [...prev, newMessage]);
+  };
+
+  const sendMessage = async () => {
     const text = input.current.value;
     if (!loading && !message && text.trim()) {
-      chat(text);
-      input.current.value = "";
-      setInputValue(''); // Clear the input value state
+      // Check if the text contains a YouTube URL
+      const youtubeRegex = /(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = text.match(youtubeRegex);
+      
+      if (match) {
+        const youtubeUrl = match[0].startsWith('http') ? match[0] : `https://${match[0]}`;
+        console.log('🎥 YouTube URL detected:', youtubeUrl);
+        
+        // Clear input immediately
+        input.current.value = "";
+        setInputValue('');
+
+        // Generate message IDs and timestamp
+        const msgTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const userMessageId = Date.now();
+        const loadingId = userMessageId + 1;
+        
+        // Add messages to chat history
+        setChatHistory(prev => [
+          ...prev,
+          {
+            id: userMessageId,
+            text: youtubeUrl,
+            sender: "user",
+            time: msgTime
+          },
+          {
+            id: loadingId,
+            text: "🎬 Fetching video transcript and analyzing content... (This may take 10-20 seconds)",
+            sender: "ai",
+            time: msgTime,
+            isLoading: true
+          }
+        ]);
+        
+        // Call backend API to summarize YouTube video
+        try {
+          console.log('📤 Sending YouTube URL to backend for summarization...');
+          
+          const response = await fetch('http://localhost:3000/api/summarize-youtube', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: youtubeUrl })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to summarize video');
+          }
+
+          const data = await response.json();
+          console.log('✅ Video summarized successfully');
+          
+          // Replace loading message with summary
+          setChatHistory(prev => prev.map(msg => 
+            msg.id === loadingId 
+              ? {
+                  id: Date.now() + 1,
+                  text: `📹 **YouTube Video Summary**\n\n${data.summary}`,
+                  sender: "ai",
+                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  isYoutubeSummary: true
+                }
+              : msg
+          ));
+          
+        } catch (error) {
+          console.error('❌ Error summarizing YouTube video:', error);
+          
+          // Parse error message
+          let errorMessage = 'Sorry, I couldn\'t summarize that video.';
+          if (error.message) {
+            if (error.message.includes('private') || error.message.includes('unavailable')) {
+              errorMessage = '🔒 This video is private or unavailable. Please try a public video.';
+            } else if (error.message.includes('age-restricted')) {
+              errorMessage = '⚠️ This video is age-restricted and cannot be accessed. Please try another video.';
+            } else if (error.message.includes('transcript') || error.message.includes('captions')) {
+              errorMessage = '📝 This video doesn\'t have accessible captions. Please try a video with captions enabled.';
+            } else if (error.message.includes('OpenAI')) {
+              errorMessage = '🤖 AI service is temporarily unavailable. Please try again in a moment.';
+            } else {
+              errorMessage = `❌ ${error.message}`;
+            }
+          }
+          
+          // Replace loading message with error
+          setChatHistory(prev => prev.map(msg => 
+            msg.id === loadingId 
+              ? {
+                  id: Date.now() + 1,
+                  text: errorMessage,
+                  sender: "ai",
+                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  isError: true
+                }
+              : msg
+          ));
+        }
+      } else {
+        // Regular message - send to D-ID agent
+        chat(text);
+        input.current.value = "";
+        setInputValue('');
+      }
     }
   };
 
@@ -614,7 +739,7 @@ Come on, you got this! What's your answer? 🎮"]`;
         </div>
 
         {/* Loading Message */}
-        {loading && (
+        {(loading || message) && (
           <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 mt-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-white">

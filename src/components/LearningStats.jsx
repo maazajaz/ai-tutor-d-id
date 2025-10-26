@@ -1,0 +1,221 @@
+import { useState, useEffect } from 'react';
+import { useChat } from '../hooks/useChat';
+
+export const LearningStats = () => {
+  const { chatSessions } = useChat();
+  const [stats, setStats] = useState({
+    totalSessions: 0,
+    totalMessages: 0,
+    topicsDiscussed: [],
+    learningStreak: 0,
+    averageSessionLength: 0,
+    mostActiveDay: 'Monday',
+    weeklyActivity: [0, 0, 0, 0, 0, 0, 0], // Sun-Sat
+  });
+
+  useEffect(() => {
+    if (chatSessions && chatSessions.length > 0) {
+      calculateStats();
+    }
+  }, [chatSessions]);
+
+  const calculateStats = () => {
+    let totalMessages = 0;
+    let topicsMap = {};
+    let dailyActivity = {};
+    const weekActivity = [0, 0, 0, 0, 0, 0, 0];
+
+    chatSessions.forEach(session => {
+      const messages = session.messages || [];
+      totalMessages += messages.length;
+
+      // Extract topics from first user message
+      const firstMessage = messages.find(m => m.sender === 'user');
+      if (firstMessage) {
+        // Simple topic extraction (first 3 words)
+        const words = firstMessage.text.split(' ').slice(0, 3).join(' ');
+        topicsMap[words] = (topicsMap[words] || 0) + 1;
+      }
+
+      // Calculate daily activity
+      if (session.created_at) {
+        const date = new Date(session.created_at);
+        const dayOfWeek = date.getDay();
+        weekActivity[dayOfWeek]++;
+
+        const dateStr = date.toDateString();
+        dailyActivity[dateStr] = (dailyActivity[dateStr] || 0) + 1;
+      }
+    });
+
+    // Calculate streak (consecutive days with activity)
+    const sortedDates = Object.keys(dailyActivity).sort((a, b) => 
+      new Date(b) - new Date(a)
+    );
+    
+    let streak = 0;
+    let lastDate = new Date();
+    for (const dateStr of sortedDates) {
+      const date = new Date(dateStr);
+      const diffDays = Math.floor((lastDate - date) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays <= 1) {
+        streak++;
+        lastDate = date;
+      } else {
+        break;
+      }
+    }
+
+    // Get top 5 topics
+    const topTopics = Object.entries(topicsMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([topic, count]) => ({ topic, count }));
+
+    // Find most active day
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const mostActiveDayIndex = weekActivity.indexOf(Math.max(...weekActivity));
+
+    // Calculate average session length
+    const totalMessagesPerSession = chatSessions.reduce((sum, s) => 
+      sum + (s.messages?.length || 0), 0
+    );
+    const avgLength = chatSessions.length > 0 
+      ? Math.round(totalMessagesPerSession / chatSessions.length) 
+      : 0;
+
+    setStats({
+      totalSessions: chatSessions.length,
+      totalMessages,
+      topicsDiscussed: topTopics,
+      learningStreak: streak,
+      averageSessionLength: avgLength,
+      mostActiveDay: dayNames[mostActiveDayIndex],
+      weeklyActivity: weekActivity,
+    });
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-transparent">
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-1">
+            📊 Learning Statistics
+          </h3>
+          <p className="text-sm text-gray-600">Your learning journey at a glance</p>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {/* Total Sessions */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">💬</span>
+            <span className="text-xs font-medium text-gray-600">Total Sessions</span>
+          </div>
+          <div className="text-3xl font-bold text-gray-800">{stats.totalSessions}</div>
+          <div className="text-xs text-gray-500 mt-1">All time</div>
+        </div>
+
+        {/* Learning Streak */}
+        <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">🔥</span>
+            <span className="text-xs font-medium text-gray-600">Streak</span>
+          </div>
+          <div className="text-3xl font-bold text-gray-800">{stats.learningStreak}</div>
+          <div className="text-xs text-gray-500 mt-1">days in a row</div>
+        </div>
+
+        {/* Total Messages */}
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">💭</span>
+            <span className="text-xs font-medium text-gray-600">Messages</span>
+          </div>
+          <div className="text-3xl font-bold text-gray-800">{stats.totalMessages}</div>
+          <div className="text-xs text-gray-500 mt-1">total exchanges</div>
+        </div>
+
+        {/* Avg Session Length */}
+        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">⏱️</span>
+            <span className="text-xs font-medium text-gray-600">Avg Length</span>
+          </div>
+          <div className="text-3xl font-bold text-gray-800">{stats.averageSessionLength}</div>
+          <div className="text-xs text-gray-500 mt-1">messages/session</div>
+        </div>
+      </div>
+
+      {/* Weekly Activity Chart */}
+      <div className="mb-6">
+        <h4 className="text-sm font-semibold text-gray-700 mb-3">Weekly Activity</h4>
+        <div className="flex items-end justify-between gap-2 h-32">
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => {
+            const maxActivity = Math.max(...stats.weeklyActivity, 1);
+            const height = (stats.weeklyActivity[index] / maxActivity) * 100;
+            return (
+              <div key={index} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full bg-gray-100 rounded-t-lg relative flex items-end justify-center" style={{ height: '100%' }}>
+                  <div 
+                    className="w-full bg-gradient-to-t from-green-500 to-blue-500 rounded-t-lg transition-all duration-300"
+                    style={{ height: `${height}%`, minHeight: stats.weeklyActivity[index] > 0 ? '10%' : '0%' }}
+                  >
+                    {stats.weeklyActivity[index] > 0 && (
+                      <div className="text-white text-xs font-bold text-center pt-1">
+                        {stats.weeklyActivity[index]}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <span className="text-xs font-medium text-gray-600">{day}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="text-xs text-gray-500 text-center mt-2">
+          Most active: <span className="font-semibold text-gray-700">{stats.mostActiveDay}</span>
+        </div>
+      </div>
+
+      {/* Top Topics */}
+      {stats.topicsDiscussed.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">Top Topics</h4>
+          <div className="space-y-2">
+            {stats.topicsDiscussed.map((item, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-gray-700 truncate">
+                      {item.topic}
+                    </span>
+                    <span className="text-xs text-gray-500">{item.count}x</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div 
+                      className="bg-gradient-to-r from-green-500 to-blue-500 h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${(item.count / stats.topicsDiscussed[0].count) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {stats.totalSessions === 0 && (
+        <div className="text-center py-8">
+          <div className="text-6xl mb-3">📚</div>
+          <p className="text-gray-600 text-sm">
+            Start your first learning session to see statistics!
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};

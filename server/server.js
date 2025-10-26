@@ -5,14 +5,22 @@ import express from "express";
 import { promises as fs } from "fs";
 import fetch from "node-fetch";
 import path from "path";
+import OpenAI from "openai";
+import { YoutubeTranscript } from "youtube-transcript";
+import { Innertube } from "youtubei.js";
 import didService from "./didService.js";
 dotenv.config();
 
 const didApiKey = process.env.DID_API_KEY;
+const openaiApiKey = process.env.OPENAI_API_KEY;
+
+// Initialize OpenAI
+const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
 // Debug environment variables
 console.log('🔧 Environment Check:');
 console.log('D-ID API Key present:', !!didApiKey);
+console.log('OpenAI API Key present:', !!openaiApiKey);
 console.log('Environment:', process.env.NODE_ENV);
 console.log('Vercel environment:', !!process.env.VERCEL);
 
@@ -204,6 +212,554 @@ app.get("/api/did-chat-history/:agentId/:chatId", async (req, res) => {
     
   } catch (error) {
     console.error('❌ Error fetching D-ID chat history:', error);
+    res.status(500).send({ error: error.message });
+  }
+});
+
+// Generate quiz from chat history using OpenAI GPT
+app.post("/api/generate-quiz", async (req, res) => {
+  try {
+    const { messages } = req.body;
+    
+    console.log('🎯 Generating quiz from', messages?.length || 0, 'messages');
+    
+    if (!messages || messages.length === 0) {
+      return res.status(400).send({ error: 'No chat history provided' });
+    }
+
+    if (!openai) {
+      return res.status(500).send({ error: 'OpenAI API not configured' });
+    }
+
+    // Prepare conversation context for OpenAI
+    const conversationContext = messages.map(m => 
+      `${m.role === 'user' ? 'Student' : 'AI Tutor'}: ${m.content}`
+    ).join('\n');
+
+    // Generate quiz using OpenAI
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert quiz generator. Based on the following conversation between a student and an AI tutor, create a quiz with 3-5 multiple choice questions that test the student's understanding of the topics discussed.
+
+Format your response as a JSON object with this structure:
+{
+  "title": "Quiz title based on the topics",
+  "questions": [
+    {
+      "question": "The question text",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 0,
+      "explanation": "Explanation of why this is correct"
+    }
+  ]
+}
+
+Make sure questions are:
+- Directly related to topics discussed in the conversation
+- Clear and unambiguous
+- Have 4 options each
+- Include helpful explanations
+- Appropriate difficulty level for the topics covered`
+        },
+        {
+          role: "user",
+          content: `Generate a quiz based on this conversation:\n\n${conversationContext}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+
+    const responseText = completion.choices[0].message.content;
+    console.log('📝 OpenAI response:', responseText);
+
+    // Parse the JSON response
+    let quiz;
+    try {
+      // Try to extract JSON from markdown code blocks if present
+      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
+                        responseText.match(/```\n([\s\S]*?)\n```/);
+      const jsonText = jsonMatch ? jsonMatch[1] : responseText;
+      quiz = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response as JSON:', parseError);
+      // Fallback quiz if parsing fails
+      quiz = {
+        title: "Knowledge Check",
+        questions: [
+          {
+            question: "Based on our conversation, what was the main topic discussed?",
+            options: ["Programming", "Mathematics", "Science", "History"],
+            correctAnswer: 0,
+            explanation: "We primarily discussed programming concepts."
+          }
+        ]
+      };
+    }
+
+    console.log('✅ Quiz generated successfully with', quiz.questions?.length || 0, 'questions');
+    res.send({ quiz });
+    
+  } catch (error) {
+    console.error('❌ Error generating quiz:', error);
+    res.status(500).send({ error: error.message });
+  }
+});
+
+// Generate AI notes summary from chat history using OpenAI
+app.post("/api/generate-notes", async (req, res) => {
+  try {
+    const { messages, chatTitle } = req.body;
+    
+    console.log('📝 Generating notes from', messages?.length || 0, 'messages');
+    
+    if (!messages || messages.length === 0) {
+      return res.status(400).send({ error: 'No chat history provided' });
+    }
+
+    if (!openai) {
+      return res.status(500).send({ error: 'OpenAI API not configured' });
+    }
+
+    // Prepare conversation context
+    const conversationContext = messages.map(m => 
+      `${m.role === 'user' ? 'Student' : 'AI Tutor'}: ${m.content}`
+    ).join('\n\n');
+
+    // Generate notes using OpenAI
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert note-taker for students. Create comprehensive, well-structured notes from the following conversation between a student and an AI tutor.
+
+Format the notes in Markdown with:
+- A clear title
+- Session overview with key statistics
+- Main topics covered
+- Key concepts explained (in bullet points)
+- Important code examples (if any, in code blocks)
+- Key takeaways
+- Suggested next steps for learning
+
+Make the notes clear, concise, and easy to review for studying.`
+        },
+        {
+          role: "user",
+          content: `Create study notes from this learning session:\n\n${conversationContext}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+
+    const notes = completion.choices[0].message.content;
+    console.log('✅ Notes generated successfully');
+    
+    res.send({ notes });
+    
+  } catch (error) {
+    console.error('❌ Error generating notes:', error);
+    res.status(500).send({ error: error.message });
+  }
+});
+
+// Helper function to fetch transcript with multiple fallbacks
+async function fetchTranscriptWithFallbacks(videoId) {
+  const methods = [
+    // Method 0: Try using youtubei.js (most reliable for all types of captions)
+    async () => {
+      console.log('🔄 Method 0: Trying youtubei.js (YouTube internal API)...');
+      try {
+        const youtube = await Innertube.create();
+        const info = await youtube.getInfo(videoId);
+        
+        // Get transcript from captions
+        const transcriptData = await info.getTranscript();
+        
+        if (transcriptData && transcriptData.transcript) {
+          const segments = transcriptData.transcript.content.body.initial_segments;
+          if (segments && segments.length > 0) {
+            const texts = segments.map(segment => segment.snippet.text).filter(text => text);
+            console.log(`   ✅ Got ${texts.length} segments via youtubei.js`);
+            return texts.join(' ');
+          }
+        }
+        throw new Error('No transcript data in response');
+      } catch (error) {
+        console.log(`   ✗ youtubei.js failed:`, error.message);
+        throw error;
+      }
+    },
+    // Method 1: Try default language
+    async () => {
+      console.log('🔄 Method 1: Trying default language...');
+      const data = await YoutubeTranscript.fetchTranscript(videoId);
+      return data.map(item => item.text).join(' ');
+    },
+    // Method 2: Try multiple languages in order
+    async () => {
+      console.log('🔄 Method 2: Trying multiple languages...');
+      const languages = ['en', 'hi', 'hi-IN', 'hi-Latn', 'ur', 'ur-PK', 'es', 'fr', 'de', 'ar', 'pa', 'bn', 'a.hi', 'a.en'];
+      for (const lang of languages) {
+        try {
+          console.log(`   🔍 Attempting: ${lang}`);
+          const data = await YoutubeTranscript.fetchTranscript(videoId, { lang });
+          if (data && data.length > 0) {
+            console.log(`   ✓ Found transcript in language: ${lang}`);
+            return data.map(item => item.text).join(' ');
+          }
+        } catch (e) {
+          console.log(`   ✗ No transcript for language: ${lang}`);
+        }
+      }
+      throw new Error('No transcript in common languages');
+    },
+    // Method 3: Try to fetch from alternative API endpoint using direct URL scraping
+    async () => {
+      console.log('🔄 Method 3: Trying HTML scraping method...');
+      const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      const html = await response.text();
+      
+      // Look for caption tracks in the page - multiple patterns
+      const patterns = [
+        /"captionTracks":\s*(\[.*?\])/,
+        /"captions".*?"playerCaptionsTracklistRenderer".*?"captionTracks":\s*(\[.*?\])/s
+      ];
+      
+      let captionTracks = null;
+      
+      for (const pattern of patterns) {
+        const match = html.match(pattern);
+        if (match && match[1]) {
+          try {
+            captionTracks = JSON.parse(match[1]);
+            if (captionTracks && captionTracks.length > 0) {
+              console.log(`   📝 Found ${captionTracks.length} caption track(s)`);
+              break;
+            }
+          } catch (e) {
+            console.log('   ⚠️ Failed to parse caption tracks:', e.message);
+          }
+        }
+      }
+      
+      if (captionTracks && captionTracks.length > 0) {
+        // Try to find Hindi or English captions first
+        const preferredLangs = ['hi', 'en', 'ur'];
+        let selectedTrack = null;
+        
+        for (const lang of preferredLangs) {
+          selectedTrack = captionTracks.find(track => 
+            track.languageCode && track.languageCode.startsWith(lang)
+          );
+          if (selectedTrack) {
+            console.log(`   ✓ Selected ${selectedTrack.languageCode} captions`);
+            break;
+          }
+        }
+        
+        // If no preferred language, use first available
+        if (!selectedTrack) {
+          selectedTrack = captionTracks[0];
+          console.log(`   ✓ Using first available: ${selectedTrack.languageCode || 'unknown'}`);
+        }
+        
+        const captionUrl = selectedTrack.baseUrl;
+        console.log('   � Fetching captions from URL...');
+        
+        const captionResponse = await fetch(captionUrl);
+        const captionXml = await captionResponse.text();
+        
+        // Parse XML to extract text - improved regex
+        const textRegex = /<text[^>]*>(.*?)<\/text>/gs;
+        const texts = [];
+        let textMatch;
+        
+        while ((textMatch = textRegex.exec(captionXml)) !== null) {
+          let text = textMatch[1]
+            .replace(/&amp;#39;/g, "'")
+            .replace(/&amp;#(\d+);/g, (match, num) => String.fromCharCode(num))
+            .replace(/&#(\d+);/g, (match, num) => String.fromCharCode(num))
+            .replace(/&amp;quot;/g, '"')
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/<[^>]*>/g, '')
+            .trim();
+          if (text && text.length > 0) texts.push(text);
+        }
+        
+        if (texts.length > 0) {
+          console.log(`   ✅ Extracted ${texts.length} caption segments`);
+          return texts.join(' ');
+        } else {
+          console.log('   ⚠️ Caption XML parsed but no text extracted');
+        }
+      }
+      throw new Error('No captions found in HTML');
+    },
+    // Method 4: Try using YouTube's timedtext API directly
+    async () => {
+      console.log('🔄 Method 4: Trying YouTube timedtext API...');
+      const langs = ['hi', 'hi-IN', 'en', 'en-US', 'en-GB', 'hi-Latn', 'ur', 'ur-PK', 'ar', 'pa', 'bn', 'es', 'fr'];
+      
+      for (const lang of langs) {
+        try {
+          console.log(`   🔍 Trying timedtext for: ${lang}`);
+          const timedtextUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}`;
+          const response = await fetch(timedtextUrl);
+          
+          if (response.ok) {
+            const xml = await response.text();
+            
+            // Check if we actually got captions (not an error page)
+            if (!xml.includes('<transcript>') && !xml.includes('<text')) {
+              console.log(`   ⚠️ No valid captions for ${lang}`);
+              continue;
+            }
+            
+            const textRegex = /<text[^>]*>(.*?)<\/text>/gs;
+            const texts = [];
+            let match;
+            
+            while ((match = textRegex.exec(xml)) !== null) {
+              let text = match[1]
+                .replace(/&amp;#39;/g, "'")
+                .replace(/&amp;#(\d+);/g, (match, num) => String.fromCharCode(num))
+                .replace(/&#(\d+);/g, (match, num) => String.fromCharCode(num))
+                .replace(/&amp;quot;/g, '"')
+                .replace(/&quot;/g, '"')
+                .replace(/&amp;/g, '&')
+                .replace(/<[^>]*>/g, '')
+                .trim();
+              if (text && text.length > 0) texts.push(text);
+            }
+            
+            if (texts.length > 0) {
+              console.log(`   ✅ Got transcript from timedtext API (${lang}): ${texts.length} segments`);
+              return texts.join(' ');
+            }
+          }
+        } catch (e) {
+          console.log(`   ✗ Timedtext API failed for ${lang}: ${e.message}`);
+        }
+      }
+      throw new Error('Timedtext API failed');
+    },
+    // Method 5: Use YouTube oEmbed API to get video metadata as last resort
+    async () => {
+      console.log('🔄 Method 5: Using metadata fallback (no transcript available)...');
+      const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+      if (!response.ok) {
+        throw new Error('Video not found or is private');
+      }
+      const data = await response.json();
+      return `METADATA_ONLY::Video Title: ${data.title}\nAuthor: ${data.author_name}`;
+    }
+  ];
+
+  let lastError;
+  for (let i = 0; i < methods.length; i++) {
+    try {
+      const result = await methods[i]();
+      if (result && result.length > 50) {
+        console.log(`✅ Success with method ${i + 1}, length: ${result.length}`);
+        return result;
+      }
+    } catch (error) {
+      console.log(`❌ Method ${i + 1} failed:`, error.message);
+      lastError = error;
+    }
+    
+    // Add a small delay between attempts
+    if (i < methods.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+  }
+  
+  throw lastError || new Error('All transcript fetching methods failed');
+}
+
+// Summarize YouTube video
+app.post("/api/summarize-youtube", async (req, res) => {
+  try {
+    const { url } = req.body;
+    
+    console.log('🎥 Summarizing YouTube video:', url);
+    
+    if (!url) {
+      return res.status(400).send({ error: 'YouTube URL is required' });
+    }
+
+    if (!openai) {
+      return res.status(500).send({ error: 'OpenAI API not configured' });
+    }
+
+    // Extract video ID from URL
+    let videoId;
+    try {
+      const urlObj = new URL(url);
+      if (urlObj.hostname.includes('youtube.com')) {
+        videoId = urlObj.searchParams.get('v');
+      } else if (urlObj.hostname.includes('youtu.be')) {
+        videoId = urlObj.pathname.slice(1);
+      }
+      
+      if (!videoId) {
+        throw new Error('Invalid YouTube URL');
+      }
+    } catch (error) {
+      return res.status(400).send({ error: 'Invalid YouTube URL format' });
+    }
+
+    console.log('📹 Video ID:', videoId);
+
+    // Fetch transcript with multiple fallback methods
+    let transcript;
+    let videoTitle = 'YouTube Video';
+    let isMetadataOnly = false;
+    
+    try {
+      transcript = await fetchTranscriptWithFallbacks(videoId);
+      
+      // Check if we only got metadata
+      if (transcript.startsWith('METADATA_ONLY::')) {
+        isMetadataOnly = true;
+        transcript = transcript.replace('METADATA_ONLY::', '');
+      }
+      
+      console.log('✅ Content fetched, length:', transcript.length);
+      console.log('📊 Is metadata only:', isMetadataOnly);
+      
+      // Try to get video title
+      try {
+        const videoInfo = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+        const videoData = await videoInfo.json();
+        videoTitle = videoData.title || videoTitle;
+        console.log('📺 Video title:', videoTitle);
+      } catch (titleError) {
+        console.log('⚠️ Could not fetch video title:', titleError.message);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error fetching transcript:', error);
+      return res.status(400).send({ 
+        error: 'Could not fetch video content. Video may be private, age-restricted, or unavailable.',
+        details: error.message
+      });
+    }
+
+    // If transcript is too long, truncate it (GPT-3.5 has token limits)
+    const maxLength = 12000; // Roughly 3000 tokens
+    if (transcript.length > maxLength) {
+      console.log('⚠️ Transcript too long, truncating...');
+      transcript = transcript.substring(0, maxLength) + '...';
+    }
+
+    // Generate summary using OpenAI
+    console.log('🤖 Generating summary with OpenAI...');
+    
+    const systemPrompt = isMetadataOnly
+      ? `You are an expert at creating educational previews for YouTube videos. Based on the video title and metadata, create an informative overview.
+
+Format your response EXACTLY as follows (include all emojis and headers):
+
+📺 **Video Title:** [Title here]
+
+🎯 **Likely Topics Covered:** 
+[Infer from title]
+
+💡 **What You Might Learn:**
+• [Point 1]
+• [Point 2]
+• [Point 3]
+
+📚 **Recommended For:** 
+[Who should watch]
+
+⚠️ **Note:** Full transcript unavailable. This is a preview based on video metadata. Watch the video for actual content.
+
+Make it clear and encouraging.`
+      : `You are an expert educational content summarizer who can understand content in multiple languages including English, Hindi, Urdu, and other South Asian languages.
+
+CRITICAL: You MUST follow this EXACT format with ALL sections. Do NOT skip any section.
+
+Format your summary EXACTLY as follows:
+
+📺 **Video Title:** ${videoTitle}
+
+📝 **What the Creator Says/Teaches:**
+[Summarize the ACTUAL content - what the speaker explains, their main points, their approach. If in Hindi/Urdu, translate key points to English while preserving important terms like song names, cultural references, etc.]
+
+🎯 **Key Concepts Explained:**
+• [Concept 1 - with detailed explanation from the video]
+• [Concept 2 - with detailed explanation from the video]
+• [Concept 3 - with detailed explanation from the video]
+• [Add more if relevant]
+
+💡 **Main Takeaways:**
+• [Key lesson 1 from the video content]
+• [Key lesson 2 from the video content]
+• [Key lesson 3 from the video content]
+
+📚 **Content Summary:**
+[Write 2-3 sentences summarizing the overall flow of content, what's covered from beginning to end, and the creator's presentation style]
+
+${transcript.includes('गा') || transcript.includes('है') || transcript.includes('क्या') ? '🌐 **Language Note:** Content was in Hindi. Key concepts have been translated to English while preserving cultural context.' : ''}
+
+IMPORTANT: 
+1. Include ALL sections listed above
+2. Base everything on the ACTUAL TRANSCRIPT CONTENT
+3. Use specific examples and quotes from the video
+4. Keep the exact emoji format shown above`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: isMetadataOnly 
+            ? `Create an educational preview for this YouTube video:\n\nVideo: ${videoTitle}\n\n${transcript}`
+            : `Analyze and summarize the ACTUAL CONTENT from this video.
+
+Video Title: ${videoTitle}
+
+Transcript:
+${transcript}
+
+Remember to include ALL sections in your response with the exact format specified.`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+
+    const summary = completion.choices[0].message.content;
+    console.log('✅ Summary generated successfully');
+    console.log('📄 Summary preview:', summary.substring(0, 200) + '...');
+    
+    res.send({ 
+      summary,
+      videoId,
+      videoUrl: url
+    });
+    
+  } catch (error) {
+    console.error('❌ Error summarizing YouTube video:', error);
     res.status(500).send({ error: error.message });
   }
 });
