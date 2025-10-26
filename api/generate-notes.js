@@ -86,8 +86,15 @@ Make the notes clear, concise, and easy to review for studying.`
       max_tokens: 2000
     });
 
-    const notes = completion.choices[0].message.content;
-    console.log('✅ Notes generated successfully');
+    console.log('📦 OpenAI completion object:', JSON.stringify(completion, null, 2));
+    console.log('📦 Choices array:', completion.choices);
+    console.log('📦 First choice:', completion.choices?.[0]);
+    console.log('📦 Message:', completion.choices?.[0]?.message);
+    console.log('📦 Content:', completion.choices?.[0]?.message?.content);
+    
+    const notes = completion.choices?.[0]?.message?.content;
+    console.log('✅ Notes extracted');
+    console.log('📝 Notes type:', typeof notes);
     console.log('📝 Notes length:', notes?.length || 0);
     console.log('📝 Notes preview:', notes?.substring(0, 200) || 'NO CONTENT');
     
