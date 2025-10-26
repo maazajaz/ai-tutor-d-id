@@ -340,6 +340,8 @@ export const ChatProvider = ({ children }) => {
       }));
 
       console.log('📤 Sending request to:', `${backendUrl}/api/generate-notes`);
+      console.log('📤 Request payload:', JSON.stringify({ messages: chatMessages.length, chatTitle: generateChatTitle(chatHistory) }));
+      
       const response = await fetch(`${backendUrl}/api/generate-notes`, {
         method: 'POST',
         headers: {
@@ -351,18 +353,24 @@ export const ChatProvider = ({ children }) => {
         }),
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response OK:', response.ok);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ Server error response:', errorData);
         throw new Error(errorData.error || `Server error: ${response.status}`);
       }
 
       const data = await response.json();
       console.log('✅ AI notes generated successfully');
+      console.log('📝 Notes length:', data.notes?.length || 0);
       setLoading(false);
       return data.notes;
     } catch (error) {
       console.error('❌ Error generating AI notes:', error);
-      console.error('Error details:', error.message);
+      console.error('❌ Error details:', error.message);
+      console.error('❌ Error stack:', error.stack);
       setLoading(false);
       throw error;
     }

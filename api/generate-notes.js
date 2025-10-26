@@ -10,6 +10,7 @@ export default async function handler(req, res) {
   console.log('🔍 Request received at:', new Date().toISOString());
   console.log('🔑 OpenAI API key exists:', !!process.env.OPENAI_API_KEY);
   console.log('🔑 OpenAI client initialized:', !!openai);
+  console.log('🔍 Request body:', JSON.stringify(req.body, null, 2));
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -29,16 +30,23 @@ export default async function handler(req, res) {
     const { messages, chatTitle } = req.body;
     
     console.log('📝 Generating notes from', messages?.length || 0, 'messages');
+    console.log('📝 Chat title:', chatTitle);
     
     if (!messages || messages.length === 0) {
+      console.error('❌ No messages provided');
       return res.status(400).json({ error: 'No chat history provided' });
     }
 
     if (!openai) {
       console.error('❌ OpenAI client not initialized');
+      console.error('❌ API Key present:', !!process.env.OPENAI_API_KEY);
+      console.error('❌ API Key length:', process.env.OPENAI_API_KEY?.length || 0);
+      
       return res.status(500).json({ 
         error: 'OpenAI API not configured',
-        details: 'OPENAI_API_KEY environment variable is missing or invalid'
+        details: 'OPENAI_API_KEY environment variable is missing or invalid',
+        hasKey: !!process.env.OPENAI_API_KEY,
+        keyLength: process.env.OPENAI_API_KEY?.length || 0
       });
     }
 
@@ -46,6 +54,8 @@ export default async function handler(req, res) {
     const conversationContext = messages.map(m => 
       `${m.role === 'user' ? 'Student' : 'AI Tutor'}: ${m.content}`
     ).join('\n\n');
+    
+    console.log('📋 Conversation context length:', conversationContext.length);
 
     // Generate notes using OpenAI
     console.log('🤖 Calling OpenAI API...');
@@ -78,6 +88,8 @@ Make the notes clear, concise, and easy to review for studying.`
 
     const notes = completion.choices[0].message.content;
     console.log('✅ Notes generated successfully');
+    console.log('📝 Notes length:', notes.length);
+    console.log('📝 Notes preview:', notes.substring(0, 200));
     
     return res.status(200)
       .setHeader('Access-Control-Allow-Origin', '*')
@@ -89,6 +101,7 @@ Make the notes clear, concise, and easy to review for studying.`
     console.error('❌ === NOTES GENERATION ERROR ===');
     console.error('❌ Error message:', error.message);
     console.error('❌ Error code:', error.code);
+    console.error('❌ Error name:', error.name);
     console.error('❌ Error stack:', error.stack);
     
     // Check for specific OpenAI errors
@@ -111,7 +124,10 @@ Make the notes clear, concise, and easy to review for studying.`
     return res.status(500).json({ 
       error: error.message || 'Unknown error',
       details: error.code || error.type || 'No additional details',
-      type: error.name || 'UnknownError'
+      type: error.name || 'UnknownError',
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
+      hasOpenAI: !!openai,
+      hasApiKey: !!process.env.OPENAI_API_KEY
     });
   }
 }

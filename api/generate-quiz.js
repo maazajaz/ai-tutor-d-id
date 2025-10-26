@@ -68,7 +68,7 @@ export default async function handler(req, res) {
       messages: [
         {
           role: "system",
-          content: `You are an expert quiz generator. Based on the following conversation between a student and an AI tutor, create a quiz with 3-5 multiple choice questions that test the student's understanding of the topics discussed.
+          content: `You are an expert quiz generator. Based on the following conversation between a student and an AI tutor, create a quiz with EXACTLY 3 multiple choice questions that test the student's understanding of the topics discussed.
 
 Format your response as a JSON object with this structure:
 {
@@ -79,16 +79,31 @@ Format your response as a JSON object with this structure:
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": 0,
       "explanation": "Explanation of why this is correct"
+    },
+    {
+      "question": "The question text",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 1,
+      "explanation": "Explanation of why this is correct"
+    },
+    {
+      "question": "The question text",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 2,
+      "explanation": "Explanation of why this is correct"
     }
   ]
 }
 
-Make sure questions are:
-- Directly related to topics discussed in the conversation
-- Clear and unambiguous
-- Have 4 options each
-- Include helpful explanations
-- Appropriate difficulty level for the topics covered`
+CRITICAL REQUIREMENTS:
+- Generate EXACTLY 3 questions (not 1, not 2, not 5 - exactly 3)
+- Each question MUST have exactly 4 options
+- Each question MUST have a correctAnswer index (0-3)
+- Each question MUST have an explanation
+- Questions must be directly related to topics discussed in the conversation
+- Questions should be clear and unambiguous
+- Questions should have appropriate difficulty level for the topics covered
+- Return ONLY valid JSON, no markdown code blocks`
         },
         {
           role: "user",
@@ -112,17 +127,38 @@ Make sure questions are:
                         responseText.match(/```\n([\s\S]*?)\n```/);
       const jsonText = jsonMatch ? jsonMatch[1] : responseText;
       quiz = JSON.parse(jsonText);
+      
+      // Validate that we have exactly 3 questions
+      if (!quiz.questions || quiz.questions.length !== 3) {
+        console.warn('⚠️ Quiz does not have exactly 3 questions, regenerating...');
+        throw new Error('Invalid question count');
+      }
+      
     } catch (parseError) {
       console.error('Failed to parse OpenAI response as JSON:', parseError);
+      console.log('📝 Raw response:', responseText);
+      
       // Fallback quiz if parsing fails
       quiz = {
         title: "Knowledge Check",
         questions: [
           {
-            question: "Based on our conversation, what was the main topic discussed?",
+            question: "Based on our conversation, what was the main topic we discussed?",
             options: ["Programming", "Mathematics", "Science", "History"],
             correctAnswer: 0,
-            explanation: "We primarily discussed programming concepts."
+            explanation: "We primarily discussed programming concepts in this conversation."
+          },
+          {
+            question: "What is an important concept we covered?",
+            options: ["Variables and data types", "Music theory", "Historical events", "Sports rules"],
+            correctAnswer: 0,
+            explanation: "Variables and data types are fundamental programming concepts."
+          },
+          {
+            question: "Which skill did we practice in our conversation?",
+            options: ["Problem solving", "Painting", "Dancing", "Cooking"],
+            correctAnswer: 0,
+            explanation: "Problem solving is a key skill in programming and technology discussions."
           }
         ]
       };
