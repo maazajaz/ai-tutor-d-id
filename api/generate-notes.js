@@ -92,20 +92,44 @@ Make the notes clear, concise, and easy to review for studying.`
     console.log('📦 Message:', completion.choices?.[0]?.message);
     console.log('📦 Content:', completion.choices?.[0]?.message?.content);
     
-    const notes = completion.choices?.[0]?.message?.content;
+    let notes = completion.choices?.[0]?.message?.content;
     console.log('✅ Notes extracted');
     console.log('📝 Notes type:', typeof notes);
     console.log('📝 Notes length:', notes?.length || 0);
     console.log('📝 Notes preview:', notes?.substring(0, 200) || 'NO CONTENT');
     
-    // Validate notes content
+    // Validate notes content - if empty, create a summary from the conversation
     if (!notes || notes.trim().length === 0) {
-      console.error('⚠️ OpenAI returned empty notes');
-      return res.status(500).json({ 
-        error: 'Generated notes are empty',
-        details: 'OpenAI API returned an empty response',
-        rawResponse: completion
-      });
+      console.warn('⚠️ OpenAI returned empty notes, creating fallback summary');
+      
+      // Create a basic summary from the conversation
+      const userMessages = messages.filter(m => m.role === 'user');
+      const aiMessages = messages.filter(m => m.role === 'assistant');
+      
+      notes = `# Study Notes: ${chatTitle || 'Conversation Summary'}
+
+## Session Overview
+- **Date**: ${new Date().toLocaleDateString()}
+- **Total Messages**: ${messages.length}
+- **Your Questions**: ${userMessages.length}
+- **AI Responses**: ${aiMessages.length}
+
+## Conversation Topics
+
+${userMessages.slice(0, 5).map((msg, i) => `### Topic ${i + 1}
+**Your Question**: ${msg.content.substring(0, 200)}${msg.content.length > 200 ? '...' : ''}
+
+**AI's Response**: ${aiMessages[i]?.content?.substring(0, 200) || 'No response'}${aiMessages[i]?.content?.length > 200 ? '...' : ''}
+`).join('\n')}
+
+## Key Takeaways
+- Review the conversation for important concepts
+- Make notes of any code examples or formulas discussed
+- Practice problems mentioned in the conversation
+- Ask follow-up questions if anything is unclear
+
+---
+*Note: This is a basic summary. For detailed AI-generated notes, please try again or ensure your OpenAI API has sufficient quota.*`;
     }
     
     return res.status(200)
