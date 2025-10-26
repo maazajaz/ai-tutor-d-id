@@ -365,6 +365,14 @@ export const ChatProvider = ({ children }) => {
       const data = await response.json();
       console.log('✅ AI notes generated successfully');
       console.log('📝 Notes length:', data.notes?.length || 0);
+      console.log('📝 Notes preview:', data.notes?.substring(0, 100) || 'EMPTY');
+      
+      // Check if notes are empty
+      if (!data.notes || data.notes.trim().length === 0) {
+        console.error('⚠️ Received empty notes from server');
+        throw new Error('Server returned empty notes. Please try again.');
+      }
+      
       setLoading(false);
       return data.notes;
     } catch (error) {

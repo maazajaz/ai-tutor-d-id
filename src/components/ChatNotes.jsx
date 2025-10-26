@@ -45,17 +45,27 @@ export const ChatNotes = ({ isOpen, onClose }) => {
 
     try {
       setIsGeneratingNotes(true);
+      console.log('🎯 Starting AI notes generation...');
+      console.log('📊 Chat history messages:', chatHistory.length);
+      
       const aiNotes = await generateAINotes();
+      
+      console.log('📝 AI notes received:', aiNotes?.length || 0, 'characters');
       
       if (aiNotes) {
         // Append AI notes to existing notes if any
         const newNotes = notes ? `${notes}\n\n## AI Generated Summary:\n\n${aiNotes}` : `## AI Generated Summary:\n\n${aiNotes}`;
         setNotes(newNotes);
         setHasUnsavedChanges(true);
+        console.log('✅ Notes updated successfully');
+      } else {
+        console.warn('⚠️ No notes returned from generateAINotes');
+        alert('No notes were generated. Please check the console for details.');
       }
     } catch (error) {
-      console.error('Failed to generate AI notes:', error);
-      alert('Failed to generate AI notes. Please try again.');
+      console.error('❌ Failed to generate AI notes:', error);
+      console.error('❌ Error details:', error.message);
+      alert(`Failed to generate AI notes: ${error.message}\n\nPlease check the browser console for details.`);
     } finally {
       setIsGeneratingNotes(false);
     }

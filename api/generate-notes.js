@@ -88,8 +88,18 @@ Make the notes clear, concise, and easy to review for studying.`
 
     const notes = completion.choices[0].message.content;
     console.log('✅ Notes generated successfully');
-    console.log('📝 Notes length:', notes.length);
-    console.log('📝 Notes preview:', notes.substring(0, 200));
+    console.log('📝 Notes length:', notes?.length || 0);
+    console.log('📝 Notes preview:', notes?.substring(0, 200) || 'NO CONTENT');
+    
+    // Validate notes content
+    if (!notes || notes.trim().length === 0) {
+      console.error('⚠️ OpenAI returned empty notes');
+      return res.status(500).json({ 
+        error: 'Generated notes are empty',
+        details: 'OpenAI API returned an empty response',
+        rawResponse: completion
+      });
+    }
     
     return res.status(200)
       .setHeader('Access-Control-Allow-Origin', '*')
