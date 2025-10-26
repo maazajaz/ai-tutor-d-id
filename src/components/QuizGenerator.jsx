@@ -4,7 +4,12 @@ import { useChat } from '../hooks/useChat';
 const getBackendUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
   
-  // Always use the configured API URL or default to localhost:3000
+  // If we're on Vercel (production), use the current origin with /api path
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return window.location.origin;
+  }
+  
+  // For localhost, use the configured API URL or default to localhost:3000
   if (envUrl && !envUrl.includes('your-app-name')) {
     return envUrl;
   }

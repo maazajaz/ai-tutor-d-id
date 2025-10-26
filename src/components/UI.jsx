@@ -16,9 +16,14 @@ export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) 
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [recognition, setRecognition] = useState(null);
   const [inputValue, setInputValue] = useState(''); // Track input value for button switching
-  const [emotionDetectionEnabled, setEmotionDetectionEnabled] = useState(true);
+  
+  // Detect if user is on mobile device
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  // Disable emotion detection by default on mobile due to camera permission issues
+  const [emotionDetectionEnabled, setEmotionDetectionEnabled] = useState(!isMobile);
   const [cameraStreamReady, setCameraStreamReady] = useState(false); // Track when camera is ready
-  const [showCameraPreview, setShowCameraPreview] = useState(true); // Toggle camera preview
+  const [showCameraPreview, setShowCameraPreview] = useState(!isMobile); // Hide by default on mobile
   
   // Use refs to access current values in speech recognition callbacks
   const isLiveModeRef = useRef(false);

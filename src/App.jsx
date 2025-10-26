@@ -275,10 +275,10 @@ const AppContent = () => {
         )}
       </div>
       
-      {/* Left Side - D-ID Avatar - Fills available space */}
+      {/* Left Side - D-ID Avatar - 1/3 on mobile, flexible on desktop */}
       <div className={`
-        w-full lg:h-full relative transition-all duration-500 ease-in-out min-h-0
-        ${showChat ? 'lg:w-1/2 lg:flex-[1]' : 'lg:w-full lg:flex-1'}
+        h-1/3 lg:h-full relative transition-all duration-500 ease-in-out min-h-0
+        ${showChat ? 'w-full lg:w-1/2 lg:flex-[1]' : 'h-full w-full lg:w-full lg:flex-1'}
       `}>
         <DIDExperience />
         
@@ -421,10 +421,10 @@ const AppContent = () => {
         </div>
       </div>
       
-      {/* Right Side - Whiteboard - Fills available space */}
+      {/* Right Side - Whiteboard - 2/3 on mobile, flexible on desktop */}
       <div className={`
-        lg:h-full flex flex-col transition-all duration-500 ease-in-out overflow-hidden min-h-0
-        ${showChat ? 'translate-x-0 w-full lg:w-1/2 lg:flex-[2]' : 'translate-x-full w-0 lg:flex-none'}
+        h-2/3 lg:h-full flex flex-col transition-all duration-500 ease-in-out overflow-hidden min-h-0
+        ${showChat ? 'translate-x-0 w-full lg:w-1/2 lg:flex-[2]' : 'translate-x-full w-0 h-0 lg:flex-none'}
       `}>
         <UI 
           showChat={showChat} 
