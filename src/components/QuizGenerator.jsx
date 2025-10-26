@@ -64,7 +64,13 @@ export const QuizGenerator = () => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Server error response:', errorData);
-        throw new Error(errorData.error || 'Failed to generate quiz');
+        console.error('❌ Full error details:', JSON.stringify(errorData, null, 2));
+        
+        const errorMessage = errorData.details 
+          ? `${errorData.error}\n\nDetails: ${errorData.details}\nType: ${errorData.type || 'Unknown'}`
+          : errorData.error || 'Failed to generate quiz';
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -72,8 +78,9 @@ export const QuizGenerator = () => {
       setQuiz(data.quiz);
     } catch (error) {
       console.error('❌ Error generating quiz:', error);
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
+      console.error('❌ Error name:', error.name);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error stack:', error.stack);
       alert(`Failed to generate quiz: ${error.message}\n\nCheck console for details.`);
     } finally {
       setIsGenerating(false);

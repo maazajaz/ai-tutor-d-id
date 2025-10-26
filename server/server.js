@@ -780,9 +780,15 @@ Remember to include ALL sections in your response with the exact format specifie
   }
 });
 
-app.listen(port, () => {
-  console.log(`🎓 AI Digital Tutor with D-ID Avatar listening on port ${port}`);
-  console.log(`🌐 Frontend: http://localhost:5173`);
-  console.log(`🤖 Backend: http://localhost:${port}`);
-  console.log(`🎭 D-ID API: ${didApiKey ? 'Configured' : 'Not configured'}`);
-});
+// Start server only in local development (not on Vercel)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`🎓 AI Digital Tutor with D-ID Avatar listening on port ${port}`);
+    console.log(`🌐 Frontend: http://localhost:5173`);
+    console.log(`🤖 Backend: http://localhost:${port}`);
+    console.log(`🎭 D-ID API: ${didApiKey ? 'Configured' : 'Not configured'}`);
+  });
+}
+
+// Export for Vercel serverless
+module.exports = app;
