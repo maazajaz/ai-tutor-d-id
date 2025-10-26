@@ -218,6 +218,12 @@ app.get("/api/did-chat-history/:agentId/:chatId", async (req, res) => {
 
 // Generate quiz from chat history using OpenAI GPT
 app.post("/api/generate-quiz", async (req, res) => {
+  console.log('🎯 === QUIZ GENERATION ENDPOINT HIT ===');
+  console.log('🔍 Request received at:', new Date().toISOString());
+  console.log('🌍 Environment:', process.env.NODE_ENV);
+  console.log('🔑 OpenAI API key exists:', !!process.env.OPENAI_API_KEY);
+  console.log('🔑 OpenAI client initialized:', !!openai);
+  
   try {
     const { messages } = req.body;
     
@@ -238,11 +244,14 @@ app.post("/api/generate-quiz", async (req, res) => {
     }
 
     // Prepare conversation context for OpenAI
+    console.log('📋 Preparing conversation context...');
     const conversationContext = messages.map(m => 
       `${m.role === 'user' ? 'Student' : 'AI Tutor'}: ${m.content}`
     ).join('\n');
+    console.log('📋 Context prepared, length:', conversationContext.length);
 
     // Generate quiz using OpenAI
+    console.log('🤖 Calling OpenAI API...');
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -279,8 +288,10 @@ Make sure questions are:
       max_tokens: 2000
     });
 
+    console.log('✅ OpenAI API call successful');
     const responseText = completion.choices[0].message.content;
-    console.log('📝 OpenAI response:', responseText);
+    console.log('📝 OpenAI response length:', responseText.length);
+    console.log('📝 OpenAI response preview:', responseText.substring(0, 200));
 
     // Parse the JSON response
     let quiz;
@@ -310,17 +321,35 @@ Make sure questions are:
     res.send({ quiz });
     
   } catch (error) {
-    console.error('❌ Error generating quiz:', error);
+    console.error('❌ === QUIZ GENERATION ERROR ===');
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error code:', error.code);
     console.error('❌ Error stack:', error.stack);
-    console.error('❌ Error details:', {
-      message: error.message,
-      name: error.name,
-      code: error.code
-    });
+    
+    // Check for specific OpenAI errors
+    if (error.code === 'insufficient_quota') {
+      return res.status(500).send({ 
+        error: 'OpenAI API quota exceeded',
+        details: 'Your OpenAI API key has exceeded its quota. Please check your OpenAI account.',
+        type: 'QuotaError'
+      });
+    }
+    
+    if (error.code === 'invalid_api_key') {
+      return res.status(500).send({ 
+        error: 'Invalid OpenAI API key',
+        details: 'The OpenAI API key is invalid or expired. Please check your environment variables.',
+        type: 'AuthenticationError'
+      });
+    }
+    
+    // Generic error response
     res.status(500).send({ 
       error: error.message || 'Unknown error',
-      details: error.code || 'No error code',
-      type: error.name || 'Unknown error type'
+      details: error.code || error.type || 'No additional details',
+      type: error.name || 'UnknownError',
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
     });
   }
 });
