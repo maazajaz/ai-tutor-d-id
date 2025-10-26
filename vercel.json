@@ -15,9 +15,21 @@
       "config": {
         "maxDuration": 30
       }
+    },
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
+    {
+      "src": "/api/generate-quiz",
+      "dest": "/api/generate-quiz.js"
+    },
+    {
+      "src": "/api/generate-notes",
+      "dest": "/api/generate-notes.js"
+    },
     {
       "src": "/api/(.*)",
       "dest": "/server/server.js"

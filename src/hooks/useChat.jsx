@@ -94,9 +94,9 @@ export const ChatProvider = ({ children }) => {
           }
           
           // Add timeout to prevent hanging (30 seconds)
-          const fetchPromise = chatHelpers.getChatSessions(userId);
+          const chatsPromise = chatHelpers.loadChatSessions(user.id);
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Chat sessions loading timeout')), 30000)
+            setTimeout(() => reject(new Error('Chat sessions loading timeout')), 45000)
           );
           
           const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
