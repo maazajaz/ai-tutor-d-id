@@ -222,13 +222,19 @@ app.post("/api/generate-quiz", async (req, res) => {
     const { messages } = req.body;
     
     console.log('🎯 Generating quiz from', messages?.length || 0, 'messages');
+    console.log('🔑 OpenAI API key exists:', !!process.env.OPENAI_API_KEY);
+    console.log('🔑 OpenAI client initialized:', !!openai);
     
     if (!messages || messages.length === 0) {
       return res.status(400).send({ error: 'No chat history provided' });
     }
 
     if (!openai) {
-      return res.status(500).send({ error: 'OpenAI API not configured' });
+      console.error('❌ OpenAI client not initialized');
+      return res.status(500).send({ 
+        error: 'OpenAI API not configured',
+        details: 'OPENAI_API_KEY environment variable is missing'
+      });
     }
 
     // Prepare conversation context for OpenAI
@@ -305,7 +311,17 @@ Make sure questions are:
     
   } catch (error) {
     console.error('❌ Error generating quiz:', error);
-    res.status(500).send({ error: error.message });
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code
+    });
+    res.status(500).send({ 
+      error: error.message || 'Unknown error',
+      details: error.code || 'No error code',
+      type: error.name || 'Unknown error type'
+    });
   }
 });
 
