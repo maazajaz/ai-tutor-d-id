@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase, authHelpers, chatHelpers } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -66,6 +66,10 @@ export const ChatProvider = ({ children }) => {
   const [loading, setLoading] = useState(false); // Start with loading false - only set true when actually loading
   const [dataLoaded, setDataLoaded] = useState(false); // Track if data is loaded
   const [cameraZoomed, setCameraZoomed] = useState(true);
+  
+  // Refs for debouncing
+  const saveTimeoutRef = useRef(null);
+  const lastSaveRef = useRef(Date.now());
 
   console.log('🚀 ChatProvider initialized. Current chat ID:', currentChatId);
   console.log('👤 Auth state - User:', user?.email || 'Anonymous', 'Loading:', authLoading);
@@ -154,7 +158,7 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
-  const generateChatTitle = (messages) => {
+  const generateChatTitle = useCallback((messages) => {
     const firstUserMessage = messages.find(msg => msg.sender === 'user');
     if (firstUserMessage) {
       return firstUserMessage.text.length > 50 
@@ -162,7 +166,7 @@ export const ChatProvider = ({ children }) => {
         : firstUserMessage.text;
     }
     return 'New Chat';
-  };
+  }, []);
 
   const startNewChat = async () => {
     const newChatId = generateChatId();
@@ -217,13 +221,45 @@ export const ChatProvider = ({ children }) => {
     console.log('🎯 Set current chat ID to:', newChatId);
   };
 
-  const updateCurrentSession = async (updates) => {
+  const updateCurrentSession = useCallback(async (updates) => {
     if (!currentChatId) {
       console.log('No currentChatId, cannot update session');
       return;
     }
     
     console.log('Updating session:', currentChatId, 'with updates:', updates);
+    
+    // Debounce: Only save if 2 seconds have passed since last save
+    const now = Date.now();
+    const timeSinceLastSave = now - lastSaveRef.current;
+    
+    if (timeSinceLastSave < 2000 && !updates.forceImmediate) {
+      // Clear existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Set new timeout to save after 2 seconds of inactivity
+      saveTimeoutRef.current = setTimeout(() => {
+        updateCurrentSession({ ...updates, forceImmediate: true });
+      }, 2000);
+      
+      // Update local state immediately for UI responsiveness
+      setChatSessions(prevSessions => {
+        const updatedSessions = prevSessions.map(session => {
+          if (session.id === currentChatId) {
+            return { ...session, ...updates, updated_at: Date.now() };
+          }
+          return session;
+        });
+        return updatedSessions;
+      });
+      
+      return;
+    }
+    
+    // Clear the debounce flag
+    lastSaveRef.current = now;
     
     if (user) {
       console.log('User authenticated, saving to Supabase...');
@@ -304,9 +340,9 @@ export const ChatProvider = ({ children }) => {
         return updatedSessions;
       });
     }
-  };
+  }, [currentChatId, user, chatSessions]);
 
-  const loadChatSession = (sessionId) => {
+  const loadChatSession = useCallback((sessionId) => {
     const session = chatSessions.find(s => s.id === sessionId);
     if (session) {
       setCurrentChatId(sessionId);
@@ -314,15 +350,15 @@ export const ChatProvider = ({ children }) => {
       setCurrentChatNotes(session.notes || '');
       setMessages([]); // Clear animation queue when switching chats
     }
-  };
+  }, [chatSessions]);
 
-  const saveCurrentChatNotes = async (notes) => {
+  const saveCurrentChatNotes = useCallback(async (notes) => {
     setCurrentChatNotes(notes);
     await updateCurrentSession({ notes });
-  };
+  }, [updateCurrentSession]);
 
   // Generate AI notes summary
-  const generateAINotes = async () => {
+  const generateAINotes = useCallback(async () => {
     if (!currentChatId || chatHistory.length === 0) {
       console.log('No chat history to generate notes from');
       return null;
@@ -382,7 +418,7 @@ export const ChatProvider = ({ children }) => {
       setLoading(false);
       throw error;
     }
-  };
+  }, [currentChatId, chatHistory, generateChatTitle]);
 
   const deleteChatSession = async (sessionId) => {
     if (user) {
