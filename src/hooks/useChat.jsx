@@ -63,13 +63,15 @@ export const ChatProvider = ({ children }) => {
   const [chatHistory, setChatHistory] = useState([]); // Current session chat history
   const [messages, setMessages] = useState([]); // Messages for avatar animation
   const [message, setMessage] = useState(); // Current message being played
-  const [loading, setLoading] = useState(false); // Start with loading false - only set true when actually loading
+  const [loading, setLoading] = useState(false); // Loading state for operations (sending messages, generating notes)
+  const [initialLoading, setInitialLoading] = useState(true); // Loading state for initial data fetch
   const [dataLoaded, setDataLoaded] = useState(false); // Track if data is loaded
   const [cameraZoomed, setCameraZoomed] = useState(true);
   
   // Refs for debouncing
   const saveTimeoutRef = useRef(null);
   const lastSaveRef = useRef(Date.now());
+  const hasLoadedDataRef = useRef(false); // Track if we've already loaded data to prevent re-loading
 
   console.log('🚀 ChatProvider initialized. Current chat ID:', currentChatId);
   console.log('👤 Auth state - User:', user?.email || 'Anonymous', 'Loading:', authLoading);
@@ -84,77 +86,88 @@ export const ChatProvider = ({ children }) => {
   // Load chat sessions from Supabase or localStorage with timeout and retries
   const loadUserChatSessions = async (userId) => {
     console.log('📂 Loading chat sessions for user:', userId);
-    if (userId) {
-      console.log('🔍 Fetching from Supabase...');
-      
-      const maxRetries = 3;
-      let lastError = null;
-      
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          if (attempt > 0) {
-            console.log(`🔄 Retry attempt ${attempt} of ${maxRetries}...`);
-            await new Promise(resolve => setTimeout(resolve, delay(attempt)));
-          }
+    setInitialLoading(true); // Start initial loading
+    
+    try {
+      if (userId) {
+        console.log('🔍 Fetching from Supabase...');
+        
+        const maxRetries = 3;
+        let lastError = null;
+        
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            if (attempt > 0) {
+              console.log(`🔄 Retry attempt ${attempt} of ${maxRetries}...`);
+              await new Promise(resolve => setTimeout(resolve, delay(attempt)));
+            }
+            
+            // Add timeout to prevent hanging (45 seconds)
+            const chatsPromise = chatHelpers.getChatSessions(userId);
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Chat sessions loading timeout')), 45000)
+            );
+            
+            const { data, error } = await Promise.race([chatsPromise, timeoutPromise]);
+            
+            if (error) {
+              lastError = error;
+              console.error(`❌ Attempt ${attempt + 1} failed:`, error);
+              continue; // Try next attempt
+            }
           
-          // Add timeout to prevent hanging (45 seconds)
-          const chatsPromise = chatHelpers.getChatSessions(userId);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Chat sessions loading timeout')), 45000)
-          );
-          
-          const { data, error } = await Promise.race([chatsPromise, timeoutPromise]);
-          
-          if (error) {
+            console.log('✅ Loaded from Supabase:', data?.length || 0, 'sessions');
+            console.log('📊 Sessions data:', data);
+            setChatSessions(data || []);
+            
+            // If we have sessions and no current chat, set the latest one as current
+            if (data && data.length > 0 && !currentChatId) {
+              const latestSession = data[0];
+              console.log('🎯 Setting current chat to latest session:', latestSession.id);
+              setCurrentChatId(latestSession.id);
+              setChatHistory(latestSession.messages || []);
+              setCurrentChatNotes(latestSession.notes || '');
+            }
+            
+            // Clean up empty sessions (sessions with no messages)
+            const emptySessions = data?.filter(session => !session.messages || session.messages.length === 0) || [];
+            if (emptySessions.length > 0) {
+              console.log('🗑️ Found', emptySessions.length, 'empty sessions, cleaning up...');
+              await Promise.all(emptySessions.map(session => chatHelpers.deleteChatSession(session.id)));
+              // Reload sessions after cleanup
+              const { data: cleanData } = await chatHelpers.getChatSessions(userId);
+              setChatSessions(cleanData || []);
+            }
+            
+            // Success - break out of retry loop
+            setDataLoaded(true);
+            break;
+            
+          } catch (error) {
             lastError = error;
             console.error(`❌ Attempt ${attempt + 1} failed:`, error);
-            continue; // Try next attempt
-          }
-        
-          console.log('✅ Loaded from Supabase:', data?.length || 0, 'sessions');
-          console.log('📊 Sessions data:', data);
-          setChatSessions(data || []);
-          
-          // If we have sessions and no current chat, set the latest one as current
-          if (data && data.length > 0 && !currentChatId) {
-            const latestSession = data[0];
-            console.log('🎯 Setting current chat to latest session:', latestSession.id);
-            setCurrentChatId(latestSession.id);
-            setChatHistory(latestSession.messages || []);
-            setCurrentChatNotes(latestSession.notes || '');
-          }
-          
-          // Clean up empty sessions (sessions with no messages)
-          const emptySessions = data?.filter(session => !session.messages || session.messages.length === 0) || [];
-          if (emptySessions.length > 0) {
-            console.log('🗑️ Found', emptySessions.length, 'empty sessions, cleaning up...');
-            await Promise.all(emptySessions.map(session => chatHelpers.deleteChatSession(session.id)));
-            // Reload sessions after cleanup
-            const { data: cleanData } = await chatHelpers.getChatSessions(userId);
-            setChatSessions(cleanData || []);
-          }
-          
-          // Success - break out of retry loop
-          break;
-          
-        } catch (error) {
-          lastError = error;
-          console.error(`❌ Attempt ${attempt + 1} failed:`, error);
-          
-          // If this was the last attempt, fall back to localStorage
-          if (attempt === maxRetries) {
-            console.error('Error loading chat sessions after all retries:', error);
-            // Load from localStorage as fallback
-            const localSessions = loadChatSessions() || [];
-            console.log('💾 Loading from localStorage as fallback:', localSessions.length, 'sessions');
-            setChatSessions(localSessions);
+            
+            // If this was the last attempt, fall back to localStorage
+            if (attempt === maxRetries) {
+              console.error('Error loading chat sessions after all retries:', error);
+              // Load from localStorage as fallback
+              const localSessions = loadChatSessions() || [];
+              console.log('💾 Loading from localStorage as fallback:', localSessions.length, 'sessions');
+              setChatSessions(localSessions);
+              setDataLoaded(true);
+            }
           }
         }
+      } else {
+        const localSessions = loadChatSessions() || [];
+        console.log('💾 Loading from localStorage:', localSessions.length, 'sessions');
+        setChatSessions(localSessions);
+        setDataLoaded(true);
       }
-    } else {
-      const localSessions = loadChatSessions() || [];
-      console.log('💾 Loading from localStorage:', localSessions.length, 'sessions');
-      setChatSessions(localSessions);
+    } finally {
+      // Always set initialLoading to false when done (success or error)
+      console.log('✅ Data loading complete');
+      setInitialLoading(false);
     }
   };
 
@@ -452,10 +465,18 @@ export const ChatProvider = ({ children }) => {
 
   // Initialize chat sessions when auth state changes
   useEffect(() => {
+    // Skip if we've already loaded data (prevents re-loading on component re-renders)
+    if (hasLoadedDataRef.current) {
+      console.log('✅ Data already loaded, skipping initialization');
+      return;
+    }
+
     console.log('Initializing chat sessions. Auth loading:', authLoading, 'User:', user?.email || 'Anonymous');
     console.log('Current state - Chat ID:', currentChatId, 'Sessions:', chatSessions.length);
     
     if (!authLoading) {
+      hasLoadedDataRef.current = true; // Mark that we're loading data
+      
       if (user) {
         console.log('Loading user chat sessions...');
         loadUserChatSessions(user.id);
@@ -469,7 +490,8 @@ export const ChatProvider = ({ children }) => {
           }
         }
       } else {
-        // For anonymous users, always ensure we have a session
+        // For anonymous users, load from localStorage
+        setInitialLoading(true);
         const localSessions = loadChatSessions();
         console.log('Loaded localStorage sessions:', localSessions.length);
         
@@ -487,6 +509,8 @@ export const ChatProvider = ({ children }) => {
           console.log('No sessions found, starting new chat...');
           startNewChat();
         }
+        setDataLoaded(true);
+        setInitialLoading(false);
       }
     }
   }, [user, authLoading]);
@@ -723,7 +747,8 @@ export const ChatProvider = ({ children }) => {
         chat,
         message,
         onMessagePlayed,
-        loading,
+        loading, // Operation loading (sending messages, generating notes)
+        initialLoading, // Initial data loading
         cameraZoomed,
         setCameraZoomed,
         chatHistory,

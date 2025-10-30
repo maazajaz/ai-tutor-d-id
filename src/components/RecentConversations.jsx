@@ -2,8 +2,30 @@ import { useState } from 'react';
 import { useChat } from '../hooks/useChat';
 
 export const RecentConversations = ({ onResumeChat }) => {
-  const { chatSessions, loadChatSession } = useChat();
+  const { chatSessions, loadChatSession, initialLoading } = useChat();
   const [hoveredSession, setHoveredSession] = useState(null);
+
+  // Show loading skeleton while data is being fetched
+  if (initialLoading) {
+    return (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-transparent">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">💬 Recent Conversations</h3>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-gray-100 rounded-xl p-4 animate-pulse">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-gray-300 rounded-full"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-gray-300 rounded w-1/2"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   // Get recent sessions (last 5)
   const recentSessions = chatSessions

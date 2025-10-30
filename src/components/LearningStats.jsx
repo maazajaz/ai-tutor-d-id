@@ -1,25 +1,61 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useChat } from '../hooks/useChat';
 
 export const LearningStats = () => {
-  const { chatSessions } = useChat();
-  const [stats, setStats] = useState({
-    totalSessions: 0,
-    totalMessages: 0,
-    topicsDiscussed: [],
-    learningStreak: 0,
-    averageSessionLength: 0,
-    mostActiveDay: 'Monday',
-    weeklyActivity: [0, 0, 0, 0, 0, 0, 0], // Sun-Sat
-  });
+  const { chatSessions, initialLoading } = useChat();
+  
+  // Show loading state while data is being fetched
+  if (initialLoading) {
+    return (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-transparent">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-1">
+              📊 Learning Statistics
+            </h3>
+            <p className="text-sm text-gray-600">Loading your stats...</p>
+          </div>
+        </div>
 
-  useEffect(() => {
-    if (chatSessions && chatSessions.length > 0) {
-      calculateStats();
+        {/* Loading Skeleton */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-gray-100 rounded-xl p-4 animate-pulse">
+              <div className="h-4 bg-gray-300 rounded w-24 mb-3"></div>
+              <div className="h-8 bg-gray-300 rounded w-16 mb-2"></div>
+              <div className="h-3 bg-gray-300 rounded w-20"></div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-6">
+          <div className="h-4 bg-gray-300 rounded w-32 mb-3"></div>
+          <div className="flex items-end justify-between gap-2 h-32">
+            {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+              <div key={i} className="flex-1 bg-gray-200 rounded-t-lg animate-pulse"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Memoize expensive stats calculation - only recalculate when chatSessions actually changes
+  const stats = useMemo(() => {
+    console.log('📊 Calculating stats... Sessions:', chatSessions?.length || 0);
+    
+    if (!chatSessions || chatSessions.length === 0) {
+      return {
+        totalSessions: 0,
+        totalMessages: 0,
+        topicsDiscussed: [],
+        learningStreak: 0,
+        averageSessionLength: 0,
+        mostActiveDay: 'Monday',
+        weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
+      };
     }
-  }, [chatSessions]);
 
-  const calculateStats = () => {
     let totalMessages = 0;
     let topicsMap = {};
     let dailyActivity = {};
@@ -85,16 +121,22 @@ export const LearningStats = () => {
       ? Math.round(totalMessagesPerSession / chatSessions.length) 
       : 0;
 
-    setStats({
+    console.log('✅ Stats calculated:', {
+      totalSessions: chatSessions.length,
+      totalMessages,
+      topicsCount: topTopics.length
+    });
+
+    return {
       totalSessions: chatSessions.length,
       totalMessages,
       topicsDiscussed: topTopics,
       learningStreak: streak,
       averageSessionLength: avgLength,
-      mostActiveDay: dayNames[mostActiveDayIndex],
+      mostActiveDay: dayNames[mostActiveDayIndex] || 'Monday',
       weeklyActivity: weekActivity,
-    });
-  };
+    };
+  }, [chatSessions]); // Only recalculate when chatSessions reference changes
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-transparent">

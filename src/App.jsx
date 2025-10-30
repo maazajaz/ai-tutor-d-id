@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Loader } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Leva } from "leva";
@@ -8,9 +8,22 @@ import { DIDExperience } from "./components/DIDExperience";
 import { UI } from "./components/UI";
 import { Login } from "./components/Login";
 import { Sidebar } from "./components/Sidebar";
-import { EmotionDebug } from "./components/EmotionDebug";
-import { Dashboard } from "./components/Dashboard";
 import LoadingScreen from "./components/LoadingScreen";
+
+// Lazy load heavy components
+const Dashboard = lazy(() => import("./components/Dashboard").then(module => ({ default: module.Dashboard })));
+const EmotionDebug = lazy(() => import("./components/EmotionDebug").then(module => ({ default: module.EmotionDebug })));
+const CollaborativeStudy = lazy(() => import("./components/CollaborativeStudy").then(module => ({ default: module.CollaborativeStudy })));
+
+// Loading fallback component
+const ComponentLoader = () => (
+  <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-gray-600 font-medium">Loading dashboard...</p>
+    </div>
+  </div>
+);
 
 // Main App Content (when authenticated)
 const AppContent = () => {
@@ -20,6 +33,7 @@ const AppContent = () => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showChat, setShowChat] = useState(true); // Chat visibility state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile menu state
+  const [showCollabStudy, setShowCollabStudy] = useState(false); // Collaborative study modal state (persists across tab switches)
   const [cameraStatus, setCameraStatus] = useState({ // Camera status from UI
     isEnabled: false,
     isModelLoaded: false,
@@ -33,7 +47,11 @@ const AppContent = () => {
 
   // Show debug page if in debug mode
   if (isDebugMode) {
-    return <EmotionDebug />;
+    return (
+      <Suspense fallback={<ComponentLoader />}>
+        <EmotionDebug />
+      </Suspense>
+    );
   }
 
   const handleSignOut = async () => {
@@ -81,23 +99,27 @@ const AppContent = () => {
     return <Login />;
   }
 
-  // Show Dashboard view
-  if (currentView === 'dashboard') {
-    return (
-      <Dashboard 
-        onNavigateToChat={() => setCurrentView('chat')}
-        onNavigateToCustomize={() => {
-          // Navigate to chat and open sidebar with settings
-          setCurrentView('chat');
-          setSidebarOpen(true);
-        }}
-      />
-    );
-  }
-
-  // Show Chat view (existing interface)
+  // Render both views but toggle visibility to prevent remounting
   return (
-    <div className="w-screen flex flex-col lg:flex-row bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden fixed inset-0" style={{ height: '100dvh' }}>
+    <>
+      {/* Dashboard View - Hidden when chat is active */}
+      <div style={{ display: currentView === 'dashboard' ? 'block' : 'none' }}>
+        <Suspense fallback={<ComponentLoader />}>
+          <Dashboard 
+            onNavigateToChat={() => setCurrentView('chat')}
+            onNavigateToCustomize={() => {
+              // Navigate to chat and open sidebar with settings
+              setCurrentView('chat');
+              setSidebarOpen(true);
+            }}
+            onOpenCollabStudy={() => setShowCollabStudy(true)}
+          />
+        </Suspense>
+      </div>
+
+      {/* Chat View - Hidden when dashboard is active */}
+      <div style={{ display: currentView === 'chat' ? 'block' : 'none' }}>
+        <div className="w-screen flex flex-col lg:flex-row bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden fixed inset-0" style={{ height: '100dvh' }}>
       <Loader />
       <Leva hidden/>
       
@@ -445,7 +467,16 @@ const AppContent = () => {
           </svg>
         </button>
       )}
-    </div>
+        </div>
+      </div>
+      
+      {/* Collaborative Study Modal - Persists across view changes */}
+      {showCollabStudy && (
+        <Suspense fallback={null}>
+          <CollaborativeStudy onClose={() => setShowCollabStudy(false)} />
+        </Suspense>
+      )}
+    </>
   );
 };
 
