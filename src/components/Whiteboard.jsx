@@ -9,7 +9,7 @@ import {
   deleteWhiteboardContent
 } from '../services/whiteboardService';
 
-export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
+export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
@@ -418,6 +418,12 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     setIsGenerating(true);
     
     try {
+      // 🔥 TRIGGER CHAT SIMULTANEOUSLY - Get D-ID agent response in parallel
+      if (onAskQuestion && typeof onAskQuestion === 'function') {
+        console.log('🎯 Triggering chat for D-ID agent response:', question);
+        onAskQuestion(question);
+      }
+
       // Analyze the question to determine diagram type and elements
       const analysisResponse = await fetch('/api/analyze-diagram', {
         method: 'POST',

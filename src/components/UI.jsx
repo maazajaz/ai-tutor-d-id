@@ -701,6 +701,14 @@ Come on, you got this! What's your answer? 🎮"]`;
           <Whiteboard 
             onClose={() => setShowWhiteboard(false)}
             chatSessionId={currentChatId || `guest-${Date.now()}`}
+            onAskQuestion={(question) => {
+              // Trigger chat to get D-ID agent response
+              if (input.current) {
+                input.current.value = question;
+                setInputValue(question);
+                sendMessage();
+              }
+            }}
           />
         </div>
       ) : (
