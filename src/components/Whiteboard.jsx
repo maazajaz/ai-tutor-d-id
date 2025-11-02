@@ -5,7 +5,8 @@ import {
   getOrCreateWhiteboardSession, 
   loadWhiteboardContent, 
   saveWhiteboardContent,
-  updateWhiteboardContent 
+  updateWhiteboardContent,
+  deleteWhiteboardContent
 } from '../services/whiteboardService';
 
 export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
@@ -107,7 +108,16 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
           // Load and draw saved image
           const img = new Image();
           img.onload = () => {
-            ctx.drawImage(img, 0, block.position_y || 0);
+            try {
+              // Draw at the correct position_y for each block
+              const yPosition = block.position_y || 0;
+              ctx.drawImage(img, 0, yPosition);
+            } catch (err) {
+              console.error('Error drawing image:', err);
+            }
+          };
+          img.onerror = (err) => {
+            console.error('Error loading canvas image:', err);
           };
           img.src = block.canvas_data;
         }
@@ -239,12 +249,12 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
         const { error } = await updateWhiteboardContent(currentContentId, { canvasData });
         if (error) throw error;
       } else {
-        // Otherwise, create a new manual drawing content block
+        // Otherwise, create a new manual drawing content block (without description)
         const newContent = {
           contentType: 'manual_drawing',
           diagramType: 'manual',
-          question: 'Manual Drawing',
-          aiResponse: 'Custom drawing by user',
+          question: '',  // Empty to hide description box
+          aiResponse: '',  // Empty to hide description box
           canvasData: canvasData,
           elements: [],
           positionY: 0,
@@ -286,6 +296,50 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, clearFromY, canvas.width, canvas.height - clearFromY);
     setHasUnsavedChanges(true); // Mark as unsaved after clearing
+  };
+
+  // Handle delete diagram
+  const handleDeleteDiagram = async (blockId) => {
+    if (!window.confirm('🗑️ Delete this diagram?\n\nThis action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Delete from database
+      const { error } = await deleteWhiteboardContent(blockId);
+      
+      if (error) {
+        console.error('Error deleting diagram:', error);
+        alert('❌ Failed to delete diagram');
+        return;
+      }
+
+      // Remove from local state
+      const updatedBlocks = contentBlocks.filter(block => block.id !== blockId);
+      setContentBlocks(updatedBlocks);
+      
+      // Clear and redraw canvas
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Redraw remaining blocks
+      updatedBlocks.forEach(block => {
+        if (block.canvas_data) {
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, 0, block.position_y || 0);
+          };
+          img.src = block.canvas_data;
+        }
+      });
+
+      console.log('✅ Diagram deleted successfully');
+    } catch (error) {
+      console.error('Error in handleDeleteDiagram:', error);
+      alert('❌ Failed to delete diagram');
+    }
   };
 
   // Handle close with unsaved changes check
@@ -541,9 +595,10 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     }
   };
 
-  // Flowchart drawing
+  // Flowchart drawing - RESPONSIVE
   const drawFlowchart = (ctx, elements, width, height) => {
-    const boxWidth = 180;
+    // Make box size responsive to canvas width
+    const boxWidth = Math.min(180, width * 0.6); // Max 180px or 60% of width
     const boxHeight = 70;
     const spacing = 80;
     let y = 100;
@@ -575,7 +630,8 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
       ctx.fillStyle = '#1E293B';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = '14px Arial';
+      const fontSize = Math.max(12, Math.min(14, width / 30)); // Responsive font size
+      ctx.font = `${fontSize}px Arial`;
       
       // Simple word wrap
       const words = element.text.split(' ');
@@ -618,11 +674,13 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     });
   };
 
-  // Mind map drawing
+  // Mind map drawing - RESPONSIVE
   const drawMindMap = (ctx, elements, width, height) => {
     const centerX = width / 2;
     const centerY = height / 2;
-    const radius = 220;
+    const radius = Math.min(220, width * 0.35); // Responsive radius
+    const centerNodeSize = Math.min(60, width * 0.12); // Responsive center node
+    const childNodeSize = Math.min(45, width * 0.09); // Responsive child nodes
 
     // Find center node or use first element
     const centerNode = elements.find(e => e.type === 'center') || elements[0];
@@ -630,7 +688,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
 
     // Draw center node with gradient
     ctx.beginPath();
-    ctx.arc(centerX, centerY, 60, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, centerNodeSize, 0, Math.PI * 2);
     ctx.fillStyle = '#EEF2FF';
     ctx.fill();
     ctx.strokeStyle = '#4F46E5';
@@ -638,7 +696,8 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     ctx.stroke();
     
     ctx.fillStyle = '#1E40AF';
-    ctx.font = 'bold 18px Arial';
+    const centerFontSize = Math.max(14, Math.min(18, width / 30)); // Responsive font
+    ctx.font = `bold ${centerFontSize}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(centerNode?.text || 'Main Topic', centerX, centerY);
@@ -660,7 +719,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
 
       // Draw node with gradient
       ctx.beginPath();
-      ctx.arc(x, y, 45, 0, Math.PI * 2);
+      ctx.arc(x, y, childNodeSize, 0, Math.PI * 2);
       ctx.fillStyle = '#F5F3FF';
       ctx.fill();
       ctx.strokeStyle = '#7C3AED';
@@ -669,7 +728,8 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
       
       // Draw text with word wrap
       ctx.fillStyle = '#000000';
-      ctx.font = '14px Arial';
+      const childFontSize = Math.max(12, Math.min(14, width / 35)); // Responsive font
+      ctx.font = `${childFontSize}px Arial`;
       const words = element.text.split(' ');
       let line = '';
       let lines = [];
@@ -716,12 +776,13 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     });
   };
 
-  // Graph drawing (bar chart style)
+  // Graph drawing (bar chart style) - RESPONSIVE
   const drawGraph = (ctx, elements, width, height) => {
-    const padding = 60;
+    const padding = Math.min(60, width * 0.1); // Responsive padding
     const graphHeight = height - padding * 2;
     const graphWidth = width - padding * 2;
-    const barWidth = graphWidth / elements.length - 20;
+    const barSpacing = Math.max(10, width * 0.02); // Responsive spacing
+    const barWidth = Math.max(20, (graphWidth / elements.length) - barSpacing); // Responsive bar width
 
     // Draw axes
     ctx.beginPath();
@@ -734,7 +795,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     elements.forEach((element, index) => {
       const value = parseFloat(element.value) || 50;
       const barHeight = (value / 100) * graphHeight;
-      const x = padding + index * (barWidth + 20) + 10;
+      const x = padding + index * (barWidth + barSpacing) + barSpacing / 2;
       const y = height - padding - barHeight;
 
       ctx.fillStyle = '#4F46E5';
@@ -742,19 +803,22 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
       
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
+      const fontSize = Math.max(10, Math.min(14, width / 40)); // Responsive font
+      ctx.font = `${fontSize}px Arial`;
       ctx.fillText(element.text, x + barWidth / 2, height - padding + 20, barWidth);
     });
   };
 
-  // Equation drawing
+  // Equation drawing - RESPONSIVE
   const drawEquation = (ctx, elements, width, height) => {
-    ctx.font = '32px Arial';
+    const fontSize = Math.max(20, Math.min(32, width / 20)); // Responsive font size
+    ctx.font = `${fontSize}px Arial`;
     ctx.fillStyle = '#000000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
     const equation = elements.map(e => e.text).join(' ');
-    ctx.fillText(equation, width / 2, height / 2);
+    ctx.fillText(equation, width / 2, height / 2, width * 0.9); // Max width 90% of canvas
   };
 
   // Simple visualization fallback
@@ -900,58 +964,62 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
         
         {/* Content Cards Overlay */}
         <div className="absolute inset-0 pointer-events-none">
-          {contentBlocks.map((block, index) => (
-            <div
-              key={block.id}
-              className="absolute left-0 right-0"
-              style={{ 
-                top: `${(block.position_y || 0) + (block.height || 600) + 20}px`, // Position BELOW diagram
-                pointerEvents: 'auto'
-              }}
-            >
-              <div className="max-w-4xl mx-4 md:mx-auto bg-white rounded-lg shadow-lg p-4 border-2 border-purple-200">
-                <div className="flex items-start gap-3">
-                  <div className="text-3xl flex-shrink-0">
-                    {block.diagram_type === 'flowchart' && '📊'}
-                    {block.diagram_type === 'mindmap' && '🧠'}
-                    {block.diagram_type === 'graph' && '📈'}
-                    {block.diagram_type === 'equation' && '🔢'}
-                    {!['flowchart', 'mindmap', 'graph', 'equation'].includes(block.diagram_type) && '📝'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg text-gray-900 mb-1 break-words">
-                      {block.question}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-2">
-                      {block.ai_response}
-                    </p>
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
-                        {block.diagram_type}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(block.created_at).toLocaleString()}
-                      </span>
+          {contentBlocks.map((block, index) => {
+            // Hide card for manual drawings OR if no content
+            const isManualDrawing = block.diagram_type === 'manual' || block.content_type === 'manual_drawing';
+            const hasContent = block.question?.trim() || block.ai_response?.trim();
+            
+            // Don't show card for manual drawings or empty content
+            if (isManualDrawing || !hasContent) return null;
+            
+            return (
+              <div
+                key={block.id}
+                className="absolute left-0 right-0"
+                style={{ 
+                  top: `${(block.position_y || 0) + (block.height || 600) + 20}px`, // Position BELOW diagram
+                  pointerEvents: 'auto'
+                }}
+              >
+                <div className="max-w-4xl mx-4 md:mx-auto bg-white rounded-lg shadow-lg p-4 border-2 border-purple-200">
+                  <div className="flex items-start gap-3">
+                    <div className="text-3xl flex-shrink-0">
+                      {block.diagram_type === 'flowchart' && '📊'}
+                      {block.diagram_type === 'mindmap' && '🧠'}
+                      {block.diagram_type === 'graph' && '📈'}
+                      {block.diagram_type === 'equation' && '🔢'}
+                      {!['flowchart', 'mindmap', 'graph', 'equation'].includes(block.diagram_type) && '📝'}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg text-gray-900 mb-1 break-words">
+                        {block.question}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-2">
+                        {block.ai_response}
+                      </p>
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                          {block.diagram_type}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(block.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteDiagram(block.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                      title="Delete diagram"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (confirm('Delete this diagram?')) {
-                        // TODO: Implement delete
-                        console.log('Delete diagram:', block.id);
-                      }
-                    }}
-                    className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
-                    title="Delete diagram"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

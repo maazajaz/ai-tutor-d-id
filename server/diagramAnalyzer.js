@@ -3,12 +3,87 @@
  * Uses AI to determine what type of diagram to create and what elements to include
  */
 
+import OpenAI from "openai";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const openai = process.env.OPENAI_API_KEY 
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) 
+  : null;
+
 /**
- * Analyze chat text and determine appropriate diagram type
+ * Analyze chat text and determine appropriate diagram type using AI
  * @param {string} chatText - The chat conversation text
  * @returns {Promise<{diagramType: string, elements: Array}>}
  */
 async function analyzeDiagram(chatText) {
+  try {
+    // If OpenAI is available, use AI-powered analysis
+    if (openai) {
+      return await analyzeWithAI(chatText);
+    }
+    
+    // Fallback to pattern-based analysis
+    return analyzeDiagramWithPatterns(chatText);
+  } catch (error) {
+    console.error('Error analyzing diagram:', error);
+    // Fallback to pattern-based if AI fails
+    return analyzeDiagramWithPatterns(chatText);
+  }
+}
+
+/**
+ * Use OpenAI to intelligently analyze and generate diagram
+ */
+async function analyzeWithAI(chatText) {
+  const response = await openai.chat.completions.create({
+    model: "gpt-3.5-turbo",
+    messages: [{
+      role: "system",
+      content: `You are a diagram generation expert. Analyze the user's question and generate appropriate diagram data.
+
+Rules:
+1. Determine the best diagram type: flowchart, mindmap, graph, or diagram
+2. Extract or generate relevant elements from the question
+3. For flowcharts: Create 5-8 sequential steps
+4. For mindmaps: Create a center concept and 4-7 related nodes  
+5. For graphs: Create 4-6 data points with values
+6. Return ONLY valid JSON, no markdown or explanation
+
+Response format:
+{
+  "diagramType": "flowchart|mindmap|graph|diagram",
+  "elements": [
+    // For flowchart: {"text": "step description", "type": "step"}
+    // For mindmap: {"text": "concept", "type": "center|node"}  
+    // For graph: {"text": "label", "value": 50, "type": "bar"}
+  ]
+}`
+    }, {
+      role: "user",
+      content: `Generate diagram for: ${chatText}`
+    }],
+    temperature: 0.7,
+    max_tokens: 500
+  });
+
+  const result = JSON.parse(response.choices[0].message.content);
+  
+  // Validate the result
+  if (!result.diagramType || !Array.isArray(result.elements)) {
+    throw new Error('Invalid AI response format');
+  }
+  
+  return result;
+}
+
+/**
+ * Pattern-based fallback analysis
+ * @param {string} chatText - The chat conversation text
+ * @returns {Promise<{diagramType: string, elements: Array}>}
+ */
+async function analyzeDiagramWithPatterns(chatText) {
   try {
     // Keywords and patterns for different diagram types
     const patterns = {

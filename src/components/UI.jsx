@@ -615,7 +615,7 @@ Come on, you got this! What's your answer? 🎮"]`;
                 </button>
               )}
               
-              {/* Chat Toggle - Desktop only */}
+              {/* Chat Toggle */}
               <button
                 onClick={() => {
                   if (showWhiteboard) {
@@ -626,7 +626,7 @@ Come on, you got this! What's your answer? 🎮"]`;
                     setShowChat(!showChat);
                   }
                 }}
-                className={`hidden lg:flex p-1 lg:p-2 rounded-lg transition-all ${
+                className={`p-1 lg:p-2 rounded-lg transition-all ${
                   !showWhiteboard && showChat
                     ? "bg-indigo-500 hover:bg-indigo-400" 
                     : "bg-gray-500 hover:bg-gray-400"
@@ -642,7 +642,7 @@ Come on, you got this! What's your answer? 🎮"]`;
                 </svg>
               </button>
 
-              {/* Whiteboard Toggle - Desktop only */}
+              {/* Whiteboard Toggle */}
               <button
                 onClick={() => {
                   if (!showChat) {
@@ -652,7 +652,7 @@ Come on, you got this! What's your answer? 🎮"]`;
                   // Toggle whiteboard
                   setShowWhiteboard(!showWhiteboard);
                 }}
-                className={`hidden lg:flex p-1 lg:p-2 rounded-lg transition-all ${
+                className={`p-1 lg:p-2 rounded-lg transition-all ${
                   showWhiteboard 
                     ? "bg-purple-500 hover:bg-purple-400" 
                     : "bg-gray-500 hover:bg-gray-400"
