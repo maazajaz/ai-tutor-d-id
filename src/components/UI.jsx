@@ -11,7 +11,7 @@ export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) 
   const input = useRef();
   const whiteboardRef = useRef();
   const previewVideoRef = useRef(); // Separate ref for preview video
-  const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, setChatHistory, clearChatHistory, startNewChat } = useChat();
+  const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, setChatHistory, clearChatHistory, startNewChat, currentChatId } = useChat();
   const { user } = useAuth();
   const [showSidebar, setShowSidebar] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
@@ -693,7 +693,7 @@ Come on, you got this! What's your answer? 🎮"]`;
         <div className="flex-1 overflow-hidden">
           <Whiteboard 
             onClose={() => setShowWhiteboard(false)}
-            chatSessionId={`session-${user?.id || 'guest'}-${new Date().toISOString().split('T')[0]}`}
+            chatSessionId={currentChatId || `guest-${Date.now()}`}
           />
         </div>
       ) : (
