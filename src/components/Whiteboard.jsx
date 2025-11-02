@@ -46,7 +46,10 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
   // Initialize whiteboard session and load content
   useEffect(() => {
     async function initWhiteboard() {
+      console.log('🎯 Initializing whiteboard for chatSessionId:', chatSessionId);
+      
       if (!user?.id) {
+        console.log('⚠️ No user found, skipping initialization');
         setIsLoadingSession(false);
         return;
       }
@@ -57,26 +60,31 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
         const { data: session, error } = await getOrCreateWhiteboardSession(user.id, chatSessionId);
         
         if (error) {
-          console.error('Error initializing whiteboard:', error);
+          console.error('❌ Error initializing whiteboard:', error);
           setIsLoadingSession(false);
           return;
         }
         
+        console.log('✅ Whiteboard session:', session.id);
         setWhiteboardSessionId(session.id);
         
         // Load existing content
         const { data: content, error: loadError } = await loadWhiteboardContent(session.id);
         
         if (loadError) {
-          console.error('Error loading content:', loadError);
+          console.error('❌ Error loading content:', loadError);
         } else if (content && content.length > 0) {
+          console.log('📦 Loaded', content.length, 'content blocks:', content);
           setContentBlocks(content);
           // Calculate total height needed
           const totalHeight = content.reduce((sum, block) => sum + (block.height || 600), 0);
           setCanvasHeight(Math.max(totalHeight + 600, 2000));
+          console.log('📏 Canvas height set to:', Math.max(totalHeight + 600, 2000));
+        } else {
+          console.log('📭 No existing content found for this session');
         }
       } catch (error) {
-        console.error('Error in initWhiteboard:', error);
+        console.error('❌ Error in initWhiteboard:', error);
       } finally {
         setIsLoadingSession(false);
       }
@@ -101,12 +109,17 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Redraw all content blocks with responsive scaling
+    // Redraw all content blocks with responsive scaling - FIXED ASYNC LOADING
     if (contentBlocks.length > 0) {
-      contentBlocks.forEach(block => {
+      console.log('🎨 Redrawing', contentBlocks.length, 'blocks on canvas');
+      
+      // Load and draw images sequentially to avoid race conditions
+      let loadedCount = 0;
+      
+      contentBlocks.forEach((block, index) => {
         if (block.canvas_data) {
-          // Load and draw saved image
           const img = new Image();
+          
           img.onload = () => {
             try {
               // Get original canvas width from block metadata or assume standard width
@@ -121,16 +134,27 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
               const scaledHeight = img.height * scale;
               
               ctx.drawImage(img, 0, yPosition, currentWidth, scaledHeight);
+              
+              loadedCount++;
+              if (loadedCount === contentBlocks.length) {
+                console.log('✅ All', loadedCount, 'diagrams rendered successfully');
+              }
             } catch (err) {
               console.error('Error drawing image:', err);
             }
           };
+          
           img.onerror = (err) => {
-            console.error('Error loading canvas image:', err);
+            console.error('❌ Error loading canvas image for block', block.id, err);
           };
+          
           img.src = block.canvas_data;
+        } else {
+          console.warn('⚠️ Block', block.id, 'has no canvas_data');
         }
       });
+    } else {
+      console.log('📭 No content blocks to render');
     }
   }, [canvasHeight, contentBlocks]);
 
@@ -1001,6 +1025,16 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
         className="flex-1 relative overflow-y-auto overflow-x-hidden bg-gray-50"
         style={{ scrollBehavior: 'smooth' }}
       >
+        {/* Loading Indicator */}
+        {isLoadingSession && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading whiteboard...</p>
+            </div>
+          </div>
+        )}
+        
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
@@ -1025,8 +1059,22 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
             const isManualDrawing = block.diagram_type === 'manual' || block.content_type === 'manual_drawing';
             const hasContent = block.question?.trim() || block.ai_response?.trim();
             
+            console.log(`Card ${index}:`, {
+              id: block.id,
+              isManualDrawing,
+              hasContent,
+              question: block.question,
+              ai_response: block.ai_response,
+              diagram_type: block.diagram_type
+            });
+            
             // Don't show card for manual drawings or empty content
-            if (isManualDrawing || !hasContent) return null;
+            if (isManualDrawing || !hasContent) {
+              console.log(`  → Hiding card ${index} (manual=${isManualDrawing}, hasContent=${hasContent})`);
+              return null;
+            }
+            
+            console.log(`  → Showing card ${index}`);
             
             return (
               <div
