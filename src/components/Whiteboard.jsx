@@ -331,11 +331,15 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
 
     switch (diagramType) {
       case 'flowchart':
-        return `Step-by-step flowchart showing ${elements.length} steps: ${elements.slice(0, 3).join(' → ')}${elements.length > 3 ? '...' : ''}`;
+        // Extract text from flowchart step objects
+        const stepTexts = elements.map(e => typeof e === 'object' ? e.text || e.step || String(e) : e);
+        return `Step-by-step flowchart showing ${elements.length} steps: ${stepTexts.slice(0, 3).join(' → ')}${elements.length > 3 ? '...' : ''}`;
       
       case 'mindmap':
-        const centralConcept = elements[0] || 'concepts';
-        return `Mind map exploring ${centralConcept} with ${elements.length - 1} related concepts including ${elements.slice(1, 4).join(', ')}${elements.length > 4 ? ', and more' : ''}`;
+        // Extract text from mindmap concept objects
+        const conceptTexts = elements.map(e => typeof e === 'object' ? e.text || e.concept || String(e) : e);
+        const centralConcept = conceptTexts[0] || 'concepts';
+        return `Mind map exploring ${centralConcept} with ${elements.length - 1} related concepts including ${conceptTexts.slice(1, 4).join(', ')}${elements.length > 4 ? ', and more' : ''}`;
       
       case 'graph':
         const values = elements.map(e => e.value || 0);
@@ -347,7 +351,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
         return `Mathematical formula: ${elements.join(' ')}`;
       
       default:
-        return `Diagram showing ${elements.length} elements: ${elements.slice(0, 3).join(', ')}${elements.length > 3 ? '...' : ''}`;
+        // Handle mixed types
+        const texts = elements.map(e => typeof e === 'object' ? e.text || e.label || String(e) : e);
+        return `Diagram showing ${elements.length} elements: ${texts.slice(0, 3).join(', ')}${elements.length > 3 ? '...' : ''}`;
     }
   };
 
@@ -482,10 +488,10 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
       // Clear input
       setUserInput('');
 
-      // Scroll to new content to show the card and top of diagram
+      // Scroll to show the top of the diagram
       setTimeout(() => {
         if (containerRef.current) {
-          containerRef.current.scrollTop = positionY - 100; // Show card and diagram start
+          containerRef.current.scrollTop = positionY - 50; // Show diagram from top
         }
       }, 100);
 
@@ -899,7 +905,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
               key={block.id}
               className="absolute left-0 right-0"
               style={{ 
-                top: `${(block.position_y || 0) - 10}px`, // Position just slightly ABOVE diagram
+                top: `${(block.position_y || 0) + (block.height || 600) + 20}px`, // Position BELOW diagram
                 pointerEvents: 'auto'
               }}
             >
