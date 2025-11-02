@@ -323,6 +323,34 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     }
   };
 
+  // Generate description based on diagram type and elements
+  const generateDescription = (diagramType, elements, question) => {
+    if (!elements || elements.length === 0) {
+      return `${diagramType.charAt(0).toUpperCase() + diagramType.slice(1)} diagram`;
+    }
+
+    switch (diagramType) {
+      case 'flowchart':
+        return `Step-by-step flowchart showing ${elements.length} steps: ${elements.slice(0, 3).join(' → ')}${elements.length > 3 ? '...' : ''}`;
+      
+      case 'mindmap':
+        const centralConcept = elements[0] || 'concepts';
+        return `Mind map exploring ${centralConcept} with ${elements.length - 1} related concepts including ${elements.slice(1, 4).join(', ')}${elements.length > 4 ? ', and more' : ''}`;
+      
+      case 'graph':
+        const values = elements.map(e => e.value || 0);
+        const maxVal = Math.max(...values);
+        const minVal = Math.min(...values);
+        return `Bar chart comparing ${elements.length} items. Range: ${minVal} to ${maxVal}. Showing ${elements.map(e => e.label).join(', ')}`;
+      
+      case 'equation':
+        return `Mathematical formula: ${elements.join(' ')}`;
+      
+      default:
+        return `Diagram showing ${elements.length} elements: ${elements.slice(0, 3).join(', ')}${elements.length > 3 ? '...' : ''}`;
+    }
+  };
+
   // Handle asking a question and generating diagram
   const handleAskQuestion = async (question = userInput) => {
     if (!question.trim()) return;
@@ -399,13 +427,16 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
       tempCtx.drawImage(canvas, 0, positionY, canvas.width, blockHeight, 0, 0, canvas.width, blockHeight);
       const canvasData = tempCanvas.toDataURL('image/png');
 
+      // Generate description for the diagram
+      const description = generateDescription(diagramType, elements, question);
+
       // Save to database if session exists
       if (whiteboardSessionId) {
         const { data: savedContent, error } = await saveWhiteboardContent(whiteboardSessionId, {
           contentType: 'diagram',
           diagramType,
           question,
-          aiResponse: `${diagramType.charAt(0).toUpperCase() + diagramType.slice(1)} diagram`,
+          aiResponse: description,
           canvasData,
           elements,
           positionY,
@@ -426,7 +457,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
           content_type: 'diagram',
           diagram_type: diagramType,
           question,
-          ai_response: `${diagramType} diagram`,
+          ai_response: description,
           canvas_data: canvasData,
           elements,
           position_y: positionY,
@@ -438,10 +469,10 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
       // Clear input
       setUserInput('');
 
-      // Scroll to new content
+      // Scroll to new content (accounting for card above diagram)
       setTimeout(() => {
         if (containerRef.current) {
-          containerRef.current.scrollTop = positionY - 100;
+          containerRef.current.scrollTop = positionY - 200; // Scroll to show card above diagram
         }
       }, 100);
 
@@ -855,7 +886,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
               key={block.id}
               className="absolute left-0 right-0"
               style={{ 
-                top: `${(block.position_y || 0) + (block.height || 600) + 10}px`,
+                top: `${(block.position_y || 0) - 120}px`, // Position ABOVE diagram (120px above)
                 pointerEvents: 'auto'
               }}
             >
