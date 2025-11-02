@@ -4,6 +4,7 @@ import { useYawnDetection } from "../hooks/useYawnDetection";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatNotes } from "./ChatNotes";
 import { MessageDisplay } from "./MessageDisplay";
+import { Whiteboard } from "./Whiteboard";
 
 export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) => {
   const input = useRef();
@@ -12,6 +13,7 @@ export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) 
   const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, setChatHistory, clearChatHistory, startNewChat } = useChat();
   const [showSidebar, setShowSidebar] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [showWhiteboard, setShowWhiteboard] = useState(false); // Whiteboard state
   const [isListening, setIsListening] = useState(false);
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [recognition, setRecognition] = useState(null);
@@ -606,20 +608,50 @@ Come on, you got this! What's your answer? 🎮"]`;
               
               {/* Chat Toggle - Desktop only */}
               <button
-                onClick={() => setShowChat(!showChat)}
+                onClick={() => {
+                  if (showWhiteboard) {
+                    // If whiteboard is open, close it to show chat
+                    setShowWhiteboard(false);
+                  } else {
+                    // If both are closed, toggle the parent chat visibility
+                    setShowChat(!showChat);
+                  }
+                }}
                 className={`hidden lg:flex p-1 lg:p-2 rounded-lg transition-all ${
-                  showChat 
+                  !showWhiteboard && showChat
                     ? "bg-indigo-500 hover:bg-indigo-400" 
                     : "bg-gray-500 hover:bg-gray-400"
                 } text-white`}
-                title={showChat ? "Hide Chat" : "Show Chat"}
+                title={!showWhiteboard && showChat ? "Hide Chat" : "Show Chat"}
               >
                 <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {showChat ? (
+                  {!showWhiteboard && showChat ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                   ) : (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                   )}
+                </svg>
+              </button>
+
+              {/* Whiteboard Toggle - Desktop only */}
+              <button
+                onClick={() => {
+                  if (!showChat) {
+                    // If container is hidden, show it first
+                    setShowChat(true);
+                  }
+                  // Toggle whiteboard
+                  setShowWhiteboard(!showWhiteboard);
+                }}
+                className={`hidden lg:flex p-1 lg:p-2 rounded-lg transition-all ${
+                  showWhiteboard 
+                    ? "bg-purple-500 hover:bg-purple-400" 
+                    : "bg-gray-500 hover:bg-gray-400"
+                } text-white`}
+                title={showWhiteboard ? "Close Whiteboard" : "Open Whiteboard"}
+              >
+                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </button>
               
@@ -653,11 +685,16 @@ Come on, you got this! What's your answer? 🎮"]`;
           </div>
         </div>
 
-      {/* Whiteboard Content Area */}
-      <div 
-        ref={whiteboardRef}
-        className="flex-1 p-2 lg:p-6 overflow-y-auto bg-white whiteboard-scroll whiteboard-grid"
-      >
+      {/* Content Area - Chat or Whiteboard */}
+      {showWhiteboard ? (
+        /* Whiteboard Mode */
+        <Whiteboard onClose={() => setShowWhiteboard(false)} />
+      ) : (
+        /* Chat Mode */
+        <div 
+          ref={whiteboardRef}
+          className="flex-1 p-2 lg:p-6 overflow-y-auto bg-white whiteboard-scroll whiteboard-grid"
+        >
         {/* Live Mode Indicator */}
         {isLiveMode && (
           <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white p-3 rounded-xl mb-4 shadow-lg animate-pulse">
@@ -754,9 +791,11 @@ Come on, you got this! What's your answer? 🎮"]`;
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
 
-      {/* Input Area - Sticky at bottom on mobile */}
+      {/* Input Area - Sticky at bottom on mobile - Show only in chat mode */}
+      {!showWhiteboard && (
       <div className="border-t-2 border-gray-200 p-1 lg:p-4 bg-gray-50 sticky bottom-0 left-0 right-0 z-30">
         <div className="flex items-center gap-1 lg:gap-2">
           <div className="flex-1 relative">
@@ -907,6 +946,7 @@ Come on, you got this! What's your answer? 🎮"]`;
           </button>
         </div>
       </div>
+      )}
       
       {/* Hidden Video Element for Emotion Detection */}
       {/* Hidden video for emotion detection (desktop) */}

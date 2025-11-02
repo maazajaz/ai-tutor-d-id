@@ -413,6 +413,33 @@ Make the notes clear, concise, and easy to review for studying.`
   }
 });
 
+// Analyze chat conversation and generate diagram instructions
+app.post("/api/analyze-diagram", async (req, res) => {
+  try {
+    const { chatText } = req.body;
+    
+    console.log('📊 Analyzing chat for diagram generation...');
+    
+    if (!chatText) {
+      return res.status(400).send({ error: 'No chat text provided' });
+    }
+
+    // Import the diagram analyzer
+    const { analyzeDiagram } = await import('./diagramAnalyzer.js');
+    
+    // Analyze the chat text
+    const result = await analyzeDiagram(chatText);
+    
+    console.log(`✅ Diagram analysis complete: ${result.diagramType} with ${result.elements.length} elements`);
+    
+    res.send(result);
+    
+  } catch (error) {
+    console.error('❌ Error analyzing diagram:', error);
+    res.status(500).send({ error: error.message });
+  }
+});
+
 // Helper function to fetch transcript with multiple fallbacks
 async function fetchTranscriptWithFallbacks(videoId) {
   const methods = [
