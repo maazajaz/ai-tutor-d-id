@@ -241,13 +241,13 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
       } else {
         // Otherwise, create a new manual drawing content block
         const newContent = {
-          content_type: 'manual_drawing',
-          diagram_type: 'manual',
+          contentType: 'manual_drawing',
+          diagramType: 'manual',
           question: 'Manual Drawing',
-          ai_response: 'Custom drawing by user',
-          canvas_data: canvasData,
+          aiResponse: 'Custom drawing by user',
+          canvasData: canvasData,
           elements: [],
-          position_y: 0,
+          positionY: 0,
           height: canvasHeight
         };
 
