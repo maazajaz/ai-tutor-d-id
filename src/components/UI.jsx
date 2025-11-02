@@ -11,7 +11,7 @@ export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) 
   const input = useRef();
   const whiteboardRef = useRef();
   const previewVideoRef = useRef(); // Separate ref for preview video
-  const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, setChatHistory, clearChatHistory, startNewChat, currentChatId } = useChat();
+  const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, setChatHistory, clearCurrentChat, startNewChat, currentChatId } = useChat();
   const { user } = useAuth();
   const [showSidebar, setShowSidebar] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
@@ -298,7 +298,7 @@ Come on, you got this! What's your answer? 🎮"]`;
     }
     
     if (window.confirm("Are you sure you want to clear the entire chat history? This action cannot be undone.")) {
-      clearChatHistory();
+      clearCurrentChat();
     }
   };
 
@@ -306,6 +306,13 @@ Come on, you got this! What's your answer? 🎮"]`;
     console.log('New chat button clicked');
     startNewChat();
   };
+
+  // Close whiteboard when switching to a new chat
+  useEffect(() => {
+    if (currentChatId && showWhiteboard) {
+      setShowWhiteboard(false);
+    }
+  }, [currentChatId]);
 
   const handleSidebarToggle = () => {
     console.log('Sidebar button clicked, current state:', showSidebar);
