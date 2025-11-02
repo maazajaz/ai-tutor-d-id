@@ -85,7 +85,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
     initWhiteboard();
   }, [user, chatSessionId]);
 
-  // Initialize and update canvas
+  // Initialize and update canvas with proper responsive rendering
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -101,7 +101,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Redraw all content blocks
+    // Redraw all content blocks with responsive scaling
     if (contentBlocks.length > 0) {
       contentBlocks.forEach(block => {
         if (block.canvas_data) {
@@ -109,9 +109,18 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
           const img = new Image();
           img.onload = () => {
             try {
-              // Draw at the correct position_y for each block
+              // Get original canvas width from block metadata or assume standard width
+              const originalWidth = block.canvas_width || 1200;
+              const currentWidth = canvas.width;
+              
+              // Calculate scaling factor to maintain aspect ratio
+              const scale = currentWidth / originalWidth;
+              
+              // Draw at the correct position with responsive scaling
               const yPosition = block.position_y || 0;
-              ctx.drawImage(img, 0, yPosition);
+              const scaledHeight = img.height * scale;
+              
+              ctx.drawImage(img, 0, yPosition, currentWidth, scaledHeight);
             } catch (err) {
               console.error('Error drawing image:', err);
             }
@@ -246,7 +255,10 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
 
       // If there's an existing content block (from AI diagram), update it
       if (currentContentId) {
-        const { error } = await updateWhiteboardContent(currentContentId, { canvasData });
+        const { error } = await updateWhiteboardContent(currentContentId, { 
+          canvasData,
+          canvasWidth: canvas.width  // Save canvas width for scaling
+        });
         if (error) throw error;
       } else {
         // Otherwise, create a new manual drawing content block (without description)
@@ -258,7 +270,8 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
           canvasData: canvasData,
           elements: [],
           positionY: 0,
-          height: canvasHeight
+          height: canvasHeight,
+          canvasWidth: canvas.width  // Save canvas width for scaling
         };
 
         const { data, error } = await saveWhiteboardContent(whiteboardSessionId, newContent);
@@ -298,13 +311,20 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
     setHasUnsavedChanges(true); // Mark as unsaved after clearing
   };
 
-  // Handle delete diagram
+  // Handle delete diagram with repositioning
   const handleDeleteDiagram = async (blockId) => {
     if (!window.confirm('🗑️ Delete this diagram?\n\nThis action cannot be undone.')) {
       return;
     }
 
     try {
+      // Find the block being deleted
+      const deletedBlock = contentBlocks.find(b => b.id === blockId);
+      if (!deletedBlock) return;
+
+      const deletedHeight = (deletedBlock.height || 600) + 60; // Include gap
+      const deletedPosition = deletedBlock.position_y || 0;
+
       // Delete from database
       const { error } = await deleteWhiteboardContent(blockId);
       
@@ -314,9 +334,35 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
         return;
       }
 
-      // Remove from local state
-      const updatedBlocks = contentBlocks.filter(block => block.id !== blockId);
+      // Remove from local state and reposition blocks below
+      const updatedBlocks = contentBlocks
+        .filter(block => block.id !== blockId)
+        .map(block => {
+          // If block is below the deleted one, move it up
+          if ((block.position_y || 0) > deletedPosition) {
+            const newPositionY = (block.position_y || 0) - deletedHeight;
+            
+            // Update position in database
+            updateWhiteboardContent(block.id, { positionY: newPositionY });
+            
+            return {
+              ...block,
+              position_y: newPositionY
+            };
+          }
+          return block;
+        });
+
       setContentBlocks(updatedBlocks);
+      
+      // Recalculate total canvas height
+      if (updatedBlocks.length > 0) {
+        const lastBlock = updatedBlocks[updatedBlocks.length - 1];
+        const newHeight = (lastBlock.position_y || 0) + (lastBlock.height || 600) + 600;
+        setCanvasHeight(newHeight);
+      } else {
+        setCanvasHeight(2000); // Reset to default if no blocks
+      }
       
       // Clear and redraw canvas
       const canvas = canvasRef.current;
@@ -324,18 +370,21 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
-      // Redraw remaining blocks
+      // Redraw remaining blocks at their new positions
       updatedBlocks.forEach(block => {
         if (block.canvas_data) {
           const img = new Image();
           img.onload = () => {
-            ctx.drawImage(img, 0, block.position_y || 0);
+            const originalWidth = block.canvas_width || 1200;
+            const scale = canvas.width / originalWidth;
+            const scaledHeight = img.height * scale;
+            ctx.drawImage(img, 0, block.position_y || 0, canvas.width, scaledHeight);
           };
           img.src = block.canvas_data;
         }
       });
 
-      console.log('✅ Diagram deleted successfully');
+      console.log('✅ Diagram deleted and remaining diagrams repositioned');
     } catch (error) {
       console.error('Error in handleDeleteDiagram:', error);
       alert('❌ Failed to delete diagram');
@@ -509,7 +558,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
       // Generate description for the diagram
       const description = generateDescription(diagramType, elements, question);
 
-      // Save to database if session exists
+      // Save to database if session exists (with canvas width for responsive scaling)
       if (whiteboardSessionId) {
         const { data: savedContent, error } = await saveWhiteboardContent(whiteboardSessionId, {
           contentType: 'diagram',
@@ -519,7 +568,8 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
           canvasData,
           elements,
           positionY,
-          height: blockHeight
+          height: blockHeight,
+          canvasWidth: canvas.width  // Save current canvas width for scaling
         });
 
         if (error) {

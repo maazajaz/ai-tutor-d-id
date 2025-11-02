@@ -61,19 +61,26 @@ export async function loadWhiteboardContent(whiteboardSessionId) {
  */
 export async function saveWhiteboardContent(whiteboardSessionId, content) {
   try {
+    const insertData = {
+      whiteboard_session_id: whiteboardSessionId,
+      content_type: content.contentType,
+      diagram_type: content.diagramType,
+      question: content.question,
+      ai_response: content.aiResponse,
+      canvas_data: content.canvasData,
+      elements: content.elements,
+      position_y: content.positionY,
+      height: content.height
+    };
+
+    // Add canvas_width if provided (for responsive scaling)
+    if (content.canvasWidth) {
+      insertData.canvas_width = content.canvasWidth;
+    }
+
     const { data, error } = await supabase
       .from('whiteboard_content')
-      .insert({
-        whiteboard_session_id: whiteboardSessionId,
-        content_type: content.contentType,
-        diagram_type: content.diagramType,
-        question: content.question,
-        ai_response: content.aiResponse,
-        canvas_data: content.canvasData,
-        elements: content.elements,
-        position_y: content.positionY,
-        height: content.height
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -85,16 +92,23 @@ export async function saveWhiteboardContent(whiteboardSessionId, content) {
 }
 
 /**
- * Update existing whiteboard content (for manual edits)
+ * Update existing whiteboard content (for manual edits or repositioning)
  */
 export async function updateWhiteboardContent(contentId, updates) {
   try {
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+    
+    // Add optional fields if provided
+    if (updates.canvasData) updateData.canvas_data = updates.canvasData;
+    if (updates.positionY !== undefined) updateData.position_y = updates.positionY;
+    if (updates.height !== undefined) updateData.height = updates.height;
+    if (updates.canvasWidth !== undefined) updateData.canvas_width = updates.canvasWidth;
+    
     const { data, error } = await supabase
       .from('whiteboard_content')
-      .update({
-        canvas_data: updates.canvasData,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', contentId)
       .select()
       .single();
