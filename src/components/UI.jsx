@@ -20,6 +20,7 @@ export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) 
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [recognition, setRecognition] = useState(null);
   const [inputValue, setInputValue] = useState(''); // Track input value for button switching
+  const [isAgentSpeaking, setIsAgentSpeaking] = useState(false); // Track if agent is speaking
   
   // Detect if user is on mobile device
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -179,6 +180,17 @@ Come on, you got this! What's your answer? 🎮"]`;
     chatRef.current = chat;
   }, [chat]);
 
+  // Track when agent starts/stops speaking
+  useEffect(() => {
+    if (message && message.trim()) {
+      console.log('🤖 Agent is speaking');
+      setIsAgentSpeaking(true);
+    } else if (isAgentSpeaking && (!message || !message.trim())) {
+      console.log('🤐 Agent stopped speaking');
+      setIsAgentSpeaking(false);
+    }
+  }, [message]);
+
   // Initialize speech recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -208,28 +220,27 @@ Come on, you got this! What's your answer? 🎮"]`;
           if (isLiveModeRef.current && !isProcessing) {
             isProcessing = true;
             console.log('📤 Sending in live mode:', transcript);
-            chatRef.current(transcript);
             
-            // Stop live mode after sending the message
-            console.log('🛑 Stopping live mode after message sent');
-            setIsLiveMode(false);
-            setIsListening(false);
-            isLiveModeRef.current = false;
-            
-            // Stop recognition
-            try {
-              recognitionInstance.stop();
-            } catch (e) {
-              console.error('Error stopping recognition:', e);
+            // If agent is speaking, interrupt it
+            if (isAgentSpeaking) {
+              console.log('⚠️ Interrupting agent - user speaking again');
+              setIsAgentSpeaking(false);
             }
             
+            // Send the message
+            chatRef.current(transcript);
+            
+            // KEEP live mode active - don't stop it!
+            console.log('� Continuing live mode - ready for next input');
+            
+            // Clear input field after sending
             setTimeout(() => {
               isProcessing = false;
               if (input.current) {
                 input.current.value = '';
                 setInputValue('');
               }
-            }, 100);
+            }, 500);
           }
         } else {
           // Show interim results
