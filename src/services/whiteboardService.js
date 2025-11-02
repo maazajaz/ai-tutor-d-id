@@ -2,7 +2,7 @@
  * Whiteboard Service - Handles whiteboard data persistence with Supabase
  */
 
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 
 /**
  * Get or create whiteboard session for a chat
