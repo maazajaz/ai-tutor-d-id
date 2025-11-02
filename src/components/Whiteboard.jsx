@@ -389,7 +389,20 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
         ? (lastBlock.position_y || 0) + (lastBlock.height || 600) + 60  // 60px gap
         : 60; // Start 60px from top
       
-      const blockHeight = 550; // Standard height for diagram blocks
+      // Calculate dynamic block height based on diagram type and elements
+      let blockHeight = 550; // Default
+      if (diagramType === 'flowchart') {
+        // Flowchart: 100px top padding + (70px box + 80px spacing) * steps + 100px bottom
+        blockHeight = Math.max(550, 100 + (elements.length * 150) + 100);
+      } else if (diagramType === 'mindmap') {
+        // Mind map needs more space for radial layout
+        blockHeight = Math.max(600, 400 + (elements.length * 30));
+      } else if (diagramType === 'graph') {
+        // Bar graph is fairly compact
+        blockHeight = 500;
+      }
+      // Cap maximum height to prevent extremely large diagrams
+      blockHeight = Math.min(blockHeight, 1200);
 
       // Expand canvas if needed
       const requiredHeight = positionY + blockHeight + 600;
@@ -469,10 +482,10 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
       // Clear input
       setUserInput('');
 
-      // Scroll to new content (accounting for card above diagram)
+      // Scroll to new content to show the card and top of diagram
       setTimeout(() => {
         if (containerRef.current) {
-          containerRef.current.scrollTop = positionY - 200; // Scroll to show card above diagram
+          containerRef.current.scrollTop = positionY - 100; // Show card and diagram start
         }
       }, 100);
 
@@ -886,7 +899,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
               key={block.id}
               className="absolute left-0 right-0"
               style={{ 
-                top: `${(block.position_y || 0) - 120}px`, // Position ABOVE diagram (120px above)
+                top: `${(block.position_y || 0) - 10}px`, // Position just slightly ABOVE diagram
                 pointerEvents: 'auto'
               }}
             >
