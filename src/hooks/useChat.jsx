@@ -35,9 +35,36 @@ const loadChatSessions = () => {
 
 const saveChatSessions = (sessions) => {
   try {
-    localStorage.setItem('aiTutorChatSessions', JSON.stringify(sessions));
+    // Limit to last 10 sessions to prevent quota issues
+    // Keep only essential data (no full message history in localStorage)
+    const recentSessions = sessions
+      .slice(-10) // Only keep last 10 sessions
+      .map(session => ({
+        id: session.id,
+        title: session.title,
+        timestamp: session.timestamp,
+        // Don't store full messages array - fetch from Supabase instead
+        messageCount: session.messages?.length || 0
+      }));
+    
+    localStorage.setItem('aiTutorChatSessions', JSON.stringify(recentSessions));
   } catch (error) {
     console.error('Failed to save chat sessions:', error);
+    // If quota exceeded, clear and try with just the latest session
+    try {
+      localStorage.removeItem('aiTutorChatSessions');
+      const latestSession = sessions[sessions.length - 1];
+      if (latestSession) {
+        localStorage.setItem('aiTutorChatSessions', JSON.stringify([{
+          id: latestSession.id,
+          title: latestSession.title,
+          timestamp: latestSession.timestamp,
+          messageCount: latestSession.messages?.length || 0
+        }]));
+      }
+    } catch (e) {
+      console.error('Failed to save even single session:', e);
+    }
   }
 };
 
