@@ -688,7 +688,10 @@ Come on, you got this! What's your answer? 🎮"]`;
       {/* Content Area - Chat or Whiteboard */}
       {showWhiteboard ? (
         /* Whiteboard Mode */
-        <Whiteboard onClose={() => setShowWhiteboard(false)} />
+        <Whiteboard 
+          onClose={() => setShowWhiteboard(false)}
+          chatSessionId={`session-${user?.id || 'guest'}-${new Date().toISOString().split('T')[0]}`}
+        />
       ) : (
         /* Chat Mode */
         <div 

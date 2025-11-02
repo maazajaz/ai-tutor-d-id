@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useChat } from '../hooks/useChat';
+import { useAuth } from '../contexts/AuthContext';
+import { 
+  getOrCreateWhiteboardSession, 
+  loadWhiteboardContent, 
+  saveWhiteboardContent,
+  updateWhiteboardContent 
+} from '../services/whiteboardService';
 
-export const Whiteboard = ({ onClose }) => {
+export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
@@ -15,25 +22,67 @@ export const Whiteboard = ({ onClose }) => {
   const [showToolbar, setShowToolbar] = useState(true);
   const [lastPosition, setLastPosition] = useState({ x: 0, y: 0 });
   
+  // Content state - NOW ENABLED
+  const [contentBlocks, setContentBlocks] = useState([]);
+  const [currentContentId, setCurrentContentId] = useState(null);
+  const [canvasHeight, setCanvasHeight] = useState(2000);
+  
   // Input state
   const [isGenerating, setIsGenerating] = useState(false);
   const [userInput, setUserInput] = useState('');
-  const [aiResponse, setAiResponse] = useState('');
-  const [showResponse, setShowResponse] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState(null);
   
-  const { chatHistory, chat, loading } = useChat();
+  // Session state
+  const [whiteboardSessionId, setWhiteboardSessionId] = useState(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
   
-  // TODO: Add these for persistence feature (see WHITEBOARD_PERSISTENCE_PLAN.md)
-  // const { user } = useAuth();
-  // const [contentBlocks, setContentBlocks] = useState([]);
-  // const [currentContentId, setCurrentContentId] = useState(null);
-  // const [canvasHeight, setCanvasHeight] = useState(2000);
-  // const [whiteboardSessionId, setWhiteboardSessionId] = useState(null);
-  // const [isLoading, setIsLoading] = useState(true);
+  const { chatHistory, chat, loading } = useChat();
+  const { user } = useAuth();
 
-  // Initialize canvas
+  // Initialize whiteboard session and load content
+  useEffect(() => {
+    async function initWhiteboard() {
+      if (!user?.id) {
+        setIsLoadingSession(false);
+        return;
+      }
+      
+      setIsLoadingSession(true);
+      try {
+        // Get or create session
+        const { data: session, error } = await getOrCreateWhiteboardSession(user.id, chatSessionId);
+        
+        if (error) {
+          console.error('Error initializing whiteboard:', error);
+          setIsLoadingSession(false);
+          return;
+        }
+        
+        setWhiteboardSessionId(session.id);
+        
+        // Load existing content
+        const { data: content, error: loadError } = await loadWhiteboardContent(session.id);
+        
+        if (loadError) {
+          console.error('Error loading content:', loadError);
+        } else if (content && content.length > 0) {
+          setContentBlocks(content);
+          // Calculate total height needed
+          const totalHeight = content.reduce((sum, block) => sum + (block.height || 600), 0);
+          setCanvasHeight(Math.max(totalHeight + 600, 2000));
+        }
+      } catch (error) {
+        console.error('Error in initWhiteboard:', error);
+      } finally {
+        setIsLoadingSession(false);
+      }
+    }
+    
+    initWhiteboard();
+  }, [user, chatSessionId]);
+
+  // Initialize and update canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -41,28 +90,28 @@ export const Whiteboard = ({ onClose }) => {
     const ctx = canvas.getContext('2d');
     const rect = canvas.parentElement.getBoundingClientRect();
     
-    // Set canvas size to match container
+    // Set canvas size - width from container, height dynamic
     canvas.width = rect.width;
-    canvas.height = rect.height;
+    canvas.height = canvasHeight;
     
     // Set white background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Resize handler
-    const handleResize = () => {
-      const newRect = canvas.parentElement.getBoundingClientRect();
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      canvas.width = newRect.width;
-      canvas.height = newRect.height;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.putImageData(imageData, 0, 0);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    
+    // Redraw all content blocks
+    if (contentBlocks.length > 0) {
+      contentBlocks.forEach(block => {
+        if (block.canvas_data) {
+          // Load and draw saved image
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, 0, block.position_y || 0);
+          };
+          img.src = block.canvas_data;
+        }
+      });
+    }
+  }, [canvasHeight, contentBlocks]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -145,20 +194,52 @@ export const Whiteboard = ({ onClose }) => {
     setLastPosition(pos);
   };
 
-  // Stop drawing
+  // Stop drawing and schedule auto-save
   const stopDrawing = () => {
-    setIsDrawing(false);
-    // TODO: Add auto-save here when persistence is implemented
+    if (isDrawing) {
+      setIsDrawing(false);
+      
+      // Schedule auto-save after drawing stops
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+      
+      autoSaveTimerRef.current = setTimeout(async () => {
+        if (!whiteboardSessionId || !currentContentId) return;
+        
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const canvasData = canvas.toDataURL('image/png');
+        
+        // Update the most recent content block
+        const { error } = await updateWhiteboardContent(currentContentId, { canvasData });
+        
+        if (error) {
+          console.error('Error auto-saving:', error);
+        } else {
+          console.log('✅ Auto-saved manual edits');
+        }
+      }, 2000); // Save 2 seconds after drawing stops
+    } else {
+      setIsDrawing(false);
+    }
   };
 
-  // Clear canvas
+  // Clear only the drawing area (not saved diagrams)
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
+    
+    // Calculate where the last diagram ends
+    const lastBlock = contentBlocks[contentBlocks.length - 1];
+    const clearFromY = lastBlock 
+      ? (lastBlock.position_y || 0) + (lastBlock.height || 600)
+      : 0;
+    
+    // Only clear the area after the last diagram
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    setAiResponse('');
-    setShowResponse(false);
+    ctx.fillRect(0, clearFromY, canvas.width, canvas.height - clearFromY);
   };
 
   // Toggle voice input
@@ -182,7 +263,6 @@ export const Whiteboard = ({ onClose }) => {
     if (!question.trim()) return;
 
     setIsGenerating(true);
-    setShowResponse(true);
     
     try {
       // Analyze the question to determine diagram type and elements
@@ -210,21 +290,95 @@ export const Whiteboard = ({ onClose }) => {
         throw new Error('Invalid diagram data received');
       }
 
-      // Set a simple response message
-      setAiResponse(`Drawing ${diagramType} for: "${question}"`);
+      // Calculate position for new content (append below existing content)
+      const lastBlock = contentBlocks[contentBlocks.length - 1];
+      const positionY = lastBlock 
+        ? (lastBlock.position_y || 0) + (lastBlock.height || 600) + 60  // 60px gap
+        : 60; // Start 60px from top
+      
+      const blockHeight = 550; // Standard height for diagram blocks
 
-      // TODO: Implement persistent diagram stacking (see WHITEBOARD_PERSISTENCE_PLAN.md)
-      // For now, clear and draw new diagram
+      // Expand canvas if needed
+      const requiredHeight = positionY + blockHeight + 600;
+      if (requiredHeight > canvasHeight) {
+        setCanvasHeight(requiredHeight);
+      }
+
+      // Get canvas and wait for it to resize
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Make sure canvas is tall enough
+      if (canvas.height < requiredHeight) {
+        const oldImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        canvas.height = requiredHeight;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.putImageData(oldImageData, 0, 0);
+      }
+      
+      // Save context and translate to new position
+      ctx.save();
+      ctx.translate(0, positionY);
+      
+      // Draw the diagram at the new position
+      drawDiagramAtPosition(ctx, diagramType, elements, canvas.width, blockHeight);
+      
+      ctx.restore();
 
-      // Draw the diagram
-      drawDiagramAtPosition(ctx, diagramType, elements, canvas.width, canvas.height);
+      // Capture this section of canvas as image
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = blockHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(canvas, 0, positionY, canvas.width, blockHeight, 0, 0, canvas.width, blockHeight);
+      const canvasData = tempCanvas.toDataURL('image/png');
+
+      // Save to database if session exists
+      if (whiteboardSessionId) {
+        const { data: savedContent, error } = await saveWhiteboardContent(whiteboardSessionId, {
+          contentType: 'diagram',
+          diagramType,
+          question,
+          aiResponse: `${diagramType.charAt(0).toUpperCase() + diagramType.slice(1)} diagram`,
+          canvasData,
+          elements,
+          positionY,
+          height: blockHeight
+        });
+
+        if (error) {
+          console.error('Error saving content:', error);
+        } else if (savedContent) {
+          // Add to local state
+          setContentBlocks(prev => [...prev, savedContent]);
+          setCurrentContentId(savedContent.id);
+        }
+      } else {
+        // No session yet, just add to local state
+        setContentBlocks(prev => [...prev, {
+          id: Date.now(),
+          content_type: 'diagram',
+          diagram_type: diagramType,
+          question,
+          ai_response: `${diagramType} diagram`,
+          canvas_data: canvasData,
+          elements,
+          position_y: positionY,
+          height: blockHeight,
+          created_at: new Date().toISOString()
+        }]);
+      }
       
       // Clear input
       setUserInput('');
+
+      // Scroll to new content
+      setTimeout(() => {
+        if (containerRef.current) {
+          containerRef.current.scrollTop = positionY - 100;
+        }
+      }, 100);
 
       // Also send the question to the main chat for the AI to respond via voice/video
       if (chat && typeof chat === 'function') {
@@ -232,7 +386,7 @@ export const Whiteboard = ({ onClose }) => {
       }
     } catch (error) {
       console.error('Failed to generate diagram:', error);
-      setAiResponse('Error: Failed to generate diagram. Please try again.');
+      alert('Error: Failed to generate diagram. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -507,6 +661,16 @@ export const Whiteboard = ({ onClose }) => {
 
   return (
     <div className="h-full w-full bg-white flex flex-col relative">
+      {/* Loading Overlay */}
+      {isLoadingSession && (
+        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading whiteboard...</p>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className={`bg-gradient-to-r from-purple-500 to-indigo-600 p-2 flex items-center gap-2 flex-wrap transition-all ${showToolbar ? 'h-auto' : 'h-0 overflow-hidden'}`}>
         {/* Tool Selection */}
@@ -577,8 +741,12 @@ export const Whiteboard = ({ onClose }) => {
         </div>
       </div>
 
-      {/* Canvas */}
-      <div className="flex-1 relative overflow-hidden">
+      {/* Canvas Container - Scrollable */}
+      <div 
+        ref={containerRef}
+        className="flex-1 relative overflow-y-auto overflow-x-hidden bg-gray-50"
+        style={{ scrollBehavior: 'smooth' }}
+      >
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
@@ -588,9 +756,69 @@ export const Whiteboard = ({ onClose }) => {
           onTouchStart={startDrawing}
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
-          className="w-full h-full cursor-crosshair touch-none"
-          style={{ touchAction: 'none' }}
+          className="w-full cursor-crosshair touch-none"
+          style={{ 
+            touchAction: 'none',
+            height: `${canvasHeight}px`,
+            display: 'block'
+          }}
         />
+        
+        {/* Content Cards Overlay */}
+        <div className="absolute inset-0 pointer-events-none">
+          {contentBlocks.map((block, index) => (
+            <div
+              key={block.id}
+              className="absolute left-0 right-0"
+              style={{ 
+                top: `${(block.position_y || 0) + (block.height || 600) + 10}px`,
+                pointerEvents: 'auto'
+              }}
+            >
+              <div className="max-w-4xl mx-4 md:mx-auto bg-white rounded-lg shadow-lg p-4 border-2 border-purple-200">
+                <div className="flex items-start gap-3">
+                  <div className="text-3xl flex-shrink-0">
+                    {block.diagram_type === 'flowchart' && '📊'}
+                    {block.diagram_type === 'mindmap' && '🧠'}
+                    {block.diagram_type === 'graph' && '📈'}
+                    {block.diagram_type === 'equation' && '🔢'}
+                    {!['flowchart', 'mindmap', 'graph', 'equation'].includes(block.diagram_type) && '📝'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-lg text-gray-900 mb-1 break-words">
+                      {block.question}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {block.ai_response}
+                    </p>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                        {block.diagram_type}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(block.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (confirm('Delete this diagram?')) {
+                        // TODO: Implement delete
+                        console.log('Delete diagram:', block.id);
+                      }
+                    }}
+                    className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                    title="Delete diagram"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Toolbar Toggle Button */}
@@ -603,33 +831,6 @@ export const Whiteboard = ({ onClose }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-
-      {/* AI Response Overlay */}
-      {showResponse && aiResponse && (
-        <div className="absolute top-16 left-4 right-4 bg-white shadow-2xl rounded-xl p-4 border-2 border-purple-500 max-w-md z-20 animate-fade-in">
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <span className="font-semibold text-purple-700">AI Explanation</span>
-            </div>
-            <button
-              onClick={() => setShowResponse(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="text-sm text-gray-700 max-h-32 overflow-y-auto">
-            {aiResponse}
-          </div>
-        </div>
-      )}
 
       {/* Question Input Area - Bottom */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent p-4 border-t-2 border-gray-200 z-10">
