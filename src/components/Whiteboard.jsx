@@ -127,13 +127,30 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
               const currentWidth = canvas.width;
               
               // Calculate scaling factor to maintain aspect ratio
-              const scale = currentWidth / originalWidth;
+              // Cap scaling to prevent diagrams from becoming too large
+              let scale = currentWidth / originalWidth;
+              
+              // Prevent upscaling beyond 150% to avoid huge diagrams on large screens
+              if (scale > 1.5) {
+                scale = 1.5;
+              }
+              // Prevent downscaling below 50% to avoid tiny diagrams on small screens
+              if (scale < 0.5) {
+                scale = 0.5;
+              }
               
               // Draw at the correct position with responsive scaling
               const yPosition = block.position_y || 0;
               const scaledHeight = img.height * scale;
+              const scaledWidth = img.width * scale;
               
-              ctx.drawImage(img, 0, yPosition, currentWidth, scaledHeight);
+              // Center the diagram if it doesn't fill the canvas width
+              const xOffset = (currentWidth - scaledWidth) / 2;
+              
+              ctx.drawImage(img, Math.max(0, xOffset), yPosition, scaledWidth, scaledHeight);
+              
+              // Store the scaled height for description card positioning
+              block._scaledHeight = scaledHeight;
               
               loadedCount++;
               if (loadedCount === contentBlocks.length) {
@@ -1076,12 +1093,26 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
             
             console.log(`  → Showing card ${index}`);
             
+            // Calculate the actual position based on scaled height
+            const originalWidth = block.canvas_width || 1200;
+            const canvas = canvasRef.current;
+            const currentWidth = canvas ? canvas.width : 1200;
+            
+            // Calculate same scaling as used in rendering
+            let scale = currentWidth / originalWidth;
+            if (scale > 1.5) scale = 1.5;
+            if (scale < 0.5) scale = 0.5;
+            
+            // Use scaled height instead of original height
+            const scaledHeight = block._scaledHeight || (block.height || 600) * scale;
+            const cardTop = (block.position_y || 0) + scaledHeight + 20;
+            
             return (
               <div
                 key={block.id}
                 className="absolute left-0 right-0"
                 style={{ 
-                  top: `${(block.position_y || 0) + (block.height || 600) + 20}px`, // Position BELOW diagram
+                  top: `${cardTop}px`, // Position BELOW scaled diagram
                   pointerEvents: 'auto'
                 }}
               >
