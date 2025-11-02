@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useChat } from "../hooks/useChat";
 import { useYawnDetection } from "../hooks/useYawnDetection";
+import { useAuth } from "../contexts/AuthContext";
 import { ChatSidebar } from "./ChatSidebar";
 import { ChatNotes } from "./ChatNotes";
 import { MessageDisplay } from "./MessageDisplay";
@@ -11,6 +12,7 @@ export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) 
   const whiteboardRef = useRef();
   const previewVideoRef = useRef(); // Separate ref for preview video
   const { chat, loading, cameraZoomed, setCameraZoomed, message, chatHistory, setChatHistory, clearChatHistory, startNewChat } = useChat();
+  const { user } = useAuth();
   const [showSidebar, setShowSidebar] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false); // Whiteboard state
@@ -688,10 +690,12 @@ Come on, you got this! What's your answer? 🎮"]`;
       {/* Content Area - Chat or Whiteboard */}
       {showWhiteboard ? (
         /* Whiteboard Mode */
-        <Whiteboard 
-          onClose={() => setShowWhiteboard(false)}
-          chatSessionId={`session-${user?.id || 'guest'}-${new Date().toISOString().split('T')[0]}`}
-        />
+        <div className="flex-1 overflow-hidden">
+          <Whiteboard 
+            onClose={() => setShowWhiteboard(false)}
+            chatSessionId={`session-${user?.id || 'guest'}-${new Date().toISOString().split('T')[0]}`}
+          />
+        </div>
       ) : (
         /* Chat Mode */
         <div 

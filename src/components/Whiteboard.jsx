@@ -36,6 +36,8 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
   // Session state
   const [whiteboardSessionId, setWhiteboardSessionId] = useState(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   const { chatHistory, chat, loading } = useChat();
   const { user } = useAuth();
@@ -144,6 +146,19 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     }
   }, []);
 
+  // Warn user before closing browser/tab with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome requires returnValue to be set
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   // Get canvas coordinates
   const getCanvasCoordinates = (e) => {
     const canvas = canvasRef.current;
@@ -194,35 +209,65 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     setLastPosition(pos);
   };
 
-  // Stop drawing and schedule auto-save
+  // Stop drawing and mark as unsaved
   const stopDrawing = () => {
     if (isDrawing) {
       setIsDrawing(false);
-      
-      // Schedule auto-save after drawing stops
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
-      
-      autoSaveTimerRef.current = setTimeout(async () => {
-        if (!whiteboardSessionId || !currentContentId) return;
-        
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        
-        const canvasData = canvas.toDataURL('image/png');
-        
-        // Update the most recent content block
-        const { error } = await updateWhiteboardContent(currentContentId, { canvasData });
-        
-        if (error) {
-          console.error('Error auto-saving:', error);
-        } else {
-          console.log('✅ Auto-saved manual edits');
-        }
-      }, 2000); // Save 2 seconds after drawing stops
+      setHasUnsavedChanges(true); // Mark as unsaved when user draws
     } else {
       setIsDrawing(false);
+    }
+  };
+
+  // Manual save function
+  const handleSaveDrawing = async () => {
+    if (!whiteboardSessionId) {
+      alert('Session not initialized. Please try again.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const canvas = canvasRef.current;
+      if (!canvas) throw new Error('Canvas not found');
+
+      const canvasData = canvas.toDataURL('image/png');
+
+      // If there's an existing content block (from AI diagram), update it
+      if (currentContentId) {
+        const { error } = await updateWhiteboardContent(currentContentId, { canvasData });
+        if (error) throw error;
+      } else {
+        // Otherwise, create a new manual drawing content block
+        const newContent = {
+          content_type: 'manual_drawing',
+          diagram_type: 'manual',
+          question: 'Manual Drawing',
+          ai_response: 'Custom drawing by user',
+          canvas_data: canvasData,
+          elements: [],
+          position_y: 0,
+          height: canvasHeight
+        };
+
+        const { data, error } = await saveWhiteboardContent(whiteboardSessionId, newContent);
+        if (error) throw error;
+        
+        if (data) {
+          setCurrentContentId(data.id);
+          setContentBlocks([data]);
+        }
+      }
+
+      setHasUnsavedChanges(false);
+      alert('✅ Drawing saved successfully!');
+      console.log('✅ Drawing saved to database');
+    } catch (error) {
+      console.error('Error saving drawing:', error);
+      alert('❌ Failed to save drawing. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -240,6 +285,26 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
     // Only clear the area after the last diagram
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, clearFromY, canvas.width, canvas.height - clearFromY);
+    setHasUnsavedChanges(true); // Mark as unsaved after clearing
+  };
+
+  // Handle close with unsaved changes check
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      const confirmed = window.confirm(
+        '⚠️ You have unsaved changes!\n\nDo you want to save your drawing before closing?\n\nClick "OK" to save, "Cancel" to discard changes.'
+      );
+      
+      if (confirmed) {
+        handleSaveDrawing().then(() => {
+          onClose();
+        });
+      } else {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
   };
 
   // Toggle voice input
@@ -732,6 +797,25 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
         {/* Actions */}
         <div className="flex items-center gap-1 bg-white rounded-lg p-1 ml-auto">
           <button
+            onClick={handleSaveDrawing}
+            disabled={!hasUnsavedChanges || isSaving}
+            className={`px-3 py-2 rounded text-sm font-medium transition-all ${
+              hasUnsavedChanges && !isSaving
+                ? 'bg-green-500 hover:bg-green-600 text-white'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+            title={hasUnsavedChanges ? 'Save your drawing' : 'No unsaved changes'}
+          >
+            {isSaving ? (
+              <span className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Saving...
+              </span>
+            ) : (
+              <span>💾 Save</span>
+            )}
+          </button>
+          <button
             onClick={clearCanvas}
             className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium"
             title="Clear canvas"
@@ -833,7 +917,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
       </button>
 
       {/* Question Input Area - Bottom */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent p-4 border-t-2 border-gray-200 z-10">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent p-4 border-t-2 border-gray-200 z-50">
         <div className="flex items-center gap-2 max-w-4xl mx-auto">
           {/* Microphone Button */}
           <button
@@ -907,8 +991,8 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default' }) => {
       </div>
 
       {/* Info Badge - Updated position to avoid input area */}
-      {!showResponse && chatHistory.length === 0 && !userInput && (
-        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-yellow-100 border border-yellow-300 rounded-lg px-4 py-2 text-sm text-yellow-800 z-5">
+      {contentBlocks.length === 0 && !userInput && !isGenerating && (
+        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-yellow-100 border border-yellow-300 rounded-lg px-4 py-2 text-sm text-yellow-800 z-40">
           💡 Ask any question and I'll draw the explanation as a diagram!
         </div>
       )}
