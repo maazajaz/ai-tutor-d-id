@@ -400,17 +400,27 @@ const DIDAgentAvatar = () => {
       // Agent will show idle animation and wait for user input
       
       // Add connection timeout with longer duration for better reliability
+      console.log('⏳ Starting connection monitor...');
       const connectionTimeout = setTimeout(() => {
+        console.log('🔍 Checking connection state:', { isConnected, isConnecting });
         if (!isConnected && isConnecting) {
-          console.log('⏰ Connection timeout reached');
-          setError('Connection timeout. The avatar service may be busy. Please try again.');
+          console.log('⏰ Connection timeout reached - attempting recovery...');
+          // Try to reinitialize
           setIsConnecting(false);
-          setConnectionStatus('error');
+          setTimeout(() => {
+            if (!cleanupCalledRef.current) {
+              console.log('🔄 Attempting connection recovery...');
+              initializeAgent();
+            }
+          }, 1000);
         }
-      }, 45000); // 45 second timeout (increased from 30)
+      }, 60000); // 60 second timeout with auto-recovery
       
       // Clear timeout if component unmounts
-      return () => clearTimeout(connectionTimeout);
+      return () => {
+        clearTimeout(connectionTimeout);
+        console.log('🧹 Connection monitor cleared');
+      };
       
     } catch (error) {
       console.error('❌ Failed to initialize D-ID Agent:', error);
@@ -426,13 +436,32 @@ const DIDAgentAvatar = () => {
 
   // Send message to agent via chat
   const speakWithAgent = async (text) => {
-    if (!agentId || !chatId || !streamId || !sessionId || !isConnected) {
-      console.warn('⚠️ Agent not ready for conversation');
+    // Check all required fields
+    const missing = [];
+    if (!agentId) missing.push('agentId');
+    if (!chatId) missing.push('chatId');
+    if (!streamId) missing.push('streamId');
+    if (!sessionId) missing.push('sessionId');
+    if (!isConnected) missing.push('connection');
+    
+    if (missing.length > 0) {
+      console.warn('⚠️ Agent not ready:', missing.join(', '), 'missing');
+      // Try to recover
+      if (!cleanupCalledRef.current) {
+        console.log('🔄 Attempting to recover agent connection...');
+        await initializeAgent();
+      }
       return;
     }
 
     try {
-      console.log('💬 Sending message to agent:', text);
+      console.log('💬 Sending message to agent with details:', {
+        agentId,
+        chatId,
+        streamId,
+        sessionId,
+        text
+      });
       
       // Send message to D-ID Agent - response will come via WebRTC data channel
       await fetchWithRetry(`${API_URL}/agents/${agentId}/chat/${chatId}`, {
@@ -591,17 +620,33 @@ const DIDAgentAvatar = () => {
 
   // Handle incoming messages
   useEffect(() => {
-    if (message && message.userQuestion && isConnected) {
-      // Send the original user question to the agent, not the AI response
+    if (!message) return; // No message to process
+    
+    console.log('🔄 Processing message:', message);
+    
+    if (!isConnected) {
+      console.warn('⚠️ Message received but agent not connected, attempting reconnection...');
+      initializeAgent().then(() => {
+        if (message.userQuestion) {
+          speakWithAgent(message.userQuestion);
+        } else if (message.text) {
+          speakWithAgent(message.text);
+        }
+      });
+      return;
+    }
+    
+    if (message.userQuestion) {
+      // Send the original user question to the agent
       console.log('📝 Sending user question to agent:', message.userQuestion);
       speakWithAgent(message.userQuestion);
-    } else if (message && message.text && !message.userQuestion && isConnected) {
-      // Fallback: if no userQuestion, send the message text (for backward compatibility)
-      console.log('📝 No userQuestion found, sending message text:', message.text);
+    } else if (message.text) {
+      // Fallback: use message text if no userQuestion
+      console.log('📝 Using message text:', message.text);
       speakWithAgent(message.text);
-    } else if (message && !isConnected) {
-      console.warn('⚠️ Message received but agent not connected, skipping...');
-      onMessagePlayed();
+    } else {
+      console.warn('⚠️ Invalid message format:', message);
+      onMessagePlayed(); // Skip invalid messages
     }
   }, [message, isConnected]);
 

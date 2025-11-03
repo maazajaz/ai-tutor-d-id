@@ -688,7 +688,8 @@ export const ChatProvider = ({ children }) => {
           type: "text"
         };
         
-        // Set message for avatar to process
+        // Send message directly to D-ID Agent via messages queue
+        console.log('📢 Queueing message for D-ID Agent:', messageForAgent);
         setMessages(prev => [...prev, messageForAgent]);
         
         // Add placeholder response

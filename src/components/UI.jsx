@@ -174,6 +174,18 @@ Come on, you got this! What's your answer? 🎮"]`;
   // Keep refs in sync with state
   useEffect(() => {
     isLiveModeRef.current = isLiveMode;
+    
+    // Cleanup recognition on unmount or when live mode disabled
+    return () => {
+      if (window.recognition) {
+        try {
+          window.recognition.stop();
+          console.log('🎙️ Recognition cleaned up');
+        } catch (e) {
+          console.log('ℹ️ Recognition already stopped');
+        }
+      }
+    };
   }, [isLiveMode]);
   
   useEffect(() => {
@@ -182,14 +194,14 @@ Come on, you got this! What's your answer? 🎮"]`;
 
   // Track when agent starts/stops speaking
   useEffect(() => {
-    if (message && message.trim()) {
+    if (message && typeof message === 'string' && message.trim()) {
       console.log('🤖 Agent is speaking');
       setIsAgentSpeaking(true);
-    } else if (isAgentSpeaking && (!message || !message.trim())) {
+    } else if (isAgentSpeaking && (!message || (typeof message === 'string' && !message.trim()))) {
       console.log('🤐 Agent stopped speaking');
       setIsAgentSpeaking(false);
     }
-  }, [message]);
+  }, [message, isAgentSpeaking]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -206,9 +218,23 @@ Come on, you got this! What's your answer? 🎮"]`;
       recognitionInstance.onresult = (event) => {
         const last = event.results.length - 1;
         const transcript = event.results[last][0].transcript;
+        const confidence = event.results[last][0].confidence;
         
         if (event.results[last].isFinal) {
-          console.log('🎤 Final transcript:', transcript);
+          console.log('🎤 Final transcript:', transcript, 'Confidence:', confidence);
+          
+          // Ignore transcripts that might be from the agent:
+          // 1. When agent is speaking and confidence is low
+          // 2. Low confidence (usually means it's picking up audio from speakers)
+          if (isAgentSpeaking && confidence < 0.75) {
+            console.log('🔇 Ignoring low confidence transcript while agent is speaking');
+            return;
+          }
+          
+          if (!isAgentSpeaking && confidence < 0.5) {
+            console.log('🔇 Ignoring very low confidence transcript');
+            return;
+          }
           
           // Update input field
           if (input.current) {
@@ -221,9 +247,9 @@ Come on, you got this! What's your answer? 🎮"]`;
             isProcessing = true;
             console.log('📤 Sending in live mode:', transcript);
             
-            // If agent is speaking, interrupt it
-            if (isAgentSpeaking) {
-              console.log('⚠️ Interrupting agent - user speaking again');
+            // If agent is speaking and we have high confidence, interrupt them
+            if (isAgentSpeaking && confidence > 0.75) {
+              console.log('⚠️ High confidence user speech - interrupting agent');
               setIsAgentSpeaking(false);
             }
             
@@ -250,34 +276,40 @@ Come on, you got this! What's your answer? 🎮"]`;
         }
       };
 
+      // Track last restart time to prevent rapid cycling
+      let lastRestartTime = 0;
+      const RESTART_COOLDOWN = 1000; // 1 second cooldown
+
       recognitionInstance.onerror = (event) => {
-        console.error('❌ Speech recognition error:', event.error);
+        console.log('ℹ️ Speech recognition event:', event.error);
         
-        // Only stop on critical errors
-        if (event.error === 'aborted' || event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        // Only treat microphone denial as critical error
+        if (event.error === 'not-allowed') {
           setIsListening(false);
           setIsLiveMode(false);
-          if (event.error === 'not-allowed') {
-            alert('Microphone access denied. Please allow microphone access in your browser settings.');
-          }
+          alert('Microphone access denied. Please allow microphone access in your browser settings.');
         }
-        // Ignore no-speech and other minor errors
+        // All other errors (aborted, no-speech, etc) are temporary - let onend handle restart
       };
 
       recognitionInstance.onend = () => {
-        console.log('🔴 Recognition ended');
+        console.log('ℹ️ Recognition ended, checking state...');
         
-        // Only restart if live mode is still active (using ref for current value)
-        if (isLiveModeRef.current) {
-          console.log('🔄 Restarting recognition for live mode...');
+        // Only restart if:
+        // 1. Live mode is still active
+        // 2. Not currently processing
+        // 3. Not during cooldown period
+        const now = Date.now();
+        if (isLiveModeRef.current && !isProcessing && now - lastRestartTime > RESTART_COOLDOWN) {
+          console.log('🔄 Conditions met, restarting recognition...');
+          lastRestartTime = now;
           setTimeout(() => {
-            try {
-              recognitionInstance.start();
-            } catch (e) {
-              console.error('Error restarting recognition:', e);
-              if (e.message.includes('already started')) {
-                // Ignore if already started
-                console.log('Recognition already running');
+            if (!recognitionInstance.recognizing) { // Only start if not already running
+              try {
+                recognitionInstance.start();
+                console.log('✅ Recognition restarted successfully');
+              } catch (e) {
+                console.log('ℹ️ Could not restart recognition:', e.message);
               }
             }
           }, 100);
