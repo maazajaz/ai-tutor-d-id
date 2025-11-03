@@ -31,6 +31,10 @@
       "dest": "/api/generate-notes.js"
     },
     {
+      "src": "/api/analyze-diagram",
+      "dest": "/api/analyze-diagram.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server/server.js"
     },
