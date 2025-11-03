@@ -11,6 +11,13 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration);
 
 module.exports = async (req, res) => {
+  console.log('🔍 Diagram Analysis Request Received');
+  console.log('Environment Check:', {
+    hasOpenAI: !!process.env.OPENAI_API_KEY,
+    keyPrefix: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 7) : 'missing',
+    nodeEnv: process.env.NODE_ENV
+  });
+
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -32,12 +39,18 @@ module.exports = async (req, res) => {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    // Log request details
+    console.log('📝 Request Body:', req.body);
+    
     // Get text from request body
     const { text } = req.body;
 
     if (!text) {
+      console.log('❌ Missing text in request');
       return res.status(400).json({ error: 'Text is required' });
     }
+    
+    console.log('📝 Processing text:', text);
 
     // Call OpenAI to analyze the text and generate diagram description
     const completion = await openai.createChatCompletion({
@@ -63,37 +76,62 @@ module.exports = async (req, res) => {
 
     // Extract the diagram description from the response
     const diagramDescription = completion.data.choices[0].message.content.trim();
+    console.log('✅ Generated diagram:', diagramDescription.substring(0, 100) + '...');
 
     // Return the diagram description
     res.status(200).json({ diagram: diagramDescription });
 
   } catch (error) {
-    console.error('Error in diagram analysis:', error);
-    console.error('API Key Check:', process.env.OPENAI_API_KEY ? 'Present' : 'Missing');
+    console.error('❌ Error in diagram analysis:', error);
+    
+    // Detailed environment check
+    console.error('🔑 Environment Check:', {
+      hasOpenAI: !!process.env.OPENAI_API_KEY,
+      keyType: process.env.OPENAI_API_KEY ? 'sk-' + process.env.OPENAI_API_KEY.substring(3, 6) : 'missing',
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV
+    });
     
     // Check if it's an OpenAI API error
     if (error.response) {
-      console.error('OpenAI API Error:', {
+      const errorDetails = {
         status: error.response.status,
         statusText: error.response.statusText,
         data: error.response.data,
-        headers: error.response.headers
-      });
+        headers: {
+          ...error.response.headers,
+          authorization: error.response.headers?.authorization ? '[REDACTED]' : 'missing'
+        }
+      };
+      
+      console.error('🔥 OpenAI API Error:', errorDetails);
+      
+      // Return specific error message based on status
+      if (error.response.status === 401) {
+        return res.status(401).json({
+          error: 'OpenAI API Authentication Error',
+          message: 'Please check your API key configuration'
+        });
+      }
+      
       res.status(error.response.status).json({
         error: 'OpenAI API error',
-        details: error.response.data,
+        details: errorDetails,
         message: error.response.statusText
       });
     } else {
-      console.error('Non-API Error:', {
+      // Log non-API errors with stack trace
+      console.error('💥 Non-API Error:', {
         name: error.name,
         message: error.message,
-        stack: error.stack
+        stack: error.stack?.split('\n').slice(0, 3)
       });
+      
       res.status(500).json({
         error: 'Internal server error',
         name: error.name,
-        message: error.message
+        message: error.message,
+        hint: 'Check server logs for more details'
       });
     }
   }
