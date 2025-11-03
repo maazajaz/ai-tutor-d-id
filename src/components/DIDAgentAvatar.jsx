@@ -116,7 +116,7 @@ const DIDAgentAvatar = () => {
 
   // Use Amber agent (Important: Agent ID is tied to the API key - if you change the API key, update this ID too!)
   // To find agents for your current API key: run `node server/createAgent.js list`
-  const CUSTOM_AGENT_ID = "v2_agt_yroPgS0q"; // Amber - Live streaming agent with idle animations (New account)
+  const CUSTOM_AGENT_ID = "v2_agt_fulyq8dr"; // Amber - Live streaming agent with idle animations (New account)
 
   // Utility function for API calls with better retry logic
   const fetchWithRetry = async (url, options, retries = 5, backoffMs = 1000) => {
