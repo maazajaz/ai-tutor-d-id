@@ -4,6 +4,9 @@ const { Configuration, OpenAIApi } = require('openai');
 // Initialize OpenAI configuration
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
+  defaultHeaders: {
+    'OpenAI-Beta': 'project',
+  },
 });
 const openai = new OpenAIApi(configuration);
 
@@ -66,17 +69,30 @@ module.exports = async (req, res) => {
 
   } catch (error) {
     console.error('Error in diagram analysis:', error);
+    console.error('API Key Check:', process.env.OPENAI_API_KEY ? 'Present' : 'Missing');
     
     // Check if it's an OpenAI API error
     if (error.response) {
-      console.error(error.response.status, error.response.data);
+      console.error('OpenAI API Error:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers
+      });
       res.status(error.response.status).json({
         error: 'OpenAI API error',
-        details: error.response.data
+        details: error.response.data,
+        message: error.response.statusText
       });
     } else {
+      console.error('Non-API Error:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       res.status(500).json({
         error: 'Internal server error',
+        name: error.name,
         message: error.message
       });
     }
