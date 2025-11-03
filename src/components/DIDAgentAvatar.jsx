@@ -31,18 +31,58 @@ const DIDAgentAvatar = () => {
 
   // Initialize audio processor
   useEffect(() => {
+    let isMounted = true;
+    
     const initAudio = async () => {
-      const { AudioProcessor } = await import('../utils/audioProcessor');
-      audioProcessorRef.current = new AudioProcessor();
-      await audioProcessorRef.current.initialize();
+      try {
+        // Only proceed if still mounted and audio not already initialized
+        if (!isMounted || audioProcessorRef.current) return;
+        
+        console.log('🎵 Initializing audio processor...');
+        const { AudioProcessor } = await import('../utils/audioProcessor');
+        const processor = new AudioProcessor();
+        await processor.initialize();
+        
+        // Only set ref if still mounted
+        if (!isMounted) {
+          processor.cleanup();
+          return;
+        }
+        
+        audioProcessorRef.current = processor;
+        
+        // Connect to video element if it exists and audio is enabled
+        if (videoRef.current && audioEnabled) {
+          console.log('🔊 Connecting audio processor to video');
+          processor.connectAgentAudio(videoRef.current);
+          await processor.startMicrophoneMonitoring();
+        }
+        
+        console.log('✅ Audio processor initialized successfully');
+      } catch (error) {
+        console.error('❌ Error initializing audio processor:', error);
+        // Clean up on error if still mounted
+        if (isMounted && audioProcessorRef.current) {
+          audioProcessorRef.current.cleanup();
+          audioProcessorRef.current = null;
+        }
+      }
     };
     
-    initAudio();
+    // Only initialize if audio is enabled
+    if (audioEnabled) {
+      initAudio();
+    }
     
     return () => {
-      audioProcessorRef.current?.cleanup();
+      isMounted = false;
+      if (audioProcessorRef.current) {
+        console.log('🧹 Cleaning up audio processor');
+        audioProcessorRef.current.cleanup();
+        audioProcessorRef.current = null;
+      }
     };
-  }, []);
+  }, [audioEnabled]); // Re-run when audio is enabled
   
   // Backend URL for proxying D-ID requests (to avoid CORS)
   const getBackendUrl = () => {
@@ -76,7 +116,7 @@ const DIDAgentAvatar = () => {
 
   // Use Amber agent (Important: Agent ID is tied to the API key - if you change the API key, update this ID too!)
   // To find agents for your current API key: run `node server/createAgent.js list`
-  const CUSTOM_AGENT_ID = "v2_agt_E_R-le__"; // Amber - Live streaming agent with idle animations (New account)
+  const CUSTOM_AGENT_ID = "v2_agt_roNuzlYX"; // Amber - Live streaming agent with idle animations (New account)
 
   // Utility function for API calls with better retry logic
   const fetchWithRetry = async (url, options, retries = 5, backoffMs = 1000) => {
@@ -248,6 +288,12 @@ const DIDAgentAvatar = () => {
         videoRef.current.srcObject = stream;
         // Ensure video plays
         videoRef.current.play().catch(e => console.error('❌ Video play error:', e));
+        
+        // Connect audio processor to video if available
+        if (audioProcessorRef.current && audioEnabled) {
+          console.log('🔊 Connecting audio processor to new video track');
+          audioProcessorRef.current.connectAgentAudio(videoRef.current);
+        }
         
         // Monitor video activity to switch between idle and speaking
         if (track) {
@@ -634,36 +680,56 @@ const DIDAgentAvatar = () => {
     };
   }, []); // Empty dependency array - only run once on mount
 
-  // Handle incoming messages
+  // Handle incoming messages with enhanced audio state tracking
   useEffect(() => {
     if (!message) return; // No message to process
     
     console.log('🔄 Processing message:', message);
     
-    if (!isConnected) {
-      console.warn('⚠️ Message received but agent not connected, attempting reconnection...');
-      initializeAgent().then(() => {
-        if (message.userQuestion) {
-          speakWithAgent(message.userQuestion);
-        } else if (message.text) {
-          speakWithAgent(message.text);
+    const handleMessage = async () => {
+      if (!isConnected) {
+        console.warn('⚠️ Message received but agent not connected, attempting reconnection...');
+        await initializeAgent();
+      }
+      
+      if (isConnected) {
+        // Notify audio processor that agent will speak
+        if (audioProcessorRef.current) {
+          console.log('🔊 Notifying audio processor of agent speech start');
+          audioProcessorRef.current.setAgentPlaybackState(true);
         }
-      });
-      return;
-    }
+        
+        try {
+          // Send message to agent
+          if (message.userQuestion) {
+            console.log('📝 Sending user question to agent:', message.userQuestion);
+            await speakWithAgent(message.userQuestion);
+          } else if (message.text) {
+            console.log('📝 Using message text:', message.text);
+            await speakWithAgent(message.text);
+          } else {
+            throw new Error('Invalid message format');
+          }
+        } catch (error) {
+          console.error('❌ Error speaking with agent:', error);
+          onMessagePlayed();
+        } finally {
+          // Reset agent speech state after message is processed
+          if (audioProcessorRef.current) {
+            console.log('🔊 Resetting agent speech state');
+            audioProcessorRef.current.setAgentPlaybackState(false);
+          }
+        }
+      } else {
+        console.warn('⚠️ Could not establish connection');
+        onMessagePlayed(); // Skip message if we can't connect
+      }
+    };
     
-    if (message.userQuestion) {
-      // Send the original user question to the agent
-      console.log('📝 Sending user question to agent:', message.userQuestion);
-      speakWithAgent(message.userQuestion);
-    } else if (message.text) {
-      // Fallback: use message text if no userQuestion
-      console.log('📝 Using message text:', message.text);
-      speakWithAgent(message.text);
-    } else {
-      console.warn('⚠️ Invalid message format:', message);
-      onMessagePlayed(); // Skip invalid messages
-    }
+    handleMessage().catch(error => {
+      console.error('❌ Error in message handler:', error);
+      onMessagePlayed();
+    });
   }, [message, isConnected]);
 
   // Handle idle video playback
@@ -698,27 +764,64 @@ const DIDAgentAvatar = () => {
   // Enable audio after user interaction
   const enableAudio = async () => {
     console.log('🔊 Enabling audio after user interaction...');
-    setAudioEnabled(true);
     
     try {
+      // First try to get microphone permission
+      console.log('🎤 Requesting microphone access...');
+      await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      
+      // Only proceed if we got microphone access
+      console.log('✅ Microphone access granted');
+      setAudioEnabled(true);
+      
+      // Give audio processor time to initialize
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Connect audio processor to video element
       if (audioProcessorRef.current && videoRef.current) {
-        audioProcessorRef.current.connectAgentAudio(videoRef.current);
+        console.log('🔊 Connecting audio processor to video');
+        await audioProcessorRef.current.connectAgentAudio(videoRef.current);
         await audioProcessorRef.current.startMicrophoneMonitoring();
         console.log('✅ Audio processing active');
+      } else {
+        console.warn('⚠️ Audio processor or video not ready');
       }
       
-      // Unmute videos
-      if (videoRef.current) {
-        videoRef.current.muted = false;
-        videoRef.current.play().catch(e => console.error('❌ Video play error:', e));
+      // Unmute and play videos
+      const playVideos = async () => {
+        if (videoRef.current) {
+          videoRef.current.muted = false;
+          await videoRef.current.play().catch(e => {
+            console.error('❌ Video play error:', e);
+            return false;
+          });
+        }
+        if (idleVideoRef.current) {
+          idleVideoRef.current.muted = false;
+          await idleVideoRef.current.play().catch(e => {
+            console.error('❌ Idle video play error:', e);
+            return false;
+          });
+        }
+        return true;
+      };
+      
+      // Try playing videos a few times with delay
+      for (let i = 0; i < 3; i++) {
+        if (await playVideos()) break;
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
-      if (idleVideoRef.current) {
-        idleVideoRef.current.muted = false;
-        idleVideoRef.current.play().catch(e => console.error('❌ Idle video play error:', e));
-      }
+      
     } catch (error) {
       console.error('❌ Error enabling audio:', error);
+      // Reset audio enabled state on error
+      setAudioEnabled(false);
     }
   };
 
