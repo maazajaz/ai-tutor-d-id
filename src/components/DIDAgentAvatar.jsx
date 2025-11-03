@@ -23,10 +23,26 @@ const DIDAgentAvatar = () => {
   const sessionTimeoutRef = useRef(null); // Track session timeout
   
   const { message, onMessagePlayed, loading, updateAgentResponse } = useChat();
+  const audioProcessorRef = useRef(null);
 
   // D-ID API configuration
   const DID_API_KEY = import.meta.env.VITE_DID_API_KEY;
   const API_URL = "https://api.d-id.com";
+
+  // Initialize audio processor
+  useEffect(() => {
+    const initAudio = async () => {
+      const { AudioProcessor } = await import('../utils/audioProcessor');
+      audioProcessorRef.current = new AudioProcessor();
+      await audioProcessorRef.current.initialize();
+    };
+    
+    initAudio();
+    
+    return () => {
+      audioProcessorRef.current?.cleanup();
+    };
+  }, []);
   
   // Backend URL for proxying D-ID requests (to avoid CORS)
   const getBackendUrl = () => {
@@ -680,18 +696,29 @@ const DIDAgentAvatar = () => {
   };
 
   // Enable audio after user interaction
-  const enableAudio = () => {
+  const enableAudio = async () => {
     console.log('🔊 Enabling audio after user interaction...');
     setAudioEnabled(true);
     
-    // Unmute videos
-    if (videoRef.current) {
-      videoRef.current.muted = false;
-      videoRef.current.play().catch(e => console.error('❌ Video play error:', e));
-    }
-    if (idleVideoRef.current) {
-      idleVideoRef.current.muted = false;
-      idleVideoRef.current.play().catch(e => console.error('❌ Idle video play error:', e));
+    try {
+      // Connect audio processor to video element
+      if (audioProcessorRef.current && videoRef.current) {
+        audioProcessorRef.current.connectAgentAudio(videoRef.current);
+        await audioProcessorRef.current.startMicrophoneMonitoring();
+        console.log('✅ Audio processing active');
+      }
+      
+      // Unmute videos
+      if (videoRef.current) {
+        videoRef.current.muted = false;
+        videoRef.current.play().catch(e => console.error('❌ Video play error:', e));
+      }
+      if (idleVideoRef.current) {
+        idleVideoRef.current.muted = false;
+        idleVideoRef.current.play().catch(e => console.error('❌ Idle video play error:', e));
+      }
+    } catch (error) {
+      console.error('❌ Error enabling audio:', error);
     }
   };
 

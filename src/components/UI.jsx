@@ -218,23 +218,9 @@ Come on, you got this! What's your answer? 🎮"]`;
       recognitionInstance.onresult = (event) => {
         const last = event.results.length - 1;
         const transcript = event.results[last][0].transcript;
-        const confidence = event.results[last][0].confidence;
         
         if (event.results[last].isFinal) {
-          console.log('🎤 Final transcript:', transcript, 'Confidence:', confidence);
-          
-          // Ignore transcripts that might be from the agent:
-          // 1. When agent is speaking and confidence is low
-          // 2. Low confidence (usually means it's picking up audio from speakers)
-          if (isAgentSpeaking && confidence < 0.75) {
-            console.log('🔇 Ignoring low confidence transcript while agent is speaking');
-            return;
-          }
-          
-          if (!isAgentSpeaking && confidence < 0.5) {
-            console.log('🔇 Ignoring very low confidence transcript');
-            return;
-          }
+          console.log('🎤 Final transcript:', transcript);
           
           // Update input field
           if (input.current) {
@@ -247,9 +233,9 @@ Come on, you got this! What's your answer? 🎮"]`;
             isProcessing = true;
             console.log('📤 Sending in live mode:', transcript);
             
-            // If agent is speaking and we have high confidence, interrupt them
-            if (isAgentSpeaking && confidence > 0.75) {
-              console.log('⚠️ High confidence user speech - interrupting agent');
+            // Let audio processor handle ducking automatically
+            if (isAgentSpeaking) {
+              console.log('⚠️ User speaking - agent audio will duck automatically');
               setIsAgentSpeaking(false);
             }
             
