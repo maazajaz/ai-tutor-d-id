@@ -52,7 +52,10 @@ const CodeEditor = ({ problem, onComplete }) => {
     setTestResults([]);
 
     try {
-      const response = await fetch('http://localhost:3000/api/execute-code', {
+      // Use environment variable or relative URL for API calls
+      const apiUrl = import.meta.env.VITE_API_URL || '/api/execute-code';
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -123,7 +126,11 @@ const CodeEditor = ({ problem, onComplete }) => {
     try {
       setOutput('🤖 Generating AI explanation...\n');
       
-      const response = await fetch('http://localhost:3000/api/explain-solution', {
+      // Use environment variable or relative URL for API calls
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const explainUrl = `${apiUrl}/api/explain-solution`;
+      
+      const response = await fetch(explainUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
