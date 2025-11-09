@@ -52,9 +52,8 @@ const CodeEditor = ({ problem, onComplete }) => {
     setTestResults([]);
 
     try {
-      // Use relative URL for API calls (works in both local and production)
-      const apiUrl = import.meta.env.VITE_API_URL || '';
-      const executeUrl = apiUrl ? `${apiUrl}/api/execute-code` : '/api/execute-code';
+      // Always use relative URL for API calls in production
+      const executeUrl = '/api/execute-code';
       
       const response = await fetch(executeUrl, {
         method: 'POST',
@@ -127,9 +126,8 @@ const CodeEditor = ({ problem, onComplete }) => {
     try {
       setOutput('🤖 Generating AI explanation...\n');
       
-      // Use environment variable or relative URL for API calls
-      const apiUrl = import.meta.env.VITE_API_URL || '';
-      const explainUrl = `${apiUrl}/api/explain-solution`;
+      // Always use relative URL for API calls
+      const explainUrl = '/api/explain-solution';
       
       const response = await fetch(explainUrl, {
         method: 'POST',
