@@ -14,6 +14,7 @@ import LoadingScreen from "./components/LoadingScreen";
 const Dashboard = lazy(() => import("./components/Dashboard").then(module => ({ default: module.Dashboard })));
 const EmotionDebug = lazy(() => import("./components/EmotionDebug").then(module => ({ default: module.EmotionDebug })));
 const CollaborativeStudy = lazy(() => import("./components/CollaborativeStudy").then(module => ({ default: module.CollaborativeStudy })));
+const PracticeProblems = lazy(() => import("./components/PracticeProblems"));
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -28,7 +29,7 @@ const ComponentLoader = () => (
 // Main App Content (when authenticated)
 const AppContent = () => {
   const { user, profile, signOut, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' or 'chat'
+  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'chat', 'practice'
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showChat, setShowChat] = useState(true); // Chat visibility state
@@ -102,11 +103,12 @@ const AppContent = () => {
   // Render both views but toggle visibility to prevent remounting
   return (
     <>
-      {/* Dashboard View - Hidden when chat is active */}
+      {/* Dashboard View - Hidden when chat/practice is active */}
       <div style={{ display: currentView === 'dashboard' ? 'block' : 'none' }}>
         <Suspense fallback={<ComponentLoader />}>
           <Dashboard 
             onNavigateToChat={() => setCurrentView('chat')}
+            onNavigateToPractice={() => setCurrentView('practice')}
             onNavigateToCustomize={() => {
               // Navigate to chat and open sidebar with settings
               setCurrentView('chat');
@@ -117,7 +119,26 @@ const AppContent = () => {
         </Suspense>
       </div>
 
-      {/* Chat View - Hidden when dashboard is active */}
+      {/* Practice Problems View */}
+      <div style={{ display: currentView === 'practice' ? 'block' : 'none' }}>
+        <Suspense fallback={<ComponentLoader />}>
+          <div className="relative h-screen">
+            {/* Back to Dashboard Button */}
+            <button
+              onClick={() => setCurrentView('dashboard')}
+              className="absolute top-4 left-4 z-50 px-4 py-2 bg-white hover:bg-gray-100 text-gray-800 rounded-lg shadow-md transition-colors flex items-center gap-2 font-semibold"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Dashboard
+            </button>
+            <PracticeProblems />
+          </div>
+        </Suspense>
+      </div>
+
+      {/* Chat View - Hidden when dashboard/practice is active */}
       <div style={{ display: currentView === 'chat' ? 'block' : 'none' }}>
         <div className="w-screen flex flex-col lg:flex-row bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden fixed inset-0" style={{ height: '100dvh' }}>
       <Loader />

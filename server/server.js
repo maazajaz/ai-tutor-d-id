@@ -887,6 +887,179 @@ Remember to include ALL sections in your response with the exact format specifie
   }
 });
 
+// Code execution endpoint for practice problems
+app.post("/api/execute-code", async (req, res) => {
+  try {
+    const { code, language, testCases, problemId } = req.body;
+    console.log('🏃 Executing code for problem:', problemId);
+
+    // For now, we'll use a simple Python executor
+    // In production, use a sandboxed environment like Judge0 API or Docker containers
+    
+    if (language === 'python') {
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+      const fs = await import('fs');
+      const path = await import('path');
+      const os = await import('os');
+
+      // Create a temporary file
+      const tmpDir = os.tmpdir();
+      const tmpFile = path.join(tmpDir, `code_${Date.now()}.py`);
+      
+      // Write code to temp file
+      fs.writeFileSync(tmpFile, code);
+
+      try {
+        // Execute with timeout
+        const { stdout, stderr } = await execAsync(`python "${tmpFile}"`, {
+          timeout: 5000, // 5 second timeout
+          maxBuffer: 1024 * 1024 // 1MB max output
+        });
+
+        // Clean up
+        fs.unlinkSync(tmpFile);
+
+        // Run test cases if provided
+        let testResults = [];
+        if (testCases && testCases.length > 0) {
+          testResults = await runTestCases(code, testCases, language);
+        }
+
+        res.json({
+          output: stdout || stderr,
+          testResults,
+          success: !stderr
+        });
+      } catch (execError) {
+        // Clean up on error
+        if (fs.existsSync(tmpFile)) {
+          fs.unlinkSync(tmpFile);
+        }
+
+        res.json({
+          error: execError.message || execError.stderr || 'Execution error',
+          output: execError.stdout || '',
+          testResults: []
+        });
+      }
+    } else {
+      res.status(400).json({
+        error: `Language ${language} is not supported yet. Currently only Python is supported.`
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error executing code:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper function to run test cases
+async function runTestCases(code, testCases, language) {
+  const results = [];
+  
+  for (const testCase of testCases) {
+    try {
+      // Extract function name from code
+      const functionMatch = code.match(/def\s+(\w+)\s*\(/);
+      if (!functionMatch) {
+        results.push({
+          passed: false,
+          error: 'Could not find function definition',
+          input: JSON.stringify(testCase.input),
+          expected: JSON.stringify(testCase.expected),
+          actual: 'N/A'
+        });
+        continue;
+      }
+
+      const functionName = functionMatch[1];
+      
+      // Build test code
+      const inputArgs = Array.isArray(testCase.input) 
+        ? testCase.input.map(arg => JSON.stringify(arg)).join(', ')
+        : JSON.stringify(testCase.input);
+      
+      const testCode = `${code}\n\nresult = ${functionName}(${inputArgs})\nprint(result)`;
+
+      // Execute test
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+      const fs = await import('fs');
+      const path = await import('path');
+      const os = await import('os');
+
+      const tmpDir = os.tmpdir();
+      const tmpFile = path.join(tmpDir, `test_${Date.now()}.py`);
+      fs.writeFileSync(tmpFile, testCode);
+
+      const { stdout, stderr } = await execAsync(`python "${tmpFile}"`, {
+        timeout: 2000,
+        maxBuffer: 1024 * 1024
+      });
+
+      fs.unlinkSync(tmpFile);
+
+      const actualOutput = stdout.trim();
+      const expectedOutput = String(testCase.expected);
+
+      results.push({
+        passed: actualOutput === expectedOutput,
+        input: JSON.stringify(testCase.input),
+        expected: expectedOutput,
+        actual: actualOutput,
+        error: stderr || null
+      });
+    } catch (error) {
+      results.push({
+        passed: false,
+        error: error.message,
+        input: JSON.stringify(testCase.input),
+        expected: JSON.stringify(testCase.expected),
+        actual: 'Error'
+      });
+    }
+  }
+
+  return results;
+}
+
+// AI explanation endpoint for practice problems
+app.post("/api/explain-solution", async (req, res) => {
+  try {
+    const { problemId, userCode, problemDescription } = req.body;
+    console.log('🤖 Generating AI explanation for problem:', problemId);
+
+    if (!openai) {
+      return res.status(500).json({ error: 'OpenAI API not configured' });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert programming tutor who explains code concepts clearly and encouragingly. Break down solutions step-by-step and highlight key programming concepts."
+        },
+        {
+          role: "user",
+          content: `Problem: ${problemDescription}\n\nUser's Code:\n${userCode}\n\nPlease explain this solution step-by-step, covering:\n1. The approach taken\n2. How it works (line by line if helpful)\n3. Time and space complexity\n4. Any potential improvements or alternative approaches\n\nBe encouraging and educational!`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+
+    const explanation = completion.choices[0].message.content;
+    res.json({ explanation });
+  } catch (error) {
+    console.error('❌ Error generating explanation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start server only in local development (not on Vercel)
 if (process.env.NODE_ENV !== 'production') {
   app.listen(port, () => {

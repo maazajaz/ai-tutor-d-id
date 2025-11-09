@@ -6,7 +6,7 @@ import { RecentConversations } from './RecentConversations'
 import { QuizGenerator } from './QuizGenerator'
 import { DashboardLoader } from './DashboardLoader'
 
-export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenCollabStudy }) => {
+export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenCollabStudy, onNavigateToPractice }) => {
   const { user, profile } = useAuth()
   const { initialLoading } = useChat()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -203,6 +203,40 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
               <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+          </button>
+
+          {/* Practice Problems Card - NEW */}
+          <button
+            onClick={onNavigateToPractice}
+            className="group bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl md:rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-4 md:p-6 text-left border-2 border-transparent hover:border-orange-500 transform hover:-translate-y-1"
+          >
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-orange-500 to-yellow-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
+                💻
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-orange-100 text-orange-600 text-xs font-semibold rounded-full">
+                  NEW
+                </span>
+                <div className="w-7 h-7 md:w-8 md:h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
+              Practice Problems
+            </h3>
+            <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4">
+              Solve coding challenges with a built-in code editor and AI-powered hints
+            </p>
+            <div className="flex items-center gap-2 text-xs md:text-sm text-orange-600 font-medium">
+              <span>Start Coding</span>
+              <svg className="w-3 h-3 md:w-4 md:h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </div>
           </button>
