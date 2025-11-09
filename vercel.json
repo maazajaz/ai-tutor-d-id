@@ -35,6 +35,14 @@
       "dest": "/api/analyze-diagram.js"
     },
     {
+      "src": "/api/execute-code",
+      "dest": "/api/execute-code.js"
+    },
+    {
+      "src": "/api/explain-solution",
+      "dest": "/api/explain-solution.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server/server.js"
     },

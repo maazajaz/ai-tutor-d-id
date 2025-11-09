@@ -52,10 +52,11 @@ const CodeEditor = ({ problem, onComplete }) => {
     setTestResults([]);
 
     try {
-      // Use environment variable or relative URL for API calls
-      const apiUrl = import.meta.env.VITE_API_URL || '/api/execute-code';
+      // Use relative URL for API calls (works in both local and production)
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const executeUrl = apiUrl ? `${apiUrl}/api/execute-code` : '/api/execute-code';
       
-      const response = await fetch(apiUrl, {
+      const response = await fetch(executeUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
