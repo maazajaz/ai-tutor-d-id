@@ -9,6 +9,7 @@ import OpenAI from "openai";
 import { YoutubeTranscript } from "youtube-transcript";
 import { Innertube } from "youtubei.js";
 import didService from "./didService.js";
+import { fetchEducationalImage } from "./imageService.js";
 dotenv.config();
 
 const didApiKey = process.env.DID_API_KEY;
@@ -413,12 +414,12 @@ Make the notes clear, concise, and easy to review for studying.`
   }
 });
 
-// Analyze chat conversation and generate diagram instructions
+// Analyze chat conversation and generate diagram instructions OR fetch/generate image
 app.post("/api/analyze-diagram", async (req, res) => {
   try {
     const { chatText } = req.body;
     
-    console.log('📊 Analyzing chat for diagram generation...');
+    console.log('📊 Analyzing chat for visual content generation...');
     
     if (!chatText) {
       return res.status(400).send({ error: 'No chat text provided' });
@@ -430,7 +431,57 @@ app.post("/api/analyze-diagram", async (req, res) => {
     // Analyze the chat text
     const result = await analyzeDiagram(chatText);
     
-    console.log(`✅ Diagram analysis complete: ${result.diagramType} with ${result.elements.length} elements`);
+    console.log(`✅ Analysis complete:`, result);
+    
+    // If it's a DALL-E educational image request, generate with DALL-E
+    if (result.diagramType === 'dalle_image' && result.imagePrompt) {
+      console.log('🎨 DALL-E educational image requested, generating...');
+      
+      try {
+        const imageResult = await fetchEducationalImage(result.imagePrompt, 'dalle');
+        
+        return res.send({
+          ...result,
+          imageUrl: imageResult.imageUrl,
+          imageSource: imageResult.source,
+          imageAttribution: imageResult.attribution,
+          revisedPrompt: imageResult.revisedPrompt
+        });
+      } catch (imageError) {
+        console.error('❌ Error generating DALL-E image:', imageError);
+        // Fall back to diagram if DALL-E fails
+        result.diagramType = 'diagram';
+        result.elements = [
+          { text: 'Image generation failed', type: 'component' },
+          { text: `Tried to generate: ${result.imagePrompt}`, type: 'component' }
+        ];
+      }
+    }
+    
+    // If it's a stock photo request, fetch from Unsplash/Pexels
+    if (result.diagramType === 'image' && result.imageQuery) {
+      console.log('🖼️ Stock photo requested, fetching from source...');
+      
+      try {
+        const imageResult = await fetchEducationalImage(result.imageQuery);
+        
+        return res.send({
+          ...result,
+          imageUrl: imageResult.imageUrl,
+          imageSource: imageResult.source,
+          imageAttribution: imageResult.attribution,
+          imageAttributionUrl: imageResult.attributionUrl
+        });
+      } catch (imageError) {
+        console.error('❌ Error fetching image:', imageError);
+        // Fall back to diagram if image fetch fails
+        result.diagramType = 'diagram';
+        result.elements = [
+          { text: 'Image fetch failed', type: 'component' },
+          { text: `Searched for: ${result.imageQuery}`, type: 'component' }
+        ];
+      }
+    }
     
     res.send(result);
     

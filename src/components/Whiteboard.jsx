@@ -501,7 +501,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
     }
   };
 
-  // Handle asking a question and generating diagram
+  // Handle asking a question and generating diagram OR fetching image
   const handleAskQuestion = async (question = userInput) => {
     if (!question.trim()) return;
 
@@ -514,7 +514,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
         onAskQuestion(question);
       }
 
-      // Analyze the question to determine diagram type and elements
+      // Analyze the question to determine diagram type, image request, or elements
       const analysisResponse = await fetch('/api/analyze-diagram', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -532,32 +532,142 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
       const result = await analysisResponse.json();
       console.log('Analysis result:', result);
       
-      const { diagramType, elements } = result;
+      const { diagramType, elements, imageUrl, imageSource, imageAttribution, imageAttributionUrl, imagePrompt, revisedPrompt } = result;
       
-      if (!elements || !Array.isArray(elements)) {
-        console.error('Invalid elements in response:', result);
-        throw new Error('Invalid diagram data received');
-      }
-
       // Calculate position for new content (append below existing content)
       const lastBlock = contentBlocks[contentBlocks.length - 1];
       const positionY = lastBlock 
         ? (lastBlock.position_y || 0) + (lastBlock.height || 600) + 60  // 60px gap
         : 60; // Start 60px from top
       
+      // Handle IMAGE type (both DALL-E and stock photos)
+      if ((diagramType === 'image' || diagramType === 'dalle_image') && imageUrl) {
+        console.log(`🖼️ Displaying ${diagramType === 'dalle_image' ? 'DALL-E generated' : 'stock photo'} image:`, imageUrl);
+        
+        const blockHeight = 600; // Fixed height for images
+        const requiredHeight = positionY + blockHeight + 600;
+        
+        if (requiredHeight > canvasHeight) {
+          setCanvasHeight(requiredHeight);
+        }
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        
+        // Make sure canvas is tall enough
+        if (canvas.height < requiredHeight) {
+          const oldImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          canvas.height = requiredHeight;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.putImageData(oldImageData, 0, 0);
+        }
+        
+        // Load and draw the image
+        const img = new Image();
+        img.crossOrigin = 'anonymous'; // Enable CORS
+        
+        img.onload = async () => {
+          // Save context and translate to new position
+          ctx.save();
+          ctx.translate(0, positionY);
+          
+          // Calculate scaling to fit canvas width while maintaining aspect ratio
+          const scale = Math.min(canvas.width / img.width, blockHeight / img.height);
+          const scaledWidth = img.width * scale;
+          const scaledHeight = img.height * scale;
+          
+          // Center the image horizontally
+          const xOffset = (canvas.width - scaledWidth) / 2;
+          
+          // Draw white background
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, blockHeight);
+          
+          // Draw the image
+          ctx.drawImage(img, xOffset, (blockHeight - scaledHeight) / 2, scaledWidth, scaledHeight);
+          
+          // Add attribution text at bottom
+          if (imageAttribution) {
+            ctx.fillStyle = '#666666';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(imageAttribution, canvas.width / 2, blockHeight - 10);
+          }
+          
+          ctx.restore();
+
+          // Capture this section of canvas as image
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = canvas.width;
+          tempCanvas.height = blockHeight;
+          const tempCtx = tempCanvas.getContext('2d');
+          tempCtx.drawImage(canvas, 0, positionY, canvas.width, blockHeight, 0, 0, canvas.width, blockHeight);
+          const canvasData = tempCanvas.toDataURL('image/png');
+
+          // Save to database if session exists
+          if (whiteboardSessionId) {
+            const { data: savedContent, error } = await saveWhiteboardContent(whiteboardSessionId, {
+              contentType: 'image',
+              diagramType: diagramType === 'dalle_image' ? 'dalle_image' : 'image',
+              question,
+              aiResponse: diagramType === 'dalle_image' 
+                ? `AI-Generated Educational Illustration${revisedPrompt ? ': ' + revisedPrompt : ''}` 
+                : `${imageSource ? `Source: ${imageSource}` : ''} ${imageAttribution || 'Educational image'}`,
+              canvasData,
+              elements: [],
+              positionY,
+              height: blockHeight,
+              canvasWidth: canvas.width,
+              imageUrl,
+              imageSource: imageSource || 'DALL-E',
+              imageAttribution: imageAttribution || 'Generated by AI',
+              imagePrompt: imagePrompt || revisedPrompt
+            });
+
+            if (error) {
+              console.error('Error saving content:', error);
+            } else if (savedContent) {
+              setContentBlocks(prev => [...prev, savedContent]);
+              setCurrentContentId(savedContent.id);
+            }
+          }
+          
+          // Scroll to show the image
+          setTimeout(() => {
+            if (containerRef.current) {
+              containerRef.current.scrollTop = positionY - 50;
+            }
+          }, 100);
+        };
+        
+        img.onerror = () => {
+          console.error('Failed to load image');
+          alert('Failed to load image. Please try again.');
+        };
+        
+        img.src = imageUrl;
+        
+        setUserInput('');
+        setIsGenerating(false);
+        return; // Exit early for image handling
+      }
+      
+      // Handle DIAGRAM types (existing logic)
+      if (!elements || !Array.isArray(elements)) {
+        console.error('Invalid elements in response:', result);
+        throw new Error('Invalid diagram data received');
+      }
+
       // Calculate dynamic block height based on diagram type and elements
       let blockHeight = 550; // Default
       if (diagramType === 'flowchart') {
-        // Flowchart: 100px top padding + (70px box + 80px spacing) * steps + 100px bottom
         blockHeight = Math.max(550, 100 + (elements.length * 150) + 100);
       } else if (diagramType === 'mindmap') {
-        // Mind map needs more space for radial layout
         blockHeight = Math.max(600, 400 + (elements.length * 30));
       } else if (diagramType === 'graph') {
-        // Bar graph is fairly compact
         blockHeight = 500;
       }
-      // Cap maximum height to prevent extremely large diagrams
       blockHeight = Math.min(blockHeight, 1200);
 
       // Expand canvas if needed
@@ -610,18 +720,16 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
           elements,
           positionY,
           height: blockHeight,
-          canvasWidth: canvas.width  // Save current canvas width for scaling
+          canvasWidth: canvas.width
         });
 
         if (error) {
           console.error('Error saving content:', error);
         } else if (savedContent) {
-          // Add to local state
           setContentBlocks(prev => [...prev, savedContent]);
           setCurrentContentId(savedContent.id);
         }
       } else {
-        // No session yet, just add to local state
         setContentBlocks(prev => [...prev, {
           id: Date.now(),
           content_type: 'diagram',
@@ -642,7 +750,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
       // Scroll to show the top of the diagram
       setTimeout(() => {
         if (containerRef.current) {
-          containerRef.current.scrollTop = positionY - 50; // Show diagram from top
+          containerRef.current.scrollTop = positionY - 50;
         }
       }, 100);
 
@@ -652,7 +760,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
       }
     } catch (error) {
       console.error('Failed to generate diagram:', error);
-      alert('Error: Failed to generate diagram. Please try again.');
+      alert('Error: Failed to generate content. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -1119,11 +1227,12 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
                 <div className="max-w-4xl mx-4 md:mx-auto bg-white rounded-lg shadow-lg p-4 border-2 border-purple-200">
                   <div className="flex items-start gap-3">
                     <div className="text-3xl flex-shrink-0">
+                      {(block.diagram_type === 'image' || block.diagram_type === 'dalle_image') && '🖼️'}
                       {block.diagram_type === 'flowchart' && '📊'}
                       {block.diagram_type === 'mindmap' && '🧠'}
                       {block.diagram_type === 'graph' && '📈'}
                       {block.diagram_type === 'equation' && '🔢'}
-                      {!['flowchart', 'mindmap', 'graph', 'equation'].includes(block.diagram_type) && '📝'}
+                      {!['image', 'dalle_image', 'flowchart', 'mindmap', 'graph', 'equation'].includes(block.diagram_type) && '📝'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-lg text-gray-900 mb-1 break-words">
@@ -1133,9 +1242,20 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
                         {block.ai_response}
                       </p>
                       <div className="flex flex-wrap gap-2 items-center">
-                        <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
-                          {block.diagram_type}
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          block.diagram_type === 'dalle_image'
+                            ? 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700'
+                            : block.diagram_type === 'image' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {block.diagram_type === 'dalle_image' ? '🎨 AI Generated' : block.diagram_type}
                         </span>
+                        {block.image_source && block.diagram_type !== 'dalle_image' && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                            {block.image_source}
+                          </span>
+                        )}
                         <span className="text-xs text-gray-500">
                           {new Date(block.created_at).toLocaleString()}
                         </span>
@@ -1245,8 +1365,25 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
 
       {/* Info Badge - Updated position to avoid input area */}
       {contentBlocks.length === 0 && !userInput && !isGenerating && (
-        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-yellow-100 border border-yellow-300 rounded-lg px-4 py-2 text-sm text-yellow-800 z-40">
-          💡 Ask any question and I'll draw the explanation as a diagram!
+        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-400 rounded-xl px-6 py-3 text-sm text-gray-800 z-40 shadow-lg max-w-md">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">💡</span>
+            <span className="font-bold text-yellow-800">Smart Whiteboard</span>
+          </div>
+          <div className="space-y-1 text-xs">
+            <div className="flex items-start gap-2">
+              <span className="text-green-600">🖼️</span>
+              <span>Ask about <strong>real objects</strong> → Unsplash photos!</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-purple-600">🎨</span>
+              <span>Ask <strong>how to calculate/explain</strong> → AI diagrams!</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-blue-600">📊</span>
+              <span>Ask about <strong>processes/steps</strong> → Flowcharts!</span>
+            </div>
+          </div>
         </div>
       )}
     </div>

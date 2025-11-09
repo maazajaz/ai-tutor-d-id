@@ -13,9 +13,9 @@ const openai = process.env.OPENAI_API_KEY
   : null;
 
 /**
- * Analyze chat text and determine appropriate diagram type using AI
+ * Analyze chat text and determine appropriate diagram type or image using AI
  * @param {string} chatText - The chat conversation text
- * @returns {Promise<{diagramType: string, elements: Array}>}
+ * @returns {Promise<{diagramType: string, elements: Array, imageQuery?: string, shouldGenerateImage?: boolean}>}
  */
 async function analyzeDiagram(chatText) {
   try {
@@ -34,35 +34,61 @@ async function analyzeDiagram(chatText) {
 }
 
 /**
- * Use OpenAI to intelligently analyze and generate diagram
+ * Use OpenAI to intelligently analyze and generate diagram or determine if image is better
  */
 async function analyzeWithAI(chatText) {
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
     messages: [{
       role: "system",
-      content: `You are a diagram generation expert. Analyze the user's question and generate appropriate diagram data.
+      content: `You are a visual content expert for educational content. Analyze the user's question and decide the best visual representation.
 
-Rules:
-1. Determine the best diagram type: flowchart, mindmap, graph, or diagram
-2. Extract or generate relevant elements from the question
-3. For flowcharts: Create 5-8 sequential steps
-4. For mindmaps: Create a center concept and 4-7 related nodes  
-5. For graphs: Create 4-6 data points with values
-6. Return ONLY valid JSON, no markdown or explanation
+CRITICAL DECISION RULES:
+
+1. USE DALL-E IMAGE GENERATION FOR:
+   - Mathematical concepts/explanations (geometry, algebra, calculus)
+   - Scientific processes/concepts (physics, chemistry, biology diagrams)
+   - Educational explanations that need custom illustration
+   - Abstract concepts that need visual representation
+   - "How to calculate", "explain formula", "show process"
+   - Return: { "diagramType": "dalle_image", "imagePrompt": "educational illustration..." }
+
+2. USE UNSPLASH/STOCK PHOTOS FOR:
+   - Real-world objects, animals, places (lion, Eiffel Tower, butterfly)
+   - Natural phenomena you can photograph (sunset, volcano, ocean)
+   - Landmarks, buildings, landscapes
+   - People, faces, everyday objects
+   - Return: { "diagramType": "image", "imageQuery": "photo of..." }
+
+3. USE TRADITIONAL DIAGRAMS FOR:
+   - Step-by-step processes/algorithms (flowcharts)
+   - Concept relationships (mindmaps)
+   - Data comparisons (graphs)
+   - Return: { "diagramType": "flowchart|mindmap|graph", "elements": [...] }
+
+EXAMPLES:
+❌ Wrong: "perimeter of square" → Unsplash photo (generic square image)
+✅ Right: "perimeter of square" → DALL-E ("educational diagram showing square with labeled sides and perimeter formula P=4s")
+
+❌ Wrong: "photosynthesis process" → Unsplash photo (plant photo)
+✅ Right: "photosynthesis process" → DALL-E ("scientific diagram of photosynthesis with labeled arrows showing CO2, sunlight, and O2")
+
+✅ Right: "what does a lion look like" → Unsplash ("realistic photo of lion in savanna")
 
 Response format:
 {
-  "diagramType": "flowchart|mindmap|graph|diagram",
+  "diagramType": "dalle_image|image|flowchart|mindmap|graph|diagram",
+  "imagePrompt": "detailed DALL-E prompt (only for dalle_image)",
+  "imageQuery": "search query (only for image/stock photos)",
   "elements": [
-    // For flowchart: {"text": "step description", "type": "step"}
-    // For mindmap: {"text": "concept", "type": "center|node"}  
-    // For graph: {"text": "label", "value": 50, "type": "bar"}
+    // For traditional diagrams only
   ]
-}`
+}
+
+Return ONLY valid JSON, no markdown or explanation.`
     }, {
       role: "user",
-      content: `Generate diagram for: ${chatText}`
+      content: `Analyze and determine best visual for: ${chatText}`
     }],
     temperature: 0.7,
     max_tokens: 500
@@ -71,7 +97,7 @@ Response format:
   const result = JSON.parse(response.choices[0].message.content);
   
   // Validate the result
-  if (!result.diagramType || !Array.isArray(result.elements)) {
+  if (!result.diagramType) {
     throw new Error('Invalid AI response format');
   }
   
@@ -79,16 +105,57 @@ Response format:
 }
 
 /**
- * Pattern-based fallback analysis
+ * Pattern-based fallback analysis - now includes image detection
  * @param {string} chatText - The chat conversation text
- * @returns {Promise<{diagramType: string, elements: Array}>}
+ * @returns {Promise<{diagramType: string, elements: Array, imageQuery?: string, imagePrompt?: string}>}
  */
 async function analyzeDiagramWithPatterns(chatText) {
   try {
+    // Check for educational/mathematical concepts that need DALL-E
+    const dallePatterns = {
+      dalle_image: /\b(how\s+to\s+(calculate|find|solve|compute)|explain.*formula|perimeter|area|volume|theorem|equation|proof|derive|geometric|trigonometry|calculus|physics|chemistry|biology.*process|photosynthesis|cellular|molecular|atomic|circuit|diagram.*how)\b/i,
+    };
+    
+    // Check if it's a DALL-E educational image request
+    for (const [type, pattern] of Object.entries(dallePatterns)) {
+      if (pattern.test(chatText)) {
+        // Extract the educational concept
+        const concept = chatText.replace(/how\s+to\s+|what\s+is\s+|explain\s+/gi, '').trim();
+        
+        return {
+          diagramType: 'dalle_image',
+          imagePrompt: `Educational diagram explaining ${concept}. Clear, labeled illustration with formulas, arrows, and annotations. Professional textbook style.`,
+          elements: [],
+          confidence: 'high'
+        };
+      }
+    }
+    
+    // Check if user is asking for visual representation of a concrete object/concept
+    const imagePatterns = {
+      image: /\b(what\s+(does|is|are)|show\s+me|looks?\s+like|picture\s+of|image\s+of|photo\s+of|appearance|visual)\b.*\b(lion|tiger|elephant|animal|bird|fish|plant|flower|tree|mountain|ocean|building|car|vehicle|person|face|sunset|landscape|country|city|planet|star|galaxy|dinosaur|fossil|artwork|painting|sculpture|Eiffel|Tower|monument|landmark)\b/i,
+    };
+    
+    // Check if it's a stock photo request (real-world objects)
+    for (const [type, pattern] of Object.entries(imagePatterns)) {
+      if (pattern.test(chatText)) {
+        // Extract the subject from the question
+        const subjectMatch = chatText.match(/\b(lion|tiger|elephant|animal|bird|fish|plant|flower|tree|mountain|ocean|building|car|vehicle|person|face|sunset|landscape|country|city|planet|star|galaxy|dinosaur|fossil|artwork|painting|sculpture|Eiffel|Tower|monument|landmark|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/i);
+        const subject = subjectMatch ? subjectMatch[0] : 'concept';
+        
+        return {
+          diagramType: 'image',
+          imageQuery: `educational photo of ${subject}, high quality, detailed`,
+          elements: [],
+          confidence: 'high'
+        };
+      }
+    }
+
     // Keywords and patterns for different diagram types
     const patterns = {
       flowchart: /\b(steps?|process|algorithm|flow|procedure|sequence|first|then|next|finally|how\s+to|explain.*steps|sorting|quicksort|mergesort|bubblesort)\b/i,
-      mindmap: /\b(concept|idea|brain\s?storm|mind\s?map|central|topic|related|connection|types?\s+of|categories|show\s+me.*concepts?|what\s+is.*oop|oop|object.?oriented|ai|artificial|data.?structure|web.?dev)/i,
+      mindmap: /\b(concept|idea|brain\s?storm|mind\s?map|central|topic|related|connection|types?\s+of|categories|show\s+me.*concepts?|what\s+is.*oop|oop|object.?oriented|ai|artificial|data.?structure|web.?dev)\b/i,
       graph: /\b(chart|graph|data|statistics|compare|versus|vs|numbers?|percentage|analysis|performance)\b/i,
       diagram: /\b(diagram|structure|architecture|component|system|model|design|tree|binary|hierarchy)\b/i,
       equation: /\b(equation|formula|math|calculate|solve|express|=|\+|-|\*|\/)\b/i,
