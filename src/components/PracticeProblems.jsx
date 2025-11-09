@@ -24,10 +24,7 @@ const PROBLEMS_DATABASE = [
     ],
     starterCode: `def sum_two(a, b):
     # Write your code here
-    pass
-
-# Test your function
-print(sum_two(5, 3))  # Should print 8`,
+    pass`,
     solution: `def sum_two(a, b):
     return a + b`,
     hints: [
@@ -54,10 +51,7 @@ print(sum_two(5, 3))  # Should print 8`,
     ],
     starterCode: `def reverse(s):
     # Write your code here
-    pass
-
-# Test your function
-print(reverse("hello"))  # Should print "olleh"`,
+    pass`,
     solution: `def reverse(s):
     return s[::-1]
 
@@ -88,10 +82,7 @@ def reverse_alt(s):
     ],
     starterCode: `def find_max(arr):
     # Write your code here
-    pass
-
-# Test your function
-print(find_max([1, 5, 3, 9, 2]))  # Should print 9`,
+    pass`,
     solution: `def find_max(arr):
     if not arr:
         return None
@@ -131,11 +122,7 @@ def find_max_manual(arr):
     ],
     starterCode: `def is_palindrome(s):
     # Write your code here
-    pass
-
-# Test your function
-print(is_palindrome("racecar"))  # Should print True
-print(is_palindrome("hello"))    # Should print False`,
+    pass`,
     solution: `def is_palindrome(s):
     # Remove spaces and convert to lowercase
     s = s.replace(" ", "").lower()
@@ -199,10 +186,7 @@ fizzbuzz(15)`,
     ],
     starterCode: `def factorial(n):
     # Write your code here
-    pass
-
-# Test your function
-print(factorial(5))  # Should print 120`,
+    pass`,
     solution: `def factorial(n):
     if n == 0 or n == 1:
         return 1
@@ -239,10 +223,7 @@ def factorial_iterative(n):
     ],
     starterCode: `def fibonacci(n):
     # Write your code here
-    pass
-
-# Test your function
-print(fibonacci(6))  # Should print 8`,
+    pass`,
     solution: `def fibonacci(n):
     if n <= 1:
         return n
@@ -281,10 +262,7 @@ def fibonacci_iterative(n):
     ],
     starterCode: `def two_sum(nums, target):
     # Write your code here
-    pass
-
-# Test your function
-print(two_sum([2, 7, 11, 15], 9))  # Should print [0, 1]`,
+    pass`,
     solution: `def two_sum(nums, target):
     # Using hash map for O(n) solution
     seen = {}

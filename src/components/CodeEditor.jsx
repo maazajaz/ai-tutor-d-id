@@ -98,7 +98,25 @@ const CodeEditor = ({ problem, onComplete }) => {
       return;
     }
 
-    setShowHint(true);
+    // Insert hint as comment in the editor
+    const hint = problem.hints[currentHintLevel];
+    const hintComment = `\n# 💡 Hint ${currentHintLevel + 1}: ${hint}\n`;
+    
+    // Add hint at the top of the code (after function definition)
+    const lines = code.split('\n');
+    const functionDefLine = lines.findIndex(line => line.trim().startsWith('def '));
+    
+    if (functionDefLine !== -1) {
+      // Insert after the function definition line
+      lines.splice(functionDefLine + 1, 0, hintComment);
+      setCode(lines.join('\n'));
+    } else {
+      // If no function found, add at the top
+      setCode(hintComment + code);
+    }
+    
+    setCurrentHintLevel(prev => prev + 1);
+    setOutput(`💡 Hint ${currentHintLevel + 1} added to your code!`);
   };
 
   const getAIExplanation = async () => {
@@ -313,32 +331,6 @@ const CodeEditor = ({ problem, onComplete }) => {
             {output && (
               <div className="bg-gray-900 text-green-400 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap">
                 {output}
-              </div>
-            )}
-
-            {/* Hint Display */}
-            {showHint && problem.hints && currentHintLevel < problem.hints.length && (
-              <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-start gap-2">
-                  <LightBulbIcon className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold text-yellow-900 mb-1">
-                      Hint {currentHintLevel + 1}:
-                    </h4>
-                    <p className="text-sm text-yellow-800">{problem.hints[currentHintLevel]}</p>
-                    <button
-                      onClick={() => {
-                        setCurrentHintLevel(prev => prev + 1);
-                        if (currentHintLevel + 1 >= problem.hints.length) {
-                          setShowHint(false);
-                        }
-                      }}
-                      className="mt-2 text-xs text-yellow-700 underline hover:text-yellow-900"
-                    >
-                      {currentHintLevel + 1 < problem.hints.length ? 'Next Hint' : 'Show Solution'}
-                    </button>
-                  </div>
-                </div>
               </div>
             )}
 

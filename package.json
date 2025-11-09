@@ -13,6 +13,7 @@
     "start": "node server/server.js"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@monaco-editor/react": "^4.7.0",
     "@react-three/drei": "9.75.0",
     "@react-three/fiber": "8.13.3",
