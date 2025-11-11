@@ -66,6 +66,7 @@ const DIDAgentAvatar = () => {
   const fetchWithRetry = async (url, options, retries = 5, backoffMs = 1000) => {
     for (let i = 0; i < retries; i++) {
       try {
+        
         console.log(`🔄 API call attempt ${i + 1}/${retries}: ${url}`);
         const response = await fetch(url, options);
         if (!response.ok) {
