@@ -653,10 +653,12 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
         return; // Exit early for image handling
       }
       
-      // Handle DIAGRAM types (existing logic)
+      // Handle DIAGRAM types (flowchart, mindmap, graph) - ONLY for diagram types
+      // For image types, we already returned above, so this validation won't run
       if (!elements || !Array.isArray(elements)) {
         console.error('Invalid elements in response:', result);
-        throw new Error('Invalid diagram data received');
+        console.error('Diagram type:', diagramType);
+        throw new Error(`Invalid diagram data received for type: ${diagramType}`);
       }
 
       // Calculate dynamic block height based on diagram type and elements
