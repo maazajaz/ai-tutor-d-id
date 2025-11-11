@@ -47,34 +47,53 @@ export default async function handler(req, res) {
     
     console.log('📝 Processing text:', chatText);
 
-    // Call OpenAI to analyze the text and generate diagram data
+    // Call OpenAI to analyze the text and generate diagram data or determine if image is better
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content: `You are a diagram generation expert. Analyze the user's question and generate appropriate diagram data.
+          content: `You are a visual content expert for educational content. Analyze the user's question and decide the best visual representation.
 
-Rules:
-1. Determine the best diagram type: flowchart, mindmap, graph, or diagram
-2. Extract or generate relevant elements from the question
-3. For flowcharts: Create 5-8 sequential steps
-4. For mindmaps: Create a center concept and 4-7 related nodes  
-5. For graphs: Create 4-6 data points with values
-6. Return ONLY valid JSON, no markdown or explanation
+CRITICAL DECISION RULES:
 
-Response format:
+1. USE DALL-E IMAGE GENERATION FOR:
+   - Mathematical concepts/explanations (geometry, algebra, calculus, perimeter, area, volume)
+   - Scientific processes/concepts (physics, chemistry, biology diagrams)
+   - Educational explanations that need custom illustration
+   - Abstract concepts that need visual representation
+   - "How to calculate", "explain formula", "show process", "perimeter", "theorem"
+   - Return: { "diagramType": "dalle_image", "imagePrompt": "educational illustration..." }
+
+2. USE UNSPLASH/STOCK PHOTOS FOR:
+   - Real-world objects, animals, places (lion, Eiffel Tower, butterfly)
+   - Natural phenomena you can photograph (sunset, volcano, ocean)
+   - Landmarks, buildings, landscapes
+   - People, faces, everyday objects
+   - Return: { "diagramType": "image", "imageQuery": "photo of..." }
+
+3. USE TRADITIONAL DIAGRAMS FOR:
+   - Step-by-step processes/algorithms (flowcharts)
+   - Concept relationships (mindmaps)
+   - Data comparisons (graphs)
+   - Return: { "diagramType": "flowchart|mindmap|graph", "elements": [...] }
+
+EXAMPLES:
+✅ "perimeter of rectangle" → { "diagramType": "dalle_image", "imagePrompt": "educational diagram showing rectangle with labeled sides (length and width) and perimeter formula P=2(l+w)" }
+✅ "photosynthesis process" → { "diagramType": "dalle_image", "imagePrompt": "scientific diagram of photosynthesis with labeled arrows showing CO2, sunlight, and O2" }
+✅ "what does a lion look like" → { "diagramType": "image", "imageQuery": "realistic photo of lion in savanna" }
+✅ "steps to make coffee" → { "diagramType": "flowchart", "elements": [...] }
+
+Response format (MUST be valid JSON):
 {
-  "diagramType": "flowchart|mindmap|graph|diagram",
-  "elements": [
-    // For flowchart: {"text": "step description", "type": "step"}
-    // For mindmap: {"text": "concept", "type": "center|node"}  
-    // For graph: {"text": "label", "value": 50, "type": "bar"}
-  ]
+  "diagramType": "dalle_image|image|flowchart|mindmap|graph",
+  "imagePrompt": "detailed DALL-E prompt (only for dalle_image)",
+  "imageQuery": "search query (only for image)",
+  "elements": [...] (only for flowchart/mindmap/graph)
 }`
         }, {
           role: "user",
-          content: `Generate diagram for: ${chatText}`
+          content: `Analyze and determine best visual for: ${chatText}`
         }
       ],
       temperature: 0.7,
@@ -85,13 +104,30 @@ Response format:
     const result = JSON.parse(completion.choices[0].message.content);
     
     // Validate the response format
-    if (!result.diagramType || !Array.isArray(result.elements)) {
-      throw new Error('Invalid response format from OpenAI');
+    if (!result.diagramType) {
+      throw new Error('Invalid response format from OpenAI - missing diagramType');
+    }
+    
+    // For diagrams (flowchart/mindmap/graph), elements are required
+    if (['flowchart', 'mindmap', 'graph', 'diagram'].includes(result.diagramType) && !Array.isArray(result.elements)) {
+      throw new Error('Invalid response format from OpenAI - missing elements for diagram');
+    }
+    
+    // For images, imageQuery is required
+    if (result.diagramType === 'image' && !result.imageQuery) {
+      throw new Error('Invalid response format from OpenAI - missing imageQuery for image type');
+    }
+    
+    // For DALL-E images, imagePrompt is required
+    if (result.diagramType === 'dalle_image' && !result.imagePrompt) {
+      throw new Error('Invalid response format from OpenAI - missing imagePrompt for dalle_image type');
     }
 
-    console.log('✅ Generated diagram data:', {
+    console.log('✅ Generated visual data:', {
       type: result.diagramType,
-      elementCount: result.elements.length
+      hasElements: !!result.elements,
+      hasImageQuery: !!result.imageQuery,
+      hasImagePrompt: !!result.imagePrompt
     });
 
     // Return the diagram data
