@@ -17,6 +17,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
   
   // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isPaintModeEnabled, setIsPaintModeEnabled] = useState(false); // OFF by default for mobile scrolling
   const [tool, setTool] = useState('pen');
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
@@ -240,6 +241,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
 
   // Start drawing
   const startDrawing = (e) => {
+    if (!isPaintModeEnabled) return; // Only draw if paint mode is enabled
     e.preventDefault();
     const pos = getCanvasCoordinates(e);
     setIsDrawing(true);
@@ -252,7 +254,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
 
   // Draw
   const draw = (e) => {
-    if (!isDrawing) return;
+    if (!isPaintModeEnabled || !isDrawing) return; // Only draw if paint mode is enabled
     e.preventDefault();
 
     const pos = getCanvasCoordinates(e);
@@ -1059,6 +1061,26 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
 
       {/* Toolbar */}
       <div className={`bg-gradient-to-r from-purple-500 to-indigo-600 p-2 flex items-center gap-2 flex-wrap transition-all ${showToolbar ? 'h-auto' : 'h-0 overflow-hidden'}`}>
+        {/* Paint Mode Toggle */}
+        <button
+          onClick={() => setIsPaintModeEnabled(!isPaintModeEnabled)}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            isPaintModeEnabled 
+              ? 'bg-green-500 text-white hover:bg-green-600' 
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}
+          title={isPaintModeEnabled ? "Paint Mode ON (Click to turn OFF)" : "Paint Mode OFF (Click to turn ON)"}
+        >
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            <span className="text-sm">{isPaintModeEnabled ? 'Paint ON' : 'Paint OFF'}</span>
+          </div>
+        </button>
+        
+        <div className="w-px h-8 bg-white/30"></div>
+        
         {/* Tool Selection */}
         <div className="flex items-center gap-1 bg-white rounded-lg p-1">
           <button
@@ -1171,9 +1193,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
           onTouchStart={startDrawing}
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
-          className="w-full cursor-crosshair touch-none"
+          className={`w-full ${isPaintModeEnabled ? 'cursor-crosshair touch-none' : 'cursor-default'}`}
           style={{ 
-            touchAction: 'none',
+            touchAction: isPaintModeEnabled ? 'none' : 'auto', // Allow scrolling when paint mode is off
             height: `${canvasHeight}px`,
             display: 'block'
           }}
