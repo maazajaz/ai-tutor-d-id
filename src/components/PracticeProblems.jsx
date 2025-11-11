@@ -291,6 +291,7 @@ const PracticeProblems = () => {
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar toggle
 
   // Load completed problems from localStorage
   useEffect(() => {
@@ -329,9 +330,36 @@ const PracticeProblems = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 relative">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 bg-indigo-600 text-white p-3 rounded-lg shadow-lg"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {isSidebarOpen ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Overlay for mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Left Sidebar - Problem List */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+      <div className={`
+        w-full sm:w-80 lg:w-80 bg-white border-r border-gray-200 flex flex-col
+        fixed lg:relative inset-y-0 left-0 z-40
+        transform transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
@@ -402,7 +430,10 @@ const PracticeProblems = () => {
             return (
               <div
                 key={problem.id}
-                onClick={() => setSelectedProblem(problem)}
+                onClick={() => {
+                  setSelectedProblem(problem);
+                  setIsSidebarOpen(false); // Close sidebar on mobile after selection
+                }}
                 className={`p-4 border-b border-gray-100 cursor-pointer transition-colors ${
                   isSelected 
                     ? 'bg-indigo-50 border-l-4 border-l-indigo-600' 

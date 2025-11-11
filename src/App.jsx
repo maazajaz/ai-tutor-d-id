@@ -123,15 +123,16 @@ const AppContent = () => {
       <div style={{ display: currentView === 'practice' ? 'block' : 'none' }}>
         <Suspense fallback={<ComponentLoader />}>
           <div className="relative h-screen">
-            {/* Back to Dashboard Button */}
+            {/* Back to Dashboard Button - Positioned to not overlap with hamburger */}
             <button
               onClick={() => setCurrentView('dashboard')}
-              className="absolute top-4 left-4 z-50 px-4 py-2 bg-white hover:bg-gray-100 text-gray-800 rounded-lg shadow-md transition-colors flex items-center gap-2 font-semibold"
+              className="absolute top-4 left-1/2 -translate-x-1/2 lg:left-4 lg:translate-x-0 z-40 px-4 py-2 bg-white hover:bg-gray-100 text-gray-800 rounded-lg shadow-md transition-colors flex items-center gap-2 font-semibold text-sm"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Back to Dashboard
+              <span className="hidden sm:inline">Back to Dashboard</span>
+              <span className="sm:hidden">Back</span>
             </button>
             <PracticeProblems />
           </div>

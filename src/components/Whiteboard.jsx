@@ -546,7 +546,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
       if ((diagramType === 'image' || diagramType === 'dalle_image') && imageUrl) {
         console.log(`🖼️ Displaying ${diagramType === 'dalle_image' ? 'DALL-E generated' : 'stock photo'} image:`, imageUrl);
         
-        const blockHeight = 600; // Fixed height for images
+        // Smaller block height on mobile
+        const isMobile = window.innerWidth < 768;
+        const blockHeight = isMobile ? 400 : 600; // 400px on mobile, 600px on desktop
         const requiredHeight = positionY + blockHeight + 600;
         
         if (requiredHeight > canvasHeight) {
@@ -574,25 +576,31 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
           ctx.save();
           ctx.translate(0, positionY);
           
-          // Calculate scaling to fit canvas width while maintaining aspect ratio
-          const scale = Math.min(canvas.width / img.width, blockHeight / img.height);
+          // Calculate max width based on viewport (smaller on mobile)
+          const isMobile = window.innerWidth < 768;
+          const maxImageWidth = isMobile ? canvas.width * 0.85 : canvas.width * 0.95; // 85% on mobile, 95% on desktop
+          const maxImageHeight = isMobile ? blockHeight * 0.75 : blockHeight * 0.85; // Leave more space on mobile
+          
+          // Calculate scaling to fit within max dimensions while maintaining aspect ratio
+          const scale = Math.min(maxImageWidth / img.width, maxImageHeight / img.height);
           const scaledWidth = img.width * scale;
           const scaledHeight = img.height * scale;
           
-          // Center the image horizontally
+          // Center the image both horizontally and vertically
           const xOffset = (canvas.width - scaledWidth) / 2;
+          const yOffset = (blockHeight - scaledHeight) / 2;
           
           // Draw white background
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, canvas.width, blockHeight);
           
-          // Draw the image
-          ctx.drawImage(img, xOffset, (blockHeight - scaledHeight) / 2, scaledWidth, scaledHeight);
+          // Draw the image centered
+          ctx.drawImage(img, xOffset, yOffset, scaledWidth, scaledHeight);
           
           // Add attribution text at bottom
           if (imageAttribution) {
             ctx.fillStyle = '#666666';
-            ctx.font = '12px Arial';
+            ctx.font = isMobile ? '10px Arial' : '12px Arial'; // Smaller text on mobile
             ctx.textAlign = 'center';
             ctx.fillText(imageAttribution, canvas.width / 2, blockHeight - 10);
           }
@@ -1248,9 +1256,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
                   pointerEvents: 'auto'
                 }}
               >
-                <div className="max-w-4xl mx-4 md:mx-auto bg-white rounded-lg shadow-lg p-4 border-2 border-purple-200">
-                  <div className="flex items-start gap-3">
-                    <div className="text-3xl flex-shrink-0">
+                <div className="max-w-4xl mx-2 md:mx-4 lg:mx-auto bg-white rounded-lg shadow-lg p-3 md:p-4 border-2 border-purple-200">
+                  <div className="flex items-start gap-2 md:gap-3">
+                    <div className="text-xl md:text-3xl flex-shrink-0">
                       {(block.diagram_type === 'image' || block.diagram_type === 'dalle_image') && '🖼️'}
                       {block.diagram_type === 'flowchart' && '📊'}
                       {block.diagram_type === 'mindmap' && '🧠'}
@@ -1259,10 +1267,10 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
                       {!['image', 'dalle_image', 'flowchart', 'mindmap', 'graph', 'equation'].includes(block.diagram_type) && '📝'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg text-gray-900 mb-1 break-words">
+                      <h3 className="font-semibold text-sm md:text-lg text-gray-900 mb-1 break-words">
                         {block.question}
                       </h3>
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p className="text-xs md:text-sm text-gray-600 mb-2">
                         {block.ai_response}
                       </p>
                       <div className="flex flex-wrap gap-2 items-center">
@@ -1314,13 +1322,13 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
       </button>
 
       {/* Question Input Area - Bottom */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent p-4 border-t-2 border-gray-200 z-50">
-        <div className="flex items-center gap-2 max-w-4xl mx-auto">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent p-2 md:p-4 border-t-2 border-gray-200 z-50">
+        <div className="flex items-center gap-1 md:gap-2 max-w-4xl mx-auto">
           {/* Microphone Button */}
           <button
             onClick={toggleVoiceInput}
             disabled={isGenerating || loading}
-            className={`p-3 rounded-full transition-all ${
+            className={`p-2 md:p-3 rounded-full transition-all ${
               isListening
                 ? 'bg-red-500 hover:bg-red-600 animate-pulse'
                 : isGenerating || loading
@@ -1329,7 +1337,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
             } text-white shadow-lg`}
             title={isListening ? 'Stop listening' : 'Voice input'}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {isListening ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               ) : (
@@ -1350,16 +1358,16 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
                 handleAskQuestion();
               }
             }}
-            placeholder={isListening ? '🎤 Listening...' : 'Ask a question and I\'ll draw the diagram...'}
+            placeholder={isListening ? '🎤 Listening...' : 'Ask a question...'}
             disabled={isGenerating || loading || isListening}
-            className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none text-gray-800 placeholder:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="flex-1 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none text-gray-800 placeholder:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
 
           {/* Send Button */}
           <button
             onClick={() => handleAskQuestion()}
             disabled={!userInput.trim() || isGenerating || loading}
-            className={`p-3 rounded-full transition-all ${
+            className={`p-2 md:p-3 rounded-full transition-all ${
               !userInput.trim() || isGenerating || loading
                 ? 'bg-gray-300 cursor-not-allowed'
                 : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
@@ -1367,9 +1375,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
             title="Send question"
           >
             {isGenerating || loading ? (
-              <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-5 h-5 md:w-6 md:h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             )}

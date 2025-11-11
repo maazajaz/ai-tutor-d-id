@@ -18,6 +18,7 @@ const CodeEditor = ({ problem, onComplete }) => {
   const [showHint, setShowHint] = useState(false);
   const [currentHintLevel, setCurrentHintLevel] = useState(0);
   const [showSolution, setShowSolution] = useState(false);
+  const [showOutput, setShowOutput] = useState(false); // Toggle output panel on mobile
   const editorRef = useRef(null);
 
   useEffect(() => {
@@ -50,6 +51,7 @@ const CodeEditor = ({ problem, onComplete }) => {
     setIsRunning(true);
     setOutput('Running code...\n');
     setTestResults([]);
+    setShowOutput(true); // Show output panel when running code
 
     try {
       // Always use relative URL for API calls in production
@@ -169,31 +171,31 @@ const CodeEditor = ({ problem, onComplete }) => {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* Problem Header */}
-      <div className="bg-white border-b border-gray-200 p-4">
+      <div className="bg-white border-b border-gray-200 p-3 md:p-4">
         <div className="flex items-start justify-between mb-2">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">{problem.title}</h2>
-            <div className="flex items-center gap-2 mt-1">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg md:text-xl font-bold text-gray-800 truncate">{problem.title}</h2>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getDifficultyColor(problem.difficulty)}`}>
                 {problem.difficulty}
               </span>
-              <span className="text-sm text-gray-500">{problem.category}</span>
-              <span className="text-sm text-gray-500">•</span>
-              <span className="text-sm text-gray-500">{problem.language}</span>
+              <span className="text-xs md:text-sm text-gray-500">{problem.category}</span>
+              <span className="text-xs md:text-sm text-gray-500 hidden sm:inline">•</span>
+              <span className="text-xs md:text-sm text-gray-500">{problem.language}</span>
             </div>
           </div>
         </div>
         
         <div className="mt-3">
-          <p className="text-gray-700 text-sm leading-relaxed">{problem.description}</p>
+          <p className="text-gray-700 text-xs md:text-sm leading-relaxed">{problem.description}</p>
         </div>
 
         {/* Examples */}
         {problem.examples && problem.examples.length > 0 && (
           <div className="mt-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Examples:</h3>
+            <h3 className="text-xs md:text-sm font-semibold text-gray-700 mb-2">Examples:</h3>
             {problem.examples.map((example, idx) => (
-              <div key={idx} className="bg-gray-50 rounded-lg p-3 mb-2 text-sm font-mono">
+              <div key={idx} className="bg-gray-50 rounded-lg p-2 md:p-3 mb-2 text-xs md:text-sm font-mono overflow-x-auto">
                 <div><span className="text-gray-600">Input:</span> {example.input}</div>
                 <div><span className="text-gray-600">Output:</span> {example.output}</div>
                 {example.explanation && (
@@ -208,35 +210,37 @@ const CodeEditor = ({ problem, onComplete }) => {
       {/* Code Editor */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Editor Panel */}
-        <div className="flex-1 flex flex-col bg-white border-r border-gray-200">
-          <div className="bg-gray-100 border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-700">Code Editor</span>
-            <div className="flex gap-2">
+        <div className={`flex-1 flex flex-col bg-white border-r border-gray-200 ${showOutput ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="bg-gray-100 border-b border-gray-200 px-2 md:px-4 py-2 flex items-center justify-between">
+            <span className="text-xs md:text-sm font-semibold text-gray-700">Code Editor</span>
+            <div className="flex gap-1 md:gap-2 flex-wrap">
               <button
                 onClick={resetCode}
-                className="px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors flex items-center gap-1"
+                className="px-2 md:px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors flex items-center gap-1"
               >
                 <ArrowPathIcon className="w-3 h-3" />
-                Reset
+                <span className="hidden sm:inline">Reset</span>
               </button>
               <button
                 onClick={getHint}
-                className="px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded transition-colors flex items-center gap-1"
+                className="px-2 md:px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded transition-colors flex items-center gap-1"
               >
                 <LightBulbIcon className="w-3 h-3" />
-                Hint ({currentHintLevel}/{problem.hints?.length || 0})
+                <span className="hidden sm:inline">Hint ({currentHintLevel}/{problem.hints?.length || 0})</span>
+                <span className="sm:hidden">💡</span>
               </button>
               <button
                 onClick={getAIExplanation}
-                className="px-3 py-1 text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 rounded transition-colors flex items-center gap-1"
+                className="px-2 md:px-3 py-1 text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 rounded transition-colors flex items-center gap-1"
               >
                 <SparklesIcon className="w-3 h-3" />
-                AI Explain
+                <span className="hidden sm:inline">AI Explain</span>
+                <span className="sm:hidden">✨</span>
               </button>
             </div>
           </div>
           
-          <div className="flex-1">
+          <div className="flex-1 min-h-[300px]">
             <Editor
               height="100%"
               language={problem.language}
@@ -255,12 +259,12 @@ const CodeEditor = ({ problem, onComplete }) => {
           </div>
 
           {/* Action Buttons */}
-          <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 flex items-center justify-between">
+          <div className="bg-gray-50 border-t border-gray-200 px-2 md:px-4 py-3 flex items-center justify-between flex-wrap gap-2">
             <div className="flex gap-2">
               <button
                 onClick={runCode}
                 disabled={isRunning}
-                className={`px-4 py-2 rounded-lg font-semibold text-white transition-all flex items-center gap-2 ${
+                className={`px-3 md:px-4 py-2 rounded-lg font-semibold text-white transition-all flex items-center gap-2 text-sm ${
                   isRunning 
                     ? 'bg-gray-400 cursor-not-allowed' 
                     : 'bg-green-600 hover:bg-green-700 shadow-md hover:shadow-lg'
@@ -268,22 +272,31 @@ const CodeEditor = ({ problem, onComplete }) => {
               >
                 {isRunning ? (
                   <>
-                    <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                    Running...
+                    <ArrowPathIcon className="w-4 md:w-5 h-4 md:h-5 animate-spin" />
+                    <span className="hidden sm:inline">Running...</span>
+                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
                   <>
-                    <PlayIcon className="w-5 h-5" />
-                    Run Code
+                    <PlayIcon className="w-4 md:w-5 h-4 md:h-5" />
+                    Run
                   </>
                 )}
+              </button>
+              
+              {/* Toggle Output Button (Mobile Only) */}
+              <button
+                onClick={() => setShowOutput(!showOutput)}
+                className="lg:hidden px-3 py-2 rounded-lg bg-indigo-600 text-white font-semibold text-sm flex items-center gap-2"
+              >
+                {showOutput ? '← Code' : 'Output →'}
               </button>
             </div>
 
             {testResults.length > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">
-                  Tests Passed: {testResults.filter(t => t.passed).length}/{testResults.length}
+                <span className="text-xs md:text-sm text-gray-600">
+                  Tests: {testResults.filter(t => t.passed).length}/{testResults.length}
                 </span>
               </div>
             )}
@@ -291,12 +304,19 @@ const CodeEditor = ({ problem, onComplete }) => {
         </div>
 
         {/* Output Panel */}
-        <div className="lg:w-96 flex flex-col bg-gray-50">
-          <div className="bg-gray-100 border-b border-gray-200 px-4 py-2">
-            <span className="text-sm font-semibold text-gray-700">Output</span>
+        <div className={`w-full lg:w-96 flex flex-col bg-gray-50 ${showOutput ? 'flex' : 'hidden lg:flex'}`}>
+          <div className="bg-gray-100 border-b border-gray-200 px-2 md:px-4 py-2 flex items-center justify-between">
+            <span className="text-xs md:text-sm font-semibold text-gray-700">Output</span>
+            {/* Back to Code button for mobile */}
+            <button
+              onClick={() => setShowOutput(false)}
+              className="lg:hidden text-indigo-600 text-sm font-medium"
+            >
+              ← Back to Code
+            </button>
           </div>
           
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 overflow-auto p-2 md:p-4">
             {/* Test Results */}
             {testResults.length > 0 && (
               <div className="mb-4">
