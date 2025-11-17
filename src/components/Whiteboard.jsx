@@ -94,31 +94,21 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
     initWhiteboard();
   }, [user, chatSessionId]);
 
-  // Initialize and update canvas with proper responsive rendering
+  // Initialize canvas with fixed size
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const rect = canvas.parentElement.getBoundingClientRect();
     
-    // Set canvas size - MOBILE: use smaller width for better scaling
-    const isMobile = window.innerWidth < 768;
-    const canvasWidth = isMobile ? Math.min(rect.width, 500) : rect.width; // Max 500px on mobile
-    
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
-    
-    // Set white background
+    // Canvas is already 800x600 from JSX width/height attributes
+    // Just set white background
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, 800, 600);
     
-    // Redraw all content blocks with responsive scaling - FIXED ASYNC LOADING
+    // Redraw all content blocks
     if (contentBlocks.length > 0) {
       console.log('🎨 Redrawing', contentBlocks.length, 'blocks on canvas');
-      
-      // Load and draw images sequentially to avoid race conditions
-      let loadedCount = 0;
       
       contentBlocks.forEach((block, index) => {
         if (block.canvas_data) {
@@ -126,58 +116,27 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
           
           img.onload = () => {
             try {
-              // Get original canvas width from block metadata or assume standard width
-              const originalWidth = block.canvas_width || 1200;
-              const currentWidth = canvas.width;
+              const posY = block.position_y || 0;
+              const height = block.height || 600;
               
-              // Calculate scaling factor to maintain aspect ratio
-              // Cap scaling to prevent diagrams from becoming too large
-              let scale = currentWidth / originalWidth;
+              // Draw at saved position
+              ctx.drawImage(img, 0, posY, 800, height);
               
-              // Prevent upscaling beyond 150% to avoid huge diagrams on large screens
-              if (scale > 1.5) {
-                scale = 1.5;
-              }
-              // Prevent downscaling below 50% to avoid tiny diagrams on small screens
-              if (scale < 0.5) {
-                scale = 0.5;
-              }
-              
-              // Draw at the correct position with responsive scaling
-              const yPosition = block.position_y || 0;
-              const scaledHeight = img.height * scale;
-              const scaledWidth = img.width * scale;
-              
-              // Center the diagram if it doesn't fill the canvas width
-              const xOffset = (currentWidth - scaledWidth) / 2;
-              
-              ctx.drawImage(img, Math.max(0, xOffset), yPosition, scaledWidth, scaledHeight);
-              
-              // Store the scaled height for description card positioning
-              block._scaledHeight = scaledHeight;
-              
-              loadedCount++;
-              if (loadedCount === contentBlocks.length) {
-                console.log('✅ All', loadedCount, 'diagrams rendered successfully');
-              }
+              console.log(`✅ Drew block ${index + 1} at position ${posY}`);
             } catch (err) {
-              console.error('Error drawing image:', err);
+              console.error(`Error drawing block ${index}:`, err);
             }
           };
           
-          img.onerror = (err) => {
-            console.error('❌ Error loading canvas image for block', block.id, err);
+          img.onerror = () => {
+            console.error(`Failed to load image for block ${index}`);
           };
           
           img.src = block.canvas_data;
-        } else {
-          console.warn('⚠️ Block', block.id, 'has no canvas_data');
         }
       });
-    } else {
-      console.log('📭 No content blocks to render');
     }
-  }, [canvasHeight, contentBlocks]);
+  }, [contentBlocks]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -1646,23 +1605,27 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
             ))}
         </div>
         
-        <canvas
-          ref={canvasRef}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-          className={`${isPaintModeEnabled ? 'cursor-crosshair touch-none' : 'cursor-default'} mx-auto md:w-full ${contentBlocks.some(b => (b.diagram_type === 'image' || b.diagram_type === 'dalle_image') && b.image_url) ? 'hidden md:block' : 'block'}`}
-          style={{ 
-            touchAction: isPaintModeEnabled ? 'none' : 'auto', // Allow scrolling when paint mode is off
-            height: `${canvasHeight}px`,
-            display: 'block',
-            maxWidth: window.innerWidth < 768 ? '500px' : '100%' // Limit width on mobile
-          }}
-        />
+        <div className="flex items-center justify-center bg-gray-50 rounded-lg p-4 my-4">
+          <canvas
+            ref={canvasRef}
+            width={800}
+            height={600}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+            className={`border-2 border-gray-300 rounded-lg bg-white shadow-inner ${isPaintModeEnabled ? 'cursor-crosshair touch-none' : 'cursor-default'}`}
+            style={{ 
+              touchAction: isPaintModeEnabled ? 'none' : 'auto',
+              display: 'block',
+              maxWidth: '100%',
+              height: 'auto'
+            }}
+          />
+        </div>
         
         {/* Content Cards Overlay */}
         <div className="absolute inset-0 pointer-events-none">
