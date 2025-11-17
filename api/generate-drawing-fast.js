@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     console.log('🎨 Generating drawing (compact format):', prompt);
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',  // Faster than GPT-4 (1-2 sec vs 5-10 sec)
       messages: [
         {
           role: 'system',

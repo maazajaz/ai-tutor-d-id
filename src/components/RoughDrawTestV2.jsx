@@ -92,100 +92,142 @@ const RoughDrawTestV2 = () => {
     }
   };
 
+  // Animate line drawing stroke-by-stroke
+  const animateLine = async (ctx, x1, y1, x2, y2, color, width) => {
+    const steps = 20;
+    const dx = (x2 - x1) / steps;
+    const dy = (y2 - y1) / steps;
+    
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    for (let i = 0; i <= steps; i++) {
+      ctx.beginPath();
+      if (i > 0) {
+        ctx.moveTo(x1 + dx * (i-1), y1 + dy * (i-1));
+      } else {
+        ctx.moveTo(x1, y1);
+      }
+      ctx.lineTo(x1 + dx * i, y1 + dy * i);
+      ctx.stroke();
+      await new Promise(resolve => setTimeout(resolve, 15));
+    }
+  };
+
+  // Animate shape drawing
+  const animateShape = async (ctx, points, color, width, fill) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // Draw outline progressively
+    for (let i = 0; i < points.length; i++) {
+      const [x1, y1] = points[i];
+      const [x2, y2] = points[(i + 1) % points.length];
+      await animateLine(ctx, x1, y1, x2, y2, color, width);
+    }
+    
+    // Fill if specified
+    if (fill && fill !== 'transparent') {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i][0], points[i][1]);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  };
+
   const drawWithAnimation = async (data) => {
     const canvas = canvasRef.current;
     if (!canvas || !data?.elements) return;
 
     const ctx = canvas.getContext('2d');
-    const rc = rough.canvas(canvas);
 
     // Clear canvas
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, 800, 600);
 
-    // Draw elements one by one with real-time animation
+    // Draw elements one by one with REAL-TIME stroke animation
     for (let i = 0; i < data.elements.length; i++) {
       const el = data.elements[i];
       setElementsDrawn(i + 1);
       
       try {
-        // Parse compact format: "type:params"
         const [type, ...params] = el.split(':');
         
         switch (type) {
-          case 'tri': { // triangle:x1,y1,x2,y2,x3,y3,color,fill
+          case 'tri': { // triangle
             const [x1,y1,x2,y2,x3,y3,color,fill] = params[0].split(',');
-            rc.polygon(
-              [[+x1,+y1], [+x2,+y2], [+x3,+y3]],
-              {
-                stroke: color || '#3b82f6',
-                strokeWidth: 3,
-                fill: fill || 'rgba(59,130,246,0.1)',
-                fillStyle: 'hachure',
-                roughness: 1.2
-              }
-            );
+            await animateShape(ctx, [[+x1,+y1], [+x2,+y2], [+x3,+y3]], color || '#3b82f6', 3, fill);
             break;
           }
           
-          case 'rect': { // rect:x,y,w,h,color,fill
+          case 'rect': { // rectangle
             const [x,y,w,h,color,fill] = params[0].split(',');
-            rc.rectangle(+x, +y, +w, +h, {
-              stroke: color || '#10b981',
-              strokeWidth: 3,
-              fill: fill || 'rgba(16,185,129,0.1)',
-              fillStyle: 'hachure',
-              roughness: 1.2
-            });
+            const x1 = +x, y1 = +y, x2 = +x + +w, y2 = +y + +h;
+            await animateShape(ctx, [[x1,y1], [x2,y1], [x2,y2], [x1,y2]], color || '#10b981', 3, fill);
             break;
           }
           
-          case 'circ': { // circ:x,y,r,color,fill
+          case 'circ': { // circle - draw as segments
             const [x,y,r,color,fill] = params[0].split(',');
-            rc.circle(+x, +y, +r * 2, {
-              stroke: color || '#f59e0b',
-              strokeWidth: 3,
-              fill: fill || 'rgba(245,158,11,0.1)',
-              fillStyle: 'hachure',
-              roughness: 1.2
-            });
+            const radius = +r;
+            const steps = 30;
+            
+            ctx.strokeStyle = color || '#f59e0b';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            
+            for (let i = 0; i <= steps; i++) {
+              const angle1 = (i - 1) * (2 * Math.PI / steps);
+              const angle2 = i * (2 * Math.PI / steps);
+              
+              ctx.beginPath();
+              ctx.arc(+x, +y, radius, angle1, angle2);
+              ctx.stroke();
+              await new Promise(resolve => setTimeout(resolve, 10));
+            }
+            
+            // Fill if specified
+            if (fill && fill !== 'transparent') {
+              ctx.fillStyle = fill;
+              ctx.beginPath();
+              ctx.arc(+x, +y, radius, 0, 2 * Math.PI);
+              ctx.fill();
+            }
             break;
           }
           
-          case 'line': { // line:x1,y1,x2,y2,color,width
+          case 'line': { // line
             const [x1,y1,x2,y2,color,width] = params[0].split(',');
-            rc.line(+x1, +y1, +x2, +y2, {
-              stroke: color || '#ef4444',
-              strokeWidth: +(width || 2),
-              roughness: 1.2
-            });
+            await animateLine(ctx, +x1, +y1, +x2, +y2, color || '#ef4444', +(width || 2));
             break;
           }
           
-          case 'arrow': { // arrow:x1,y1,x2,y2,color,label
+          case 'arrow': { // arrow
             const parts = params[0].split(',');
             const [x1,y1,x2,y2,color] = parts.slice(0, 5);
             const label = parts.slice(5).join(',');
             
-            // Draw line
-            rc.line(+x1, +y1, +x2, +y2, {
-              stroke: color || '#8b5cf6',
-              strokeWidth: 2,
-              roughness: 1.2
-            });
+            // Draw line progressively
+            await animateLine(ctx, +x1, +y1, +x2, +y2, color || '#8b5cf6', 2);
             
             // Draw arrowhead
             const angle = Math.atan2(+y2 - +y1, +x2 - +x1);
             const size = 12;
-            rc.polygon([
-              [+x2, +y2],
-              [+x2 - size * Math.cos(angle - Math.PI/6), +y2 - size * Math.sin(angle - Math.PI/6)],
-              [+x2 - size * Math.cos(angle + Math.PI/6), +y2 - size * Math.sin(angle + Math.PI/6)]
-            ], {
-              fill: color || '#8b5cf6',
-              stroke: color || '#8b5cf6',
-              fillStyle: 'solid'
-            });
+            ctx.fillStyle = color || '#8b5cf6';
+            ctx.beginPath();
+            ctx.moveTo(+x2, +y2);
+            ctx.lineTo(+x2 - size * Math.cos(angle - Math.PI/6), +y2 - size * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(+x2 - size * Math.cos(angle + Math.PI/6), +y2 - size * Math.sin(angle + Math.PI/6));
+            ctx.closePath();
+            ctx.fill();
             
             // Draw label
             if (label) {
@@ -197,7 +239,7 @@ const RoughDrawTestV2 = () => {
             break;
           }
           
-          case 'txt': { // txt:x,y,size,color,text content
+          case 'txt': { // text - animate character by character
             const parts = params[0].split(',');
             const [x,y,size,color] = parts.slice(0, 4);
             const text = parts.slice(4).join(',');
@@ -205,7 +247,13 @@ const RoughDrawTestV2 = () => {
             ctx.fillStyle = color || '#1f2937';
             ctx.font = `bold ${size || 16}px sans-serif`;
             ctx.textAlign = 'center';
-            ctx.fillText(text, +x, +y);
+            
+            // Draw text character by character
+            for (let j = 0; j <= text.length; j++) {
+              ctx.clearRect(+x - 200, +y - 30, 400, 40);
+              ctx.fillText(text.substring(0, j), +x, +y);
+              await new Promise(resolve => setTimeout(resolve, 30));
+            }
             break;
           }
           
@@ -216,8 +264,8 @@ const RoughDrawTestV2 = () => {
         console.error('Draw error:', el, err);
       }
       
-      // Small delay for animation effect
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Small pause between elements
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
   };
 
