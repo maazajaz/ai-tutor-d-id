@@ -297,6 +297,194 @@ export const anatomyTemplates = {
       // Additional labels
       { type: 'text', x: 400, y: 520, text: 'Key Parts: Head, Ears, Eyes, Nose, Neck, Body, Legs, Paws, Tail', size: 13, color: '#2c3e50' },
     ]
+  },
+
+  'eye-structure': {
+    title: 'Human Eye Structure',
+    canvasSize: { width: 800, height: 600 },
+    elements: [
+      // Eyeball (large sphere)
+      { type: 'circle', x: 400, y: 300, r: 120, stroke: '#ecf0f1', fill: '#ffffff', strokeWidth: 3 },
+      
+      // Cornea (front transparent bulge)
+      { type: 'circle', x: 480, y: 300, r: 60, stroke: '#bdc3c7', fill: 'none', strokeWidth: 2 },
+      { type: 'text', x: 550, y: 280, text: 'Cornea', size: 14, color: '#1f2937' },
+      { type: 'text', x: 550, y: 295, text: '(Transparent)', size: 11, color: '#7f8c8d' },
+      
+      // Iris (colored part)
+      { type: 'circle', x: 480, y: 300, r: 35, stroke: '#3498db', fill: '#5dade2', strokeWidth: 3 },
+      { type: 'text', x: 520, y: 340, text: 'Iris', size: 13, color: '#1f2937' },
+      
+      // Pupil (black center)
+      { type: 'circle', x: 480, y: 300, r: 15, stroke: '#000', fill: '#000', strokeWidth: 1 },
+      { type: 'text', x: 505, y: 305, text: 'Pupil', size: 12, color: '#1f2937' },
+      
+      // Lens (behind iris)
+      { type: 'ellipse', x: 450, y: 300, rx: 25, ry: 40, stroke: '#95a5a6', fill: 'none', strokeWidth: 2 },
+      { type: 'text', x: 430, y: 260, text: 'Lens', size: 12, color: '#1f2937' },
+      
+      // Retina (back inner layer)
+      { type: 'path', points: [[310, 240], [290, 280], [290, 320], [310, 360]], stroke: '#e74c3c', fill: 'none', strokeWidth: 3 },
+      { type: 'text', x: 250, y: 300, text: 'Retina', size: 13, color: '#1f2937' },
+      
+      // Optic Nerve (exiting back)
+      { type: 'line', x1: 300, y1: 300, x2: 220, y2: 300, stroke: '#f39c12', strokeWidth: 12 },
+      { type: 'text', x: 180, y: 305, text: 'Optic Nerve', size: 13, color: '#1f2937' },
+      { type: 'text', x: 165, y: 320, text: '(To Brain)', size: 10, color: '#7f8c8d' },
+      
+      // Sclera label (white part)
+      { type: 'text', x: 340, y: 210, text: 'Sclera (White)', size: 12, color: '#1f2937' },
+      { type: 'arrow', x1: 360, y1: 220, x2: 370, y2: 250, color: '#95a5a6', label: '' },
+      
+      // Vitreous humor (gel inside)
+      { type: 'text', x: 380, y: 340, text: 'Vitreous', size: 11, color: '#7f8c8d' },
+      { type: 'text', x: 380, y: 355, text: 'Humor (Gel)', size: 11, color: '#7f8c8d' },
+      
+      // Muscles (simplified)
+      { type: 'rect', x: 380, y: 180, width: 40, height: 15, stroke: '#e74c3c', fill: '#fadbd8', strokeWidth: 1 },
+      { type: 'text', x: 400, y: 172, text: 'Eye Muscles', size: 10, color: '#1f2937' },
+      
+      { type: 'rect', x: 380, y: 405, width: 40, height: 15, stroke: '#e74c3c', fill: '#fadbd8', strokeWidth: 1 },
+      
+      // Light path arrows
+      { type: 'arrow', x1: 600, y1: 300, x2: 540, y2: 300, color: '#f39c12', label: 'Light' },
+      { type: 'arrow', x1: 480, y1: 300, x2: 320, y2: 300, color: '#f39c12', label: '' },
+      
+      // Summary
+      { type: 'text', x: 400, y: 500, text: 'Light → Cornea → Pupil → Lens → Retina → Optic Nerve → Brain', size: 12, color: '#2c3e50' },
+    ]
+  },
+
+  'atom-structure': {
+    title: 'Atom Structure (Carbon Example)',
+    canvasSize: { width: 800, height: 600 },
+    elements: [
+      // Nucleus (center)
+      { type: 'circle', x: 400, y: 300, r: 60, stroke: '#e74c3c', fill: '#fadbd8', strokeWidth: 3 },
+      { type: 'text', x: 400, y: 305, text: 'Nucleus', size: 16, color: '#1f2937' },
+      
+      // Protons (red circles in nucleus)
+      { type: 'circle', x: 380, y: 285, r: 10, stroke: '#c0392b', fill: '#e74c3c', strokeWidth: 2 },
+      { type: 'circle', x: 410, y: 285, r: 10, stroke: '#c0392b', fill: '#e74c3c', strokeWidth: 2 },
+      { type: 'circle', x: 420, y: 310, r: 10, stroke: '#c0392b', fill: '#e74c3c', strokeWidth: 2 },
+      { type: 'circle', x: 390, y: 315, r: 10, stroke: '#c0392b', fill: '#e74c3c', strokeWidth: 2 },
+      { type: 'circle', x: 405, y: 300, r: 10, stroke: '#c0392b', fill: '#e74c3c', strokeWidth: 2 },
+      { type: 'circle', x: 375, y: 305, r: 10, stroke: '#c0392b', fill: '#e74c3c', strokeWidth: 2 },
+      
+      // Neutrons (gray circles in nucleus)
+      { type: 'circle', x: 395, y: 290, r: 10, stroke: '#7f8c8d', fill: '#95a5a6', strokeWidth: 2 },
+      { type: 'circle', x: 415, y: 295, r: 10, stroke: '#7f8c8d', fill: '#95a5a6', strokeWidth: 2 },
+      { type: 'circle', x: 410, y: 318, r: 10, stroke: '#7f8c8d', fill: '#95a5a6', strokeWidth: 2 },
+      { type: 'circle', x: 385, y: 310, r: 10, stroke: '#7f8c8d', fill: '#95a5a6', strokeWidth: 2 },
+      { type: 'circle', x: 400, y: 320, r: 10, stroke: '#7f8c8d', fill: '#95a5a6', strokeWidth: 2 },
+      { type: 'circle', x: 388, y: 298, r: 10, stroke: '#7f8c8d', fill: '#95a5a6', strokeWidth: 2 },
+      
+      // Electron shells (orbits)
+      { type: 'circle', x: 400, y: 300, r: 120, stroke: '#3498db', fill: 'none', strokeWidth: 2 },
+      { type: 'circle', x: 400, y: 300, r: 180, stroke: '#3498db', fill: 'none', strokeWidth: 2 },
+      
+      // Electrons (blue dots on shells) - Shell 1 (2 electrons)
+      { type: 'circle', x: 400, y: 180, r: 8, stroke: '#2471a3', fill: '#3498db', strokeWidth: 2 },
+      { type: 'circle', x: 400, y: 420, r: 8, stroke: '#2471a3', fill: '#3498db', strokeWidth: 2 },
+      
+      // Shell 2 (4 electrons for carbon)
+      { type: 'circle', x: 580, y: 300, r: 8, stroke: '#2471a3', fill: '#3498db', strokeWidth: 2 },
+      { type: 'circle', x: 220, y: 300, r: 8, stroke: '#2471a3', fill: '#3498db', strokeWidth: 2 },
+      { type: 'circle', x: 527, y: 427, r: 8, stroke: '#2471a3', fill: '#3498db', strokeWidth: 2 },
+      { type: 'circle', x: 273, y: 173, r: 8, stroke: '#2471a3', fill: '#3498db', strokeWidth: 2 },
+      
+      // Labels
+      { type: 'text', x: 460, y: 310, text: 'Proton (+)', size: 12, color: '#e74c3c' },
+      { type: 'text', x: 460, y: 325, text: 'Neutron', size: 12, color: '#7f8c8d' },
+      
+      { type: 'text', x: 600, y: 300, text: 'Electron (-)', size: 12, color: '#3498db' },
+      { type: 'arrow', x1: 595, y1: 305, x2: 585, y2: 305, color: '#3498db', label: '' },
+      
+      { type: 'text', x: 520, y: 200, text: 'Electron Shell 1', size: 11, color: '#2c3e50' },
+      { type: 'text', x: 610, y: 260, text: 'Electron Shell 2', size: 11, color: '#2c3e50' },
+      
+      // Title
+      { type: 'text', x: 400, y: 550, text: 'Carbon Atom: 6 Protons, 6 Neutrons, 6 Electrons', size: 13, color: '#1f2937' },
+    ]
+  },
+
+  'butterfly-lifecycle': {
+    title: 'Butterfly Life Cycle',
+    canvasSize: { width: 800, height: 600 },
+    elements: [
+      // Stage 1: Egg (top)
+      { type: 'ellipse', x: 400, y: 120, rx: 25, ry: 35, stroke: '#27ae60', fill: '#d5f4e6', strokeWidth: 3 },
+      { type: 'text', x: 400, y: 90, text: '1. Egg', size: 16, color: '#1f2937' },
+      { type: 'text', x: 400, y: 170, text: '(3-5 days)', size: 11, color: '#7f8c8d' },
+      
+      // Arrow to Stage 2
+      { type: 'arrow', x1: 450, y1: 140, x2: 550, y2: 220, color: '#f39c12', label: '' },
+      { type: 'text', x: 500, y: 170, text: 'Hatches', size: 12, color: '#e67e22' },
+      
+      // Stage 2: Larva/Caterpillar (right)
+      { type: 'ellipse', x: 600, y: 250, rx: 80, ry: 30, stroke: '#2ecc71', fill: '#a9dfbf', strokeWidth: 3 },
+      // Caterpillar segments
+      { type: 'circle', x: 540, y: 250, r: 22, stroke: '#27ae60', fill: '#a9dfbf', strokeWidth: 2 },
+      { type: 'circle', x: 570, y: 250, r: 24, stroke: '#27ae60', fill: '#a9dfbf', strokeWidth: 2 },
+      { type: 'circle', x: 600, y: 250, r: 26, stroke: '#27ae60', fill: '#a9dfbf', strokeWidth: 2 },
+      { type: 'circle', x: 630, y: 250, r: 24, stroke: '#27ae60', fill: '#a9dfbf', strokeWidth: 2 },
+      { type: 'circle', x: 660, y: 250, r: 22, stroke: '#27ae60', fill: '#a9dfbf', strokeWidth: 2 },
+      
+      // Caterpillar face
+      { type: 'circle', x: 525, y: 245, r: 3, stroke: '#000', fill: '#000', strokeWidth: 1 },
+      { type: 'circle', x: 525, y: 255, r: 3, stroke: '#000', fill: '#000', strokeWidth: 1 },
+      
+      { type: 'text', x: 680, y: 230, text: '2. Larva', size: 16, color: '#1f2937' },
+      { type: 'text', x: 680, y: 250, text: '(Caterpillar)', size: 13, color: '#1f2937' },
+      { type: 'text', x: 600, y: 300, text: '(2-5 weeks)', size: 11, color: '#7f8c8d' },
+      
+      // Arrow to Stage 3
+      { type: 'arrow', x1: 580, y1: 290, x2: 480, y2: 380, color: '#f39c12', label: '' },
+      { type: 'text', x: 540, y: 340, text: 'Forms', size: 12, color: '#e67e22' },
+      
+      // Stage 3: Pupa/Chrysalis (bottom)
+      { type: 'ellipse', x: 400, y: 430, rx: 35, ry: 55, stroke: '#8e44ad', fill: '#d7bde2', strokeWidth: 3 },
+      { type: 'path', points: [[400, 375], [410, 385], [405, 400], [410, 415]], stroke: '#7d3c98', fill: 'none', strokeWidth: 2 },
+      { type: 'path', points: [[400, 375], [390, 385], [395, 400], [390, 415]], stroke: '#7d3c98', fill: 'none', strokeWidth: 2 },
+      
+      { type: 'text', x: 400, y: 500, text: '3. Pupa (Chrysalis)', size: 16, color: '#1f2937' },
+      { type: 'text', x: 400, y: 520, text: '(1-2 weeks)', size: 11, color: '#7f8c8d' },
+      
+      // Arrow to Stage 4
+      { type: 'arrow', x1: 350, y1: 400, x2: 250, y2: 280, color: '#f39c12', label: '' },
+      { type: 'text', x: 290, y: 340, text: 'Emerges', size: 12, color: '#e67e22' },
+      
+      // Stage 4: Adult Butterfly (left)
+      // Body
+      { type: 'ellipse', x: 200, y: 250, rx: 15, ry: 40, stroke: '#2c3e50', fill: '#34495e', strokeWidth: 2 },
+      
+      // Wings
+      { type: 'ellipse', x: 150, y: 230, rx: 45, ry: 50, stroke: '#e74c3c', fill: '#f8d7da', strokeWidth: 3 },
+      { type: 'ellipse', x: 250, y: 230, rx: 45, ry: 50, stroke: '#e74c3c', fill: '#f8d7da', strokeWidth: 3 },
+      { type: 'ellipse', x: 160, y: 280, rx: 35, ry: 40, stroke: '#e67e22', fill: '#fdebd0', strokeWidth: 3 },
+      { type: 'ellipse', x: 240, y: 280, rx: 35, ry: 40, stroke: '#e67e22', fill: '#fdebd0', strokeWidth: 3 },
+      
+      // Wing patterns
+      { type: 'circle', x: 145, y: 220, r: 8, stroke: '#c0392b', fill: '#e74c3c', strokeWidth: 1 },
+      { type: 'circle', x: 255, y: 220, r: 8, stroke: '#c0392b', fill: '#e74c3c', strokeWidth: 1 },
+      
+      // Antennae
+      { type: 'line', x1: 198, y1: 215, x2: 188, y2: 195, stroke: '#2c3e50', strokeWidth: 2 },
+      { type: 'line', x1: 202, y1: 215, x2: 212, y2: 195, stroke: '#2c3e50', strokeWidth: 2 },
+      { type: 'circle', x: 188, y: 195, r: 3, stroke: '#2c3e50', fill: '#2c3e50', strokeWidth: 1 },
+      { type: 'circle', x: 212, y: 195, r: 3, stroke: '#2c3e50', fill: '#2c3e50', strokeWidth: 1 },
+      
+      { type: 'text', x: 120, y: 200, text: '4. Adult', size: 16, color: '#1f2937' },
+      { type: 'text', x: 120, y: 220, text: '(Butterfly)', size: 13, color: '#1f2937' },
+      { type: 'text', x: 200, y: 340, text: '(2-4 weeks)', size: 11, color: '#7f8c8d' },
+      
+      // Cycle completion arrow
+      { type: 'arrow', x1: 250, y1: 200, x2: 350, y2: 140, color: '#f39c12', label: '' },
+      { type: 'text', x: 280, y: 150, text: 'Lays Eggs', size: 12, color: '#e67e22' },
+      
+      // Title
+      { type: 'text', x: 400, y: 570, text: 'Complete Metamorphosis: Egg → Larva → Pupa → Adult', size: 13, color: '#2c3e50' },
+    ]
   }
 };
 

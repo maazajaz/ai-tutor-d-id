@@ -30,7 +30,10 @@ function matchAnatomyTemplate(prompt) {
     'digestive-system': ['digestive', 'stomach', 'intestine', 'digestion', 'gut', 'esophagus'],
     'respiratory-system': ['respiratory', 'lung', 'breathing', 'trachea', 'bronchi', 'respiration'],
     'plant-cell': ['plant cell', 'chloroplast', 'vacuole', 'cell wall', 'plant structure'],
-    'dog-anatomy': ['dog', 'dog body', 'dog anatomy', 'dog parts', 'canine']
+    'dog-anatomy': ['dog', 'dog body', 'dog anatomy', 'dog parts', 'canine'],
+    'eye-structure': ['eye', 'eye structure', 'vision', 'retina', 'cornea', 'iris', 'pupil'],
+    'atom-structure': ['atom', 'atom structure', 'proton', 'neutron', 'electron', 'nucleus', 'atomic'],
+    'butterfly-lifecycle': ['butterfly', 'butterfly life cycle', 'metamorphosis', 'caterpillar', 'chrysalis', 'pupa']
   };
   
   for (const [templateId, keywordList] of Object.entries(keywords)) {
