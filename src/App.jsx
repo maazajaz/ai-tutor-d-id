@@ -15,6 +15,7 @@ const Dashboard = lazy(() => import("./components/Dashboard").then(module => ({ 
 const EmotionDebug = lazy(() => import("./components/EmotionDebug").then(module => ({ default: module.EmotionDebug })));
 const CollaborativeStudy = lazy(() => import("./components/CollaborativeStudy").then(module => ({ default: module.CollaborativeStudy })));
 const PracticeProblems = lazy(() => import("./components/PracticeProblems"));
+const RoughDrawTest = lazy(() => import("./components/RoughDrawTest"));
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -45,12 +46,22 @@ const AppContent = () => {
 
   // Check if we're in debug mode
   const isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'emotion';
+  const isDrawTestMode = new URLSearchParams(window.location.search).get('test') === 'draw';
 
   // Show debug page if in debug mode
   if (isDebugMode) {
     return (
       <Suspense fallback={<ComponentLoader />}>
         <EmotionDebug />
+      </Suspense>
+    );
+  }
+
+  // Show drawing test page if in test mode
+  if (isDrawTestMode) {
+    return (
+      <Suspense fallback={<ComponentLoader />}>
+        <RoughDrawTest />
       </Suspense>
     );
   }

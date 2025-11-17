@@ -43,6 +43,10 @@
       "dest": "/api/explain-solution.js"
     },
     {
+      "src": "/api/generate-drawing",
+      "dest": "/api/generate-drawing.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server/server.js"
     },
