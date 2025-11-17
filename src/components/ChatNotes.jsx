@@ -1,21 +1,47 @@
 import { useState, useEffect } from 'react';
 import { useChat } from '../hooks/useChat';
+import { useAuth } from '../contexts/AuthContext';
+import { loadWhiteboardContent, getOrCreateWhiteboardSession } from '../services/whiteboardService';
 import jsPDF from 'jspdf';
 
 // Test jsPDF import
 console.log('jsPDF imported:', jsPDF);
 
-export const ChatNotes = ({ isOpen, onClose }) => {
+export const ChatNotes = ({ isOpen, onClose, chatSessionId }) => {
   const { currentChatNotes, saveCurrentChatNotes, generateAINotes, chatSessions, currentChatId, chatHistory, loading } = useChat();
+  const { user } = useAuth();
   const [notes, setNotes] = useState(currentChatNotes || '');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isGeneratingNotes, setIsGeneratingNotes] = useState(false);
+  const [whiteboardContent, setWhiteboardContent] = useState([]);
 
   // Update local notes when switching chats
   useEffect(() => {
     setNotes(currentChatNotes || '');
     setHasUnsavedChanges(false);
   }, [currentChatNotes, currentChatId]);
+
+  // Load whiteboard content for this chat session
+  useEffect(() => {
+    const loadWhiteboard = async () => {
+      if (!user || !chatSessionId) return;
+      
+      try {
+        const { data: session } = await getOrCreateWhiteboardSession(user.id, chatSessionId);
+        if (session) {
+          const { data: content } = await loadWhiteboardContent(session.id);
+          if (content) {
+            setWhiteboardContent(content);
+            console.log('📊 Loaded whiteboard content:', content.length, 'items');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading whiteboard content:', error);
+      }
+    };
+    
+    loadWhiteboard();
+  }, [user, chatSessionId]);
 
   // Safety check - return early after hooks
   if (!chatSessions || !currentChatId) {
@@ -211,6 +237,51 @@ export const ChatNotes = ({ isOpen, onClose }) => {
       addText('• Important formulas or code snippets', 11, false);
       addText('• Personal insights and connections', 11, false);
       addText('• Areas that need more practice', 11, false);
+    }
+
+    // Add whiteboard diagrams if available
+    if (whiteboardContent && whiteboardContent.length > 0) {
+      addSeparator();
+      addText('📊 Diagrams & Drawings:', 16, true);
+      yPosition += 5;
+      
+      for (let i = 0; i < whiteboardContent.length; i++) {
+        const block = whiteboardContent[i];
+        
+        // Add question/title
+        if (block.question) {
+          addText(`${i + 1}. ${block.question}`, 13, true);
+        }
+        
+        // Add the diagram image if available
+        if (block.canvas_data) {
+          try {
+            const imgWidth = pageWidth - (margin * 2);
+            const imgHeight = (block.height || 600) * (imgWidth / (block.canvas_width || 800));
+            
+            // Check if we need a new page
+            if (yPosition + imgHeight > doc.internal.pageSize.getHeight() - margin) {
+              doc.addPage();
+              yPosition = margin;
+            }
+            
+            doc.addImage(block.canvas_data, 'PNG', margin, yPosition, imgWidth, imgHeight);
+            yPosition += imgHeight + 10;
+            
+            console.log(`✅ Added diagram ${i + 1} to PDF`);
+          } catch (error) {
+            console.error(`Error adding diagram ${i + 1}:`, error);
+            addText(`[Diagram ${i + 1} could not be added]`, 11, false, 'gray');
+          }
+        }
+        
+        // Add AI response if available
+        if (block.ai_response) {
+          addText(block.ai_response, 11, false);
+        }
+        
+        yPosition += 10; // Space between diagrams
+      }
     }
 
     // Footer
