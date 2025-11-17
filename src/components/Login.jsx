@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import logoWhite from '../assets/logo_white.svg'
 
 export const Login = ({ onToggleMode }) => {
   const [isLogin, setIsLogin] = useState(true)
@@ -46,12 +47,30 @@ export const Login = ({ onToggleMode }) => {
     <div className="min-h-screen bg-gradient-to-br from-green-400 via-blue-500 to-purple-600 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
+          {/* Sharda Informatics Logo */}
+          <div className="flex justify-center mb-4">
+            <div className="bg-gradient-to-r from-green-600 to-blue-600 p-4 rounded-2xl shadow-lg">
+              <img 
+                src={logoWhite} 
+                alt="Sharda Informatics 360" 
+                className="h-16 w-auto"
+              />
+            </div>
+          </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            🎓 AI Digital Tutor
+            AI Digital Tutor
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-1">
             {isLogin ? 'Welcome back!' : 'Join our learning community'}
           </p>
+          <a 
+            href="http://Informatics360.ai" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-sm text-green-600 hover:text-green-700 hover:underline"
+          >
+            Informatics360.ai
+          </a>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

@@ -3,6 +3,7 @@ import { useChat } from '../hooks/useChat';
 import { useAuth } from '../contexts/AuthContext';
 import { loadWhiteboardContent, getOrCreateWhiteboardSession } from '../services/whiteboardService';
 import jsPDF from 'jspdf';
+import logoWhite from '../assets/logo_white.svg';
 
 // Test jsPDF import
 console.log('jsPDF imported:', jsPDF);
@@ -117,6 +118,28 @@ export const ChatNotes = ({ isOpen, onClose, chatSessionId }) => {
     const maxLineWidth = pageWidth - (margin * 2);
     let yPosition = margin;
 
+    // Add header with branding on every page
+    const addPageHeader = () => {
+      // Green header background
+      doc.setFillColor(34, 197, 94); // green-500
+      doc.rect(0, 0, pageWidth, 20, 'F');
+      
+      // Company name
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text('Sharda Informatics 360', margin, 12);
+      
+      // Website
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Informatics360.ai', pageWidth - margin - 30, 12);
+      
+      // Reset text color
+      doc.setTextColor(0, 0, 0);
+      yPosition = 30;
+    };
+
     // Helper function to add text with automatic line wrapping and better formatting
     const addText = (text, fontSize = 12, isBold = false, color = 'black') => {
       doc.setFontSize(fontSize);
@@ -137,7 +160,7 @@ export const ChatNotes = ({ isOpen, onClose, chatSessionId }) => {
       
       if (yPosition + totalHeight > doc.internal.pageSize.getHeight() - margin) {
         doc.addPage();
-        yPosition = margin;
+        addPageHeader(); // Add header to new page
       }
       
       doc.text(lines, margin, yPosition);
@@ -202,6 +225,9 @@ export const ChatNotes = ({ isOpen, onClose, chatSessionId }) => {
       yPosition += 15;
     };
 
+    // Add initial header
+    addPageHeader();
+
     // Title with better formatting
     addText('📝 Learning Notes', 20, true);
     yPosition += 5;
@@ -262,7 +288,7 @@ export const ChatNotes = ({ isOpen, onClose, chatSessionId }) => {
             // Check if we need a new page
             if (yPosition + imgHeight > doc.internal.pageSize.getHeight() - margin) {
               doc.addPage();
-              yPosition = margin;
+              addPageHeader(); // Add header to new page
             }
             
             doc.addImage(block.canvas_data, 'PNG', margin, yPosition, imgWidth, imgHeight);

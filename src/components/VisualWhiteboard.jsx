@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { anatomyTemplates } from '../utils/anatomyTemplates';
+import logo from '../assets/logo_white.svg';
 
 export const VisualWhiteboard = ({ onBack }) => {
   const [prompt, setPrompt] = useState('');
@@ -467,23 +468,34 @@ export const VisualWhiteboard = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 md:p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-4">
+              <img src={logo} alt="Sharda Informatics" className="h-10 w-auto" />
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-white">Visual Whiteboard</h1>
+                <p className="text-sm text-blue-100">Informatics360.ai - AI-Powered Diagrams</p>
+              </div>
+            </div>
             <button
               onClick={onBack}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-2 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Back to Dashboard
+              Back
             </button>
-            <h1 className="text-3xl font-bold text-gray-800">🎨 Visual Whiteboard</h1>
-            <p className="text-gray-600 mt-1">Create real-time animated diagrams with AI</p>
           </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto p-4 md:p-8">
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-gray-600">Create real-time animated diagrams with AI</p>
           
           <button
             onClick={handleClear}

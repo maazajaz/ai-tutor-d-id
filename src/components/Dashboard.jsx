@@ -5,6 +5,7 @@ import { LearningStats } from './LearningStats'
 import { RecentConversations } from './RecentConversations'
 import { QuizGenerator } from './QuizGenerator'
 import { DashboardLoader } from './DashboardLoader'
+import logo from '../assets/logo_white.svg'
 
 export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenCollabStudy, onNavigateToPractice, onNavigateToWhiteboard }) => {
   const { user, profile } = useAuth()
@@ -40,9 +41,13 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <div className="md:hidden bg-white shadow-lg p-4 flex items-center justify-between sticky top-0 z-50">
+      <div className="md:hidden bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-gray-800">🎓 AI Tutor</h1>
+          <img src={logo} alt="Sharda Informatics" className="h-8 w-auto" />
+          <div>
+            <h1 className="text-sm font-bold text-white">Sharda Informatics</h1>
+            <p className="text-xs text-blue-100">Informatics360.ai</p>
+          </div>
         </div>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -75,31 +80,50 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
         ${sidebarCollapsed ? 'md:w-20 w-64' : 'w-64'}
       `}>
         {/* Logo Section */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            {!sidebarCollapsed && (
-              <div>
-                <h1 className="text-xl font-bold text-gray-800">🎓 AI Tutor</h1>
-                <p className="text-xs text-gray-500 mt-1">Digital Learning</p>
+        <div className="border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600">
+          {!sidebarCollapsed ? (
+            <div className="p-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img src={logo} alt="Sharda Informatics" className="h-10 w-auto" />
+                <div>
+                  <h1 className="text-base font-bold text-white">Sharda Informatics</h1>
+                  <p className="text-xs text-blue-100">Informatics360.ai</p>
+                </div>
               </div>
-            )}
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors hidden md:block"
-              title={sidebarCollapsed ? 'Expand' : 'Collapse'}
-            >
-              <svg 
-                className={`w-5 h-5 text-gray-600 transition-transform duration-300 ${
-                  sidebarCollapsed ? 'rotate-180' : ''
-                }`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors hidden md:block flex-shrink-0"
+                title="Collapse"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              </svg>
-            </button>
-          </div>
+                <svg 
+                  className="w-5 h-5 text-white" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <div className="py-4 px-2 flex flex-col items-center gap-3">
+              <img src={logo} alt="Sharda Informatics" className="h-10 w-auto" />
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors hidden md:block"
+                title="Expand"
+              >
+                <svg 
+                  className="w-5 h-5 text-white rotate-180" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Navigation Items */}

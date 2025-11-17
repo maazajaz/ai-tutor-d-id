@@ -165,7 +165,7 @@ const AppContent = () => {
               <span className="hidden sm:inline">Back to Dashboard</span>
               <span className="sm:hidden">Back</span>
             </button>
-            <PracticeProblems />
+            <PracticeProblems onBack={() => setCurrentView('dashboard')} />
           </div>
         </Suspense>
       </div>

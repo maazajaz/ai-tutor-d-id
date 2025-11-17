@@ -579,11 +579,21 @@ Come on, you got this! What's your answer? 🎮"]`;
         {/* Whiteboard Header */}
         <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-2 lg:p-4 shadow-lg">
           <div className="flex items-center justify-between gap-2">
-            {/* Left: Title */}
-            <div className="flex items-center gap-1 lg:gap-2 min-w-0">
-              <div className="min-w-0">
-                <h1 className="text-xs lg:text-2xl font-bold truncate">🎓 AI Board</h1>
-                <p className="text-green-100 text-[10px] lg:text-sm hidden sm:block">Interactive AI Classroom</p>
+            {/* Left: Logo and Title */}
+            <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+              {/* Sharda Informatics Logo */}
+              <img 
+                src="/logo.svg" 
+                alt="Sharda Informatics 360" 
+                className="h-8 lg:h-12 w-auto flex-shrink-0"
+              />
+              <div className="min-w-0 border-l-2 border-white/30 pl-2 lg:pl-3">
+                <h1 className="text-xs lg:text-xl font-bold truncate">AI Digital Tutor</h1>
+                <p className="text-green-100 text-[10px] lg:text-xs hidden sm:block">
+                  <a href="http://Informatics360.ai" target="_blank" rel="noopener noreferrer" className="hover:underline">
+                    Informatics360.ai
+                  </a>
+                </p>
               </div>
             </div>
             

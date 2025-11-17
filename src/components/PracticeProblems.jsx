@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CodeEditor from './CodeEditor';
+import logo from '../assets/logo_white.svg';
 import { 
   CodeBracketIcon, 
   CheckCircleIcon,
@@ -285,7 +286,7 @@ def fibonacci_iterative(n):
   }
 ];
 
-const PracticeProblems = () => {
+const PracticeProblems = ({ onBack }) => {
   const [selectedProblem, setSelectedProblem] = useState(null);
   const [completedProblems, setCompletedProblems] = useState(new Set());
   const [filterDifficulty, setFilterDifficulty] = useState('all');
@@ -361,27 +362,48 @@ const PracticeProblems = () => {
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-4">
+        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="Sharda Informatics" className="h-8 w-auto" />
+              <div>
+                <h1 className="text-lg font-bold text-white flex items-center gap-2">
+                  Practice Problems
+                </h1>
+                <p className="text-xs text-blue-100">Informatics360.ai</p>
+              </div>
+            </div>
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="flex items-center gap-2 px-3 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg transition-colors text-sm"
+                title="Back to Dashboard"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="hidden sm:inline">Back</span>
+              </button>
+            )}
+          </div>
+          <div className="flex items-center justify-between bg-white bg-opacity-20 rounded-lg p-3">
             <div>
-              <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <CodeBracketIcon className="w-6 h-6 text-indigo-600" />
-                Practice Problems
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-white font-semibold">
                 {completedProblems.size} / {PROBLEMS_DATABASE.length} completed
               </p>
             </div>
             <div className="text-center">
-              <TrophyIcon className="w-8 h-8 text-yellow-500 mx-auto" />
-              <span className="text-xs text-gray-500">Streak</span>
-              <div className="flex items-center gap-1 mt-1">
-                <FireIcon className="w-4 h-4 text-orange-500" />
-                <span className="text-sm font-bold text-gray-800">3</span>
+              <div className="flex items-center gap-2">
+                <FireIcon className="w-5 h-5 text-yellow-300" />
+                <span className="text-lg font-bold text-white">3</span>
+                <TrophyIcon className="w-5 h-5 text-yellow-300" />
               </div>
+              <span className="text-xs text-blue-100">Day Streak</span>
             </div>
           </div>
+        </div>
 
+        <div className="p-4 border-b border-gray-200">
           {/* Search */}
           <div className="relative mb-3">
             <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
