@@ -44,12 +44,12 @@ export const Login = ({ onToggleMode }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-400 via-blue-500 to-purple-600 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border-2 border-yellow-500">
         <div className="text-center mb-8">
           {/* Sharda Informatics Logo */}
           <div className="flex justify-center mb-4">
-            <div className="bg-gradient-to-r from-green-600 to-blue-600 p-4 rounded-2xl shadow-lg">
+            <div className="bg-black p-4 rounded-2xl shadow-lg border-2 border-yellow-500">
               <img 
                 src={logoWhite} 
                 alt="Sharda Informatics 360" 
@@ -67,7 +67,7 @@ export const Login = ({ onToggleMode }) => {
             href="http://Informatics360.ai" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="text-sm text-green-600 hover:text-green-700 hover:underline"
+            className="text-sm text-yellow-600 hover:text-yellow-700 hover:underline font-semibold"
           >
             Informatics360.ai
           </a>
@@ -83,7 +83,7 @@ export const Login = ({ onToggleMode }) => {
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
                 placeholder="Your name"
                 required={!isLogin}
               />
@@ -98,7 +98,7 @@ export const Login = ({ onToggleMode }) => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
               placeholder="your@email.com"
               required
             />
@@ -112,7 +112,7 @@ export const Login = ({ onToggleMode }) => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
               placeholder="••••••••"
               required
               minLength={6}
@@ -131,8 +131,8 @@ export const Login = ({ onToggleMode }) => {
             className={`w-full py-3 px-4 rounded-lg font-semibold transition-all ${
               authLoading
                 ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 transform hover:scale-105'
-            } text-white shadow-lg`}
+                : 'bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 transform hover:scale-105'
+            } text-black shadow-lg`}
           >
             {authLoading ? (
               <div className="flex items-center justify-center">
@@ -156,7 +156,7 @@ export const Login = ({ onToggleMode }) => {
                 setPassword('')
                 setDisplayName('')
               }}
-              className="ml-2 text-green-600 hover:text-green-700 font-semibold transition-colors"
+              className="ml-2 text-yellow-600 hover:text-yellow-700 font-semibold transition-colors"
             >
               {isLogin ? 'Sign up' : 'Sign in'}
             </button>

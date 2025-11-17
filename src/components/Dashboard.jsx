@@ -39,22 +39,22 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <div className="md:hidden bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg p-4 flex items-center justify-between sticky top-0 z-50">
+      <div className="md:hidden bg-black shadow-lg p-4 flex items-center justify-between sticky top-0 z-50 border-b-2 border-yellow-500">
         <div className="flex items-center gap-3">
           <img src={logo} alt="Sharda Informatics" className="h-8 w-auto" />
           <div>
             <h1 className="text-sm font-bold text-white">Sharda Informatics</h1>
-            <p className="text-xs text-blue-100">Informatics360.ai</p>
+            <p className="text-xs text-yellow-400">Informatics360.ai</p>
           </div>
         </div>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
           aria-label="Toggle menu"
         >
-          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {mobileMenuOpen ? (
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             ) : (
@@ -74,20 +74,20 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
 
       {/* Left Sidebar Navigation - Desktop & Mobile */}
       <aside className={`
-        bg-white shadow-xl transition-all duration-300 flex flex-col
+        bg-gray-900 shadow-xl transition-all duration-300 flex flex-col border-r-2 border-yellow-500
         md:relative fixed inset-y-0 left-0 z-50
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         ${sidebarCollapsed ? 'md:w-20 w-64' : 'w-64'}
       `}>
         {/* Logo Section */}
-        <div className="border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="border-b-2 border-yellow-500 bg-black">
           {!sidebarCollapsed ? (
             <div className="p-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img src={logo} alt="Sharda Informatics" className="h-10 w-auto" />
                 <div>
                   <h1 className="text-base font-bold text-white">Sharda Informatics</h1>
-                  <p className="text-xs text-blue-100">Informatics360.ai</p>
+                  <p className="text-xs text-yellow-400">Informatics360.ai</p>
                 </div>
               </div>
               <button
