@@ -361,8 +361,8 @@ Come on, you got this! What's your answer? 🎮"]`;
     setChatHistory(prev => [...prev, newMessage]);
   };
 
-  const sendMessage = async () => {
-    const text = input.current.value;
+  const sendMessage = async (messageText = null) => {
+    const text = messageText || (input.current ? input.current.value : '');
     if (!loading && !message && text.trim()) {
       // Check if the text contains a YouTube URL
       const youtubeRegex = /(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
@@ -467,7 +467,9 @@ Come on, you got this! What's your answer? 🎮"]`;
       } else {
         // Regular message - send to D-ID agent
         chat(text);
-        input.current.value = "";
+        if (input.current) {
+          input.current.value = "";
+        }
         setInputValue('');
       }
     }
@@ -730,13 +732,10 @@ Come on, you got this! What's your answer? 🎮"]`;
           <Whiteboard 
             onClose={() => setShowWhiteboard(false)}
             chatSessionId={currentChatId || `guest-${Date.now()}`}
+            externalChatHistory={chatHistory}
             onAskQuestion={(question) => {
-              // Trigger chat to get D-ID agent response
-              if (input.current) {
-                input.current.value = question;
-                setInputValue(question);
-                sendMessage();
-              }
+              // Send question directly to D-ID agent
+              sendMessage(question);
             }}
           />
         </div>

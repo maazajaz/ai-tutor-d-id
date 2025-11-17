@@ -9,7 +9,7 @@ import {
   deleteWhiteboardContent
 } from '../services/whiteboardService';
 
-export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }) => {
+export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, externalChatHistory = [] }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
@@ -136,6 +136,33 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
         }
       });
     }
+  }, [contentBlocks]);
+
+  // Render each block on its own canvas
+  useEffect(() => {
+    contentBlocks.forEach((block) => {
+      const canvas = document.getElementById(`canvas-${block.id}`);
+      if (!canvas || !block.canvas_data) return;
+      
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Clear canvas
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw the saved image
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        console.log(`✅ Rendered block ${block.id} on its own canvas`);
+      };
+      
+      img.onerror = () => {
+        console.error(`Failed to load image for block ${block.id}`);
+      };
+      
+      img.src = block.canvas_data;
+    });
   }, [contentBlocks]);
 
   // Initialize speech recognition
@@ -430,9 +457,140 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
   };
 
   // 🎨 Animate drawing at a specific position (for whiteboard)
-  const drawWithAnimationAtPosition = async (ctx, elements, positionY, canvasWidth, blockHeight) => {
+  // Function to render explanation text on canvas
+  const renderExplanationOnCanvas = (ctx, text, y, canvasWidth, maxHeight = 200) => {
+    if (!text) return 0;
+    
+    ctx.save();
+    const padding = 20;
+    const fontSize = 14;
+    const lineHeight = 20;
+    
+    // Draw background box
+    ctx.fillStyle = 'rgba(219, 234, 254, 0.95)'; // Light blue background
+    ctx.strokeStyle = '#3b82f6'; // Blue border
+    ctx.lineWidth = 2;
+    
+    // Word wrap the text
+    ctx.font = `${fontSize}px Arial`;
+    const maxWidth = canvasWidth - padding * 4;
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = '';
+    
+    words.forEach(word => {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word;
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    });
+    if (currentLine) lines.push(currentLine);
+    
+    // Limit lines to fit in maxHeight
+    const maxLines = Math.floor((maxHeight - padding * 2) / lineHeight);
+    const displayLines = lines.slice(0, maxLines);
+    const boxHeight = displayLines.length * lineHeight + padding * 2 + 30; // +30 for header
+    
+    // Draw box
+    ctx.fillRect(padding * 2, y, canvasWidth - padding * 4, boxHeight);
+    ctx.strokeRect(padding * 2, y, canvasWidth - padding * 4, boxHeight);
+    
+    // Draw header
+    ctx.fillStyle = '#1e40af'; // Dark blue
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('🎭 AI Agent Explanation:', padding * 2 + 10, y + padding + 16);
+    
+    // Draw text lines
+    ctx.fillStyle = '#1f2937'; // Dark gray
+    ctx.font = `${fontSize}px Arial`;
+    ctx.textAlign = 'left';
+    displayLines.forEach((line, i) => {
+      ctx.fillText(line, padding * 2 + 10, y + padding + 40 + i * lineHeight);
+    });
+    
+    ctx.restore();
+    return boxHeight + padding; // Return total height used
+  };
+
+  const drawWithAnimationAtPosition = async (ctx, elements, positionY, canvasWidth, blockHeight, explanationText = null) => {
     ctx.save();
     ctx.translate(0, positionY);
+    
+    // Calculate bounding box of all elements to determine scaling
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    
+    elements.forEach(el => {
+      switch (el.type) {
+        case 'circle':
+          minX = Math.min(minX, el.x - el.radius);
+          minY = Math.min(minY, el.y - el.radius);
+          maxX = Math.max(maxX, el.x + el.radius);
+          maxY = Math.max(maxY, el.y + el.radius);
+          break;
+        case 'ellipse':
+          minX = Math.min(minX, el.x - el.width / 2);
+          minY = Math.min(minY, el.y - el.height / 2);
+          maxX = Math.max(maxX, el.x + el.width / 2);
+          maxY = Math.max(maxY, el.y + el.height / 2);
+          break;
+        case 'rect':
+          minX = Math.min(minX, el.x);
+          minY = Math.min(minY, el.y);
+          maxX = Math.max(maxX, el.x + el.width);
+          maxY = Math.max(maxY, el.y + el.height);
+          break;
+        case 'line':
+        case 'arrow':
+          minX = Math.min(minX, el.x1, el.x2);
+          minY = Math.min(minY, el.y1, el.y2);
+          maxX = Math.max(maxX, el.x1, el.x2);
+          maxY = Math.max(maxY, el.y1, el.y2);
+          break;
+        case 'text':
+          minX = Math.min(minX, el.x - 100); // Approximate text width
+          minY = Math.min(minY, el.y - el.size);
+          maxX = Math.max(maxX, el.x + 100);
+          maxY = Math.max(maxY, el.y);
+          break;
+        case 'path':
+          el.points.forEach(p => {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+          });
+          break;
+      }
+    });
+    
+    // Calculate required scale to fit in canvas with padding
+    // Reserve bottom 300px for explanation text
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+    const padding = 40;
+    const availableWidth = canvasWidth - padding * 2;
+    const drawingAreaHeight = 550; // Top portion for drawing (900 - 300 for explanation - 50 padding)
+    const availableHeight = drawingAreaHeight - padding * 2;
+    
+    const scaleX = contentWidth > 0 ? availableWidth / contentWidth : 1;
+    const scaleY = contentHeight > 0 ? availableHeight / contentHeight : 1;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+    
+    // Calculate offset to center the content in drawing area
+    const scaledWidth = contentWidth * scale;
+    const scaledHeight = contentHeight * scale;
+    const offsetX = (canvasWidth - scaledWidth) / 2 - minX * scale;
+    const offsetY = (drawingAreaHeight - scaledHeight) / 2 - minY * scale;
+    
+    console.log(`📐 Scaling: content=${contentWidth}x${contentHeight}, scale=${scale.toFixed(2)}, offset=${offsetX.toFixed(0)},${offsetY.toFixed(0)}`);
+    
+    // Apply scaling and centering
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
     
     for (const element of elements) {
       try {
@@ -495,6 +653,13 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
     }
     
     ctx.restore();
+    
+    // Render explanation text at the bottom of canvas if provided
+    if (explanationText) {
+      const explanationY = 650; // Fixed position at bottom of canvas (900px height)
+      const explanationHeight = renderExplanationOnCanvas(ctx, explanationText, explanationY, canvasWidth, 220);
+      console.log(`📝 Rendered explanation at y=${explanationY}: ${explanationHeight}px tall`);
+    }
   };
 
   const animateLine = async (ctx, x1, y1, x2, y2, color) => {
@@ -854,15 +1019,83 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
           const elements = parseCompactFormat(drawing);
           console.log(`✅ Parsed ${elements.length} elements, starting animation...`);
           
-          // Animate with context translated to position
-          await drawWithAnimationAtPosition(ctx, elements, positionY, canvas.width, blockHeight);
+          // Get D-ID explanation from chatHistory
+          let didExplanation = null;
+          const questionText = question?.trim().toLowerCase();
+          if (questionText && externalChatHistory.length > 0) {
+            const userMsgIndex = externalChatHistory.findIndex(msg => 
+              msg.sender === 'user' && msg.text?.trim().toLowerCase() === questionText
+            );
+            if (userMsgIndex !== -1 && userMsgIndex < externalChatHistory.length - 1) {
+              const nextMsg = externalChatHistory[userMsgIndex + 1];
+              if (nextMsg.sender === 'ai') {
+                didExplanation = nextMsg.text;
+                console.log(`🎭 Found D-ID explanation for: "${question}"`);
+              }
+            }
+          }
           
-          // Capture this section as image
+          // Create a temporary canvas just for this diagram
           const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = canvas.width;
-          tempCanvas.height = blockHeight;
+          tempCanvas.width = 800;
+          tempCanvas.height = 600;
           const tempCtx = tempCanvas.getContext('2d');
-          tempCtx.drawImage(canvas, 0, positionY, canvas.width, blockHeight, 0, 0, canvas.width, blockHeight);
+          
+          // Fill with white background
+          tempCtx.fillStyle = '#ffffff';
+          tempCtx.fillRect(0, 0, 800, 600);
+          
+          // Draw without animation for now (we'll add animation later)
+          // Draw elements scaled to fit in 800x600
+          elements.forEach(element => {
+            const { type, x, y, width, height, radius, color, text, fontSize, x2, y2, rx, ry } = element;
+            
+            tempCtx.strokeStyle = color || '#000000';
+            tempCtx.fillStyle = color || '#000000';
+            tempCtx.lineWidth = 2;
+            
+            switch (type) {
+              case 'circle':
+                tempCtx.beginPath();
+                tempCtx.arc(x, y, radius, 0, Math.PI * 2);
+                tempCtx.stroke();
+                break;
+                
+              case 'ellipse':
+                tempCtx.beginPath();
+                tempCtx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+                tempCtx.stroke();
+                break;
+                
+              case 'rect':
+                tempCtx.strokeRect(x, y, width, height);
+                break;
+                
+              case 'line':
+                tempCtx.beginPath();
+                tempCtx.moveTo(x, y);
+                tempCtx.lineTo(x2, y2);
+                tempCtx.stroke();
+                break;
+                
+              case 'path':
+                if (element.path && element.path.length > 0) {
+                  tempCtx.beginPath();
+                  tempCtx.moveTo(element.path[0].x, element.path[0].y);
+                  element.path.slice(1).forEach(point => {
+                    tempCtx.lineTo(point.x, point.y);
+                  });
+                  tempCtx.stroke();
+                }
+                break;
+                
+              case 'text':
+                tempCtx.font = `${fontSize || 14}px Arial`;
+                tempCtx.fillText(text || '', x, y);
+                break;
+            }
+          });
+          
           const canvasData = tempCanvas.toDataURL('image/png');
 
           // Save to database
@@ -874,9 +1107,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
               aiResponse: `Animated diagram ${templateId ? `(${templateId} template)` : '(AI-generated)'}`,
               canvasData,
               elements: [],
-              positionY,
-              height: blockHeight,
-              canvasWidth: canvas.width,
+              positionY: 0, // Not used anymore
+              height: 600,
+              canvasWidth: 800,
               drawing,
               templateId,
               source
@@ -887,15 +1120,15 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
             } else if (savedContent) {
               setContentBlocks(prev => [...prev, savedContent]);
               setCurrentContentId(savedContent.id);
+              
+              // Scroll to bottom to show new diagram
+              setTimeout(() => {
+                if (containerRef.current) {
+                  containerRef.current.scrollTop = containerRef.current.scrollHeight;
+                }
+              }, 100);
             }
           }
-          
-          // Scroll to show the diagram
-          setTimeout(() => {
-            if (containerRef.current) {
-              containerRef.current.scrollTop = positionY - 50;
-            }
-          }, 100);
           
         } catch (parseError) {
           console.error('Failed to parse drawing:', parseError);
@@ -1553,7 +1786,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
       {/* Canvas Container - Scrollable */}
       <div 
         ref={containerRef}
-        className="flex-1 relative overflow-y-auto overflow-x-hidden bg-gray-50"
+        className="flex-1 relative overflow-y-auto overflow-x-hidden bg-gray-50 p-4"
         style={{ scrollBehavior: 'smooth' }}
       >
         {/* Loading Indicator */}
@@ -1566,168 +1799,111 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
           </div>
         )}
         
-        {/* Mobile Image Cards - Only show on mobile */}
-        <div className="md:hidden p-2 space-y-3">
-          {contentBlocks
-            .filter(block => (block.diagram_type === 'image' || block.diagram_type === 'dalle_image') && block.image_url)
-            .map((block, index) => (
-              <div key={block.id} className="bg-white rounded-lg shadow-lg overflow-hidden border-2 border-purple-200">
-                {/* Image */}
-                <div className="relative w-full aspect-video bg-gray-100">
-                  <img 
-                    src={block.image_url} 
-                    alt={block.question || 'Generated image'}
-                    className="w-full h-full object-contain"
-                  />
-                  {/* Badge */}
-                  <div className="absolute top-2 right-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                      block.diagram_type === 'dalle_image'
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                        : 'bg-green-500 text-white'
-                    }`}>
-                      {block.diagram_type === 'dalle_image' ? '🎨 AI' : '📸 Photo'}
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Content */}
-                <div className="p-3">
-                  <h3 className="font-bold text-sm text-gray-900 mb-1 line-clamp-2">
-                    {block.question}
-                  </h3>
-                  <p className="text-xs text-gray-600 mb-2 line-clamp-3">
-                    {block.ai_response}
-                  </p>
-                  
-                  {/* Attribution */}
-                  {block.image_attribution && (
-                    <p className="text-xs text-gray-500 italic">
-                      {block.image_attribution}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-        </div>
+        {/* Main Canvas - For manual drawing */}
+        {contentBlocks.length === 0 && (
+          <div className="flex items-center justify-center bg-gray-50 rounded-lg p-4">
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={600}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+              className={`border-2 border-gray-300 rounded-lg bg-white shadow-inner ${isPaintModeEnabled ? 'cursor-crosshair touch-none' : 'cursor-default'}`}
+              style={{ 
+                touchAction: isPaintModeEnabled ? 'none' : 'auto',
+                display: 'block',
+                maxWidth: '100%',
+                height: 'auto'
+              }}
+            />
+          </div>
+        )}
         
-        <div className="flex items-center justify-center bg-gray-50 rounded-lg p-4 my-4">
-          <canvas
-            ref={canvasRef}
-            width={800}
-            height={600}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-            className={`border-2 border-gray-300 rounded-lg bg-white shadow-inner ${isPaintModeEnabled ? 'cursor-crosshair touch-none' : 'cursor-default'}`}
-            style={{ 
-              touchAction: isPaintModeEnabled ? 'none' : 'auto',
-              display: 'block',
-              maxWidth: '100%',
-              height: 'auto'
-            }}
-          />
-        </div>
-        
-        {/* Content Cards Overlay */}
-        <div className="absolute inset-0 pointer-events-none">
+        {/* Content Blocks - Each with its own canvas */}
+        <div className="space-y-6 max-w-4xl mx-auto">
           {contentBlocks.map((block, index) => {
-            // Hide card for manual drawings OR if no content
-            const isManualDrawing = block.diagram_type === 'manual' || block.content_type === 'manual_drawing';
-            const hasContent = block.question?.trim() || block.ai_response?.trim();
-            
-            console.log(`Card ${index}:`, {
-              id: block.id,
-              isManualDrawing,
-              hasContent,
-              question: block.question,
-              ai_response: block.ai_response,
-              diagram_type: block.diagram_type
-            });
-            
-            // Don't show card for manual drawings or empty content
-            if (isManualDrawing || !hasContent) {
-              console.log(`  → Hiding card ${index} (manual=${isManualDrawing}, hasContent=${hasContent})`);
-              return null;
+            // Find matching D-ID response from externalChatHistory
+            const questionText = block.question?.trim().toLowerCase();
+            let didResponse = null;
+            if (questionText && externalChatHistory.length > 0) {
+              const userMsgIndex = externalChatHistory.findIndex(msg => 
+                msg.sender === 'user' && msg.text?.trim().toLowerCase() === questionText
+              );
+              if (userMsgIndex !== -1 && userMsgIndex < externalChatHistory.length - 1) {
+                const nextMsg = externalChatHistory[userMsgIndex + 1];
+                if (nextMsg.sender === 'ai') {
+                  didResponse = nextMsg.text;
+                }
+              }
             }
             
-            console.log(`  → Showing card ${index}`);
-            
-            // Calculate the actual position based on scaled height
-            const originalWidth = block.canvas_width || 1200;
-            const canvas = canvasRef.current;
-            const currentWidth = canvas ? canvas.width : 1200;
-            
-            // Calculate same scaling as used in rendering
-            let scale = currentWidth / originalWidth;
-            if (scale > 1.5) scale = 1.5;
-            if (scale < 0.5) scale = 0.5;
-            
-            // Use scaled height instead of original height
-            const scaledHeight = block._scaledHeight || (block.height || 600) * scale;
-            const cardTop = (block.position_y || 0) + scaledHeight + 20;
-            
             return (
-              <div
-                key={block.id}
-                className="absolute left-0 right-0"
-                style={{ 
-                  top: `${cardTop}px`, // Position BELOW scaled diagram
-                  pointerEvents: 'auto'
-                }}
-              >
-                <div className="max-w-4xl mx-2 md:mx-4 lg:mx-auto bg-white rounded-lg shadow-lg p-3 md:p-4 border-2 border-purple-200">
-                  <div className="flex items-start gap-2 md:gap-3">
-                    <div className="text-xl md:text-3xl flex-shrink-0">
-                      {(block.diagram_type === 'image' || block.diagram_type === 'dalle_image') && '🖼️'}
-                      {block.diagram_type === 'flowchart' && '📊'}
-                      {block.diagram_type === 'mindmap' && '🧠'}
-                      {block.diagram_type === 'graph' && '📈'}
-                      {block.diagram_type === 'equation' && '🔢'}
-                      {!['image', 'dalle_image', 'flowchart', 'mindmap', 'graph', 'equation'].includes(block.diagram_type) && '📝'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm md:text-lg text-gray-900 mb-1 break-words">
-                        {block.question}
-                      </h3>
-                      <p className="text-xs md:text-sm text-gray-600 mb-2">
-                        {block.ai_response}
-                      </p>
-                      <div className="flex flex-wrap gap-2 items-center">
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          block.diagram_type === 'dalle_image'
-                            ? 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700'
-                            : block.diagram_type === 'image' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-purple-100 text-purple-700'
-                        }`}>
-                          {block.diagram_type === 'dalle_image' ? '🎨 AI Generated' : block.diagram_type}
-                        </span>
-                        {block.image_source && block.diagram_type !== 'dalle_image' && (
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                            {block.image_source}
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-500">
-                          {new Date(block.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
+              <div key={block.id} className="bg-white rounded-lg shadow-lg border-2 border-purple-200 overflow-hidden">
+                {/* Header with Question */}
+                <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white p-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                      <span>🎨</span>
+                      {block.question}
+                    </h3>
                     <button
                       onClick={() => handleDeleteDiagram(block.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
-                      title="Delete diagram"
+                      className="text-white hover:text-red-200 transition-colors"
+                      title="Delete"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="px-2 py-1 bg-white bg-opacity-20 rounded text-xs">
+                      {block.diagram_type === 'fast_drawing' ? '⚡ Fast Drawing' : block.diagram_type}
+                    </span>
+                    <span className="text-xs opacity-75">
+                      {new Date(block.created_at).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
+                
+                {/* AI Explanation Section */}
+                {didResponse && (
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 border-b-2 border-purple-100">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl flex-shrink-0">🎭</span>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-blue-800 mb-2">AI Agent Explanation:</h4>
+                        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                          {didResponse}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Canvas for this specific diagram */}
+                <div className="p-4 bg-gray-50 flex items-center justify-center">
+                  <canvas
+                    id={`canvas-${block.id}`}
+                    width={800}
+                    height={600}
+                    className="border-2 border-gray-300 rounded-lg bg-white shadow-inner max-w-full h-auto"
+                  />
+                </div>
+                
+                {/* AI Response if available */}
+                {block.ai_response && (
+                  <div className="p-4 bg-gray-50 border-t border-gray-200">
+                    <p className="text-sm text-gray-600 italic">
+                      {block.ai_response}
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}
