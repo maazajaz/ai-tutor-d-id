@@ -539,13 +539,16 @@ app.post("/api/analyze-diagram", async (req, res) => {
 
       if (drawingResponse.ok) {
         const drawingData = await drawingResponse.json();
-        console.log('✅ Fast drawing generated:', drawingData.approach);
+        console.log('✅ Fast drawing generated:', drawingData.isTemplate ? 'template' : 'gpt');
+        
+        // Convert elements array to compact format string
+        const drawing = drawingData.elements.join('\n');
         
         return res.send({
           diagramType: 'fast_drawing',
-          drawing: drawingData.drawing,
-          source: drawingData.approach || 'gpt',
-          renderTime: drawingData.generationTime || '1-2s'
+          drawing: drawing,
+          source: drawingData.isTemplate ? 'template' : 'gpt',
+          renderTime: '1-2s'
         });
       } else {
         throw new Error(`Drawing API returned ${drawingResponse.status}`);

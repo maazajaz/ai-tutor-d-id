@@ -81,10 +81,12 @@ export default async function handler(req, res) {
 
     if (response.ok) {
       const data = await response.json();
+      // Convert elements array to compact format string
+      const drawing = data.elements.join('\n');
       return res.status(200).json({
         diagramType: 'fast_drawing',
-        drawing: data.drawing,
-        source: data.approach
+        drawing: drawing,
+        source: data.isTemplate ? 'template' : 'gpt'
       });
     }
     
