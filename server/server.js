@@ -517,7 +517,8 @@ app.post("/api/analyze-diagram", async (req, res) => {
     
     if (template) {
       console.log(`⚡ Template matched - instant rendering!`);
-      const compactDrawing = convertTemplateToCompactFormat(template);
+      const compactArray = convertTemplateToCompactFormat(template);
+      const compactDrawing = compactArray.join('\n'); // Convert array to string
       
       return res.send({
         diagramType: 'fast_drawing',
@@ -540,6 +541,12 @@ app.post("/api/analyze-diagram", async (req, res) => {
       if (drawingResponse.ok) {
         const drawingData = await drawingResponse.json();
         console.log('✅ Fast drawing generated:', drawingData.isTemplate ? 'template' : 'gpt');
+        
+        // Check if elements array exists
+        if (!drawingData.elements || !Array.isArray(drawingData.elements)) {
+          console.error('Invalid drawing data:', drawingData);
+          throw new Error('Drawing API returned invalid format');
+        }
         
         // Convert elements array to compact format string
         const drawing = drawingData.elements.join('\n');

@@ -27,20 +27,31 @@ function convertTemplateToCompact(template) {
   for (const element of template.elements) {
     switch (element.type) {
       case 'circle':
-        compact += `circ:${element.x},${element.y},${element.radius},${element.color},${element.fill || 'none'}\n`;
+        // Handle both 'r' and 'radius' property names
+        const radius = element.r || element.radius;
+        compact += `circ:${element.x},${element.y},${radius},${element.stroke || element.color},${element.fill || 'none'}\n`;
         break;
       case 'ellipse':
-        compact += `ell:${element.x},${element.y},${element.width},${element.height},${element.color},${element.fill || 'none'}\n`;
+        // Handle both 'rx/ry' and 'width/height' property names
+        const rx = element.rx || element.width;
+        const ry = element.ry || element.height;
+        compact += `ell:${element.x},${element.y},${rx},${ry},${element.stroke || element.color},${element.fill || 'none'}\n`;
         break;
       case 'line':
-        compact += `line:${element.x1},${element.y1},${element.x2},${element.y2},${element.color}\n`;
+        compact += `line:${element.x1},${element.y1},${element.x2},${element.y2},${element.stroke || element.color}\n`;
+        break;
+      case 'arrow':
+        compact += `arrow:${element.x1},${element.y1},${element.x2},${element.y2},${element.color},${element.label || ''}\n`;
         break;
       case 'text':
-        compact += `txt:${element.x},${element.y},${element.text},${element.color},${element.size || 12}\n`;
+        compact += `txt:${element.x},${element.y},${element.size || 12},${element.color},${element.text}\n`;
         break;
       case 'path':
-        const pathCoords = element.points.map(p => `${p.x},${p.y}`).join(',');
-        compact += `path:${pathCoords},${element.color},${element.fill || 'none'}\n`;
+        const pathCoords = element.points.map(p => `${p[0]},${p[1]}`).join(',');
+        compact += `path:${pathCoords},${element.stroke || element.color},${element.fill || 'none'}\n`;
+        break;
+      case 'rect':
+        compact += `rect:${element.x},${element.y},${element.width},${element.height},${element.stroke || element.color},${element.fill || 'none'}\n`;
         break;
     }
   }
@@ -81,6 +92,13 @@ export default async function handler(req, res) {
 
     if (response.ok) {
       const data = await response.json();
+      
+      // Check if elements array exists
+      if (!data.elements || !Array.isArray(data.elements)) {
+        console.error('Invalid response from drawing API:', data);
+        throw new Error('Drawing API returned invalid format');
+      }
+      
       // Convert elements array to compact format string
       const drawing = data.elements.join('\n');
       return res.status(200).json({
