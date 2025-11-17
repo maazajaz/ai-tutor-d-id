@@ -32,19 +32,21 @@ function convertTemplateToCompact(template) {
         compact += `circ:${element.x},${element.y},${radius},${element.stroke || element.color},${element.fill || 'none'}\n`;
         break;
       case 'ellipse':
-        // Handle both 'rx/ry' and 'width/height' property names
-        const rx = element.rx || element.width;
-        const ry = element.ry || element.height;
-        compact += `ell:${element.x},${element.y},${rx},${ry},${element.stroke || element.color},${element.fill || 'none'}\n`;
+        // rx/ry are radii, parser expects width/height (diameters)
+        // Convert: width = rx * 2, height = ry * 2
+        const width = (element.rx || element.width) * 2;
+        const height = (element.ry || element.height) * 2;
+        compact += `ell:${element.x},${element.y},${width},${height},${element.stroke || element.color},${element.fill || 'none'}\n`;
         break;
       case 'line':
         compact += `line:${element.x1},${element.y1},${element.x2},${element.y2},${element.stroke || element.color}\n`;
         break;
       case 'arrow':
-        compact += `arrow:${element.x1},${element.y1},${element.x2},${element.y2},${element.color},${element.label || ''}\n`;
+        compact += `arrow:${element.x1},${element.y1},${element.x2},${element.y2},${element.color}\n`;
         break;
       case 'text':
-        compact += `txt:${element.x},${element.y},${element.size || 12},${element.color},${element.text}\n`;
+        // Parser format: txt:x,y,text,color,size
+        compact += `txt:${element.x},${element.y},${element.text},${element.color},${element.size || 12}\n`;
         break;
       case 'path':
         const pathCoords = element.points.map(p => `${p[0]},${p[1]}`).join(',');

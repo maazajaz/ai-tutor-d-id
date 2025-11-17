@@ -430,13 +430,14 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
         
         case 'txt':
         case 'text':
+          // Format: txt:x,y,text,color,size
           elements.push({
             type: 'text',
             x: parseFloat(values[0]),
             y: parseFloat(values[1]),
-            text: values.slice(2, -2).join(','),
-            color: values[values.length - 2]?.trim() || '#000',
-            size: parseInt(values[values.length - 1]) || 12
+            text: values[2],
+            color: values[3]?.trim() || '#000',
+            size: parseInt(values[4]) || 12
           });
           break;
         
