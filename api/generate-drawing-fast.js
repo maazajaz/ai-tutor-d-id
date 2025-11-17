@@ -35,7 +35,9 @@ function detectComplexDiagram(prompt) {
     'kidney', 'liver', 'eye structure', 'ear structure',
     'dna', 'molecule', 'chemical structure', 'atom',
     'detailed', 'cross-section', 'internal structure',
-    'photosynthesis', 'cellular respiration', 'mitosis', 'meiosis'
+    'photosynthesis', 'cellular respiration', 'mitosis', 'meiosis',
+    'animal', 'dog', 'cat', 'bird', 'fish', 'mammal', 'reptile',
+    'body parts', 'organism', 'creature', 'species'
   ];
   
   // Simple diagram keywords (geometric, basic concepts, cycles)
