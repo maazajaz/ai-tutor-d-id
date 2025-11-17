@@ -1195,39 +1195,69 @@ COMPACT FORMAT:
 - arrow:x1,y1,x2,y2,color,label text           → arrow with label
 - txt:x,y,size,color,text content              → text
 
-IMPORTANT RULES:
+CRITICAL LAYOUT RULES:
 1. NEVER use white (#fff or #ffffff) for text - it's invisible on white canvas!
 2. Use dark colors for text: #1f2937 (dark gray), #000 (black), or matching element color
 3. For cycles/processes, ALWAYS add arrows between elements to show flow
-4. Add MORE details - labels, measurements, connecting lines, explanations
-5. Make diagrams educational and complete, not minimal
+4. SPACE OUT elements properly - don't overlap! Use the full 800x600 canvas
+5. For solar system: place sun at center, planets spread out horizontally or in orbit
+6. For life cycles: arrange in circle/square pattern with good spacing
+7. Leave margins: keep elements at least 50px from edges
+
+SPACING EXAMPLES:
+- Solar system: Sun at (400,300), planets at (200,300), (300,300), (500,300), (600,300) etc.
+- Life cycle: corners like (200,150), (600,150), (600,450), (200,450)
+- Vertical flow: top (400,100), middle (400,300), bottom (400,500)
 
 Colors: #3b82f6(blue) #10b981(green) #f59e0b(orange) #ef4444(red) #8b5cf6(purple) #1f2937(dark)
 Fills: Add "20" for 20% opacity (e.g., #3b82f620)
 
 GOOD EXAMPLES:
 
-Life Cycle (with arrows!):
+Solar System (well-spaced!):
 {
-  "title": "Life Cycle",
+  "title": "Solar System",
   "elements": [
-    "circ:400,100,50,#3b82f6,#3b82f620",
-    "txt:400,110,18,#1f2937,Birth",
-    "arrow:450,120,550,200,#666,",
-    "circ:600,250,50,#10b981,#10b98120",
-    "txt:600,260,18,#1f2937,Childhood",
-    "arrow:600,310,400,380,#666,",
-    "circ:400,450,50,#f59e0b,#f59e0b20",
-    "txt:400,460,18,#1f2937,Adulthood",
-    "arrow:350,450,250,310,#666,",
-    "circ:200,250,50,#ef4444,#ef444420",
-    "txt:200,260,18,#1f2937,Elderly",
-    "arrow:220,200,350,120,#666,Back to Birth",
-    "txt:400,550,16,#1f2937,Continuous Cycle of Life"
+    "circ:400,300,50,#f59e0b,#f59e0b",
+    "txt:400,310,16,#1f2937,Sun",
+    "circ:250,300,20,#8b5cf6,#8b5cf620",
+    "txt:250,310,12,#1f2937,Mercury",
+    "circ:320,300,25,#ef4444,#ef444420",
+    "txt:320,310,12,#1f2937,Venus",
+    "circ:480,300,25,#3b82f6,#3b82f620",
+    "txt:480,310,12,#1f2937,Earth",
+    "circ:560,300,22,#ef4444,#ef444420",
+    "txt:560,310,12,#1f2937,Mars",
+    "circ:650,300,35,#f59e0b,#f59e0b20",
+    "txt:650,310,12,#1f2937,Jupiter",
+    "txt:400,550,18,#1f2937,Simple Solar System"
   ]
 }
 
-Triangle area (detailed):
+Life Cycle (circular layout with arrows!):
+{
+  "title": "Life Cycle",
+  "elements": [
+    "circ:400,120,45,#3b82f6,#3b82f620",
+    "txt:400,130,16,#1f2937,Birth",
+    "arrow:440,140,560,200,#666,Growth",
+    "circ:600,250,45,#10b981,#10b98120",
+    "txt:600,260,16,#1f2937,Childhood",
+    "arrow:600,300,600,400,#666,Maturity",
+    "circ:600,450,45,#f59e0b,#f59e0b20",
+    "txt:600,460,16,#1f2937,Adulthood",
+    "arrow:560,470,240,470,#666,Aging",
+    "circ:200,450,45,#ef4444,#ef444420",
+    "txt:200,460,16,#1f2937,Elderly",
+    "arrow:200,400,200,300,#666,Cycle",
+    "circ:200,250,45,#8b5cf6,#8b5cf620",
+    "txt:200,260,16,#1f2937,Legacy",
+    "arrow:240,220,360,140,#666,Renewal",
+    "txt:400,550,18,#1f2937,The Continuous Cycle of Life"
+  ]
+}
+
+Triangle area (well-positioned):
 {
   "title": "Triangle Area",
   "elements": [
@@ -1244,24 +1274,24 @@ Triangle area (detailed):
   ]
 }
 
-Water Cycle (with arrows!):
+Water Cycle (spread out with arrows!):
 {
   "title": "Water Cycle",
   "elements": [
-    "circ:150,400,40,#3b82f6,#3b82f650",
-    "txt:150,410,16,#1f2937,Ocean",
-    "arrow:180,370,280,250,#10b981,Evaporation",
-    "circ:300,200,35,#8b5cf6,#8b5cf650",
-    "txt:300,210,16,#1f2937,Clouds",
-    "arrow:350,220,500,300,#3b82f6,Rain",
-    "circ:550,350,40,#10b981,#10b98150",
-    "txt:550,360,16,#1f2937,Land",
-    "arrow:500,380,200,410,#6366f1,Runoff",
-    "txt:400,500,20,#1f2937,The Continuous Water Cycle"
+    "circ:150,450,45,#3b82f6,#3b82f650",
+    "txt:150,460,16,#1f2937,Ocean",
+    "arrow:180,420,280,280,#10b981,Evaporation",
+    "circ:320,230,40,#8b5cf6,#8b5cf650",
+    "txt:320,240,16,#1f2937,Clouds",
+    "arrow:360,240,520,320,#3b82f6,Precipitation",
+    "circ:570,370,45,#10b981,#10b98150",
+    "txt:570,380,16,#1f2937,Land",
+    "arrow:530,400,200,460,#6366f1,Runoff",
+    "txt:400,550,18,#1f2937,The Water Cycle"
   ]
 }
 
-Return ONLY compact JSON. Make it DETAILED and EDUCATIONAL with proper connections!
+Return ONLY compact JSON. Make it DETAILED and EDUCATIONAL with proper spacing and connections!
 DO NOT add comments like // in the JSON - return pure JSON only.`
         },
         {
