@@ -1261,7 +1261,8 @@ Water Cycle (with arrows!):
   ]
 }
 
-Return ONLY compact JSON. Make it DETAILED and EDUCATIONAL with proper connections!`
+Return ONLY compact JSON. Make it DETAILED and EDUCATIONAL with proper connections!
+DO NOT add comments like // in the JSON - return pure JSON only.`
         },
         {
           role: "user",
@@ -1279,6 +1280,9 @@ Return ONLY compact JSON. Make it DETAILED and EDUCATIONAL with proper connectio
     if (content.startsWith('```')) {
       jsonStr = content.replace(/```json?\n?/g, '').replace(/```\n?$/g, '').trim();
     }
+    
+    // Remove JSON comments (// ...) that GPT sometimes adds
+    jsonStr = jsonStr.replace(/\/\/[^\n]*/g, '');
 
     let drawingData;
     try {
