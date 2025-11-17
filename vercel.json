@@ -47,6 +47,10 @@
       "dest": "/api/generate-drawing.js"
     },
     {
+      "src": "/api/generate-drawing-fast",
+      "dest": "/api/generate-drawing-fast.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/server/server.js"
     },

@@ -1060,6 +1060,211 @@ app.post("/api/explain-solution", async (req, res) => {
   }
 });
 
+// Generate drawing instructions for Rough.js
+app.post("/api/generate-drawing", async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    console.log('🎨 Generating drawing instructions for:', prompt);
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    if (!openai) {
+      return res.status(500).json({ error: 'OpenAI API not configured' });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert at creating educational diagrams. Generate JSON instructions for drawing educational diagrams using simple shapes.
+
+Canvas size: 800x600 pixels
+Origin: Top-left (0,0)
+
+Available shapes:
+1. triangle: { type: "triangle", points: [[x1,y1], [x2,y2], [x3,y3]], fill: "color", stroke: "color", strokeWidth: number, label: "text" }
+2. rectangle: { type: "rectangle", x: number, y: number, width: number, height: number, fill: "color", stroke: "color", strokeWidth: number, label: "text" }
+3. circle: { type: "circle", x: number, y: number, diameter: number, fill: "color", stroke: "color", strokeWidth: number, label: "text" }
+4. line: { type: "line", points: [[x1,y1], [x2,y2]], stroke: "color", strokeWidth: number }
+5. arrow: { type: "arrow", points: [[x1,y1], [x2,y2]], stroke: "color", strokeWidth: number, label: "text" }
+6. text: { type: "text", x: number, y: number, text: "content", fontSize: number, color: "color" }
+7. arc: { type: "arc", x: number, y: number, width: number, height: number, start: angle, end: angle, stroke: "color", strokeWidth: number }
+
+Colors: Use hex colors like "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"
+
+Guidelines:
+- Center the main diagram in the canvas
+- Use appropriate sizes (not too small or too large)
+- Include labels for important parts
+- Use different colors to distinguish elements
+- Add formulas or explanations as text
+- Keep it educational and clear
+
+Return ONLY valid JSON in this format:
+{
+  "title": "Diagram Title",
+  "description": "Brief description",
+  "elements": [
+    // array of shape objects
+  ]
+}
+
+Example for "area of triangle":
+{
+  "title": "Area of a Triangle",
+  "description": "Visual representation of triangle area formula",
+  "elements": [
+    { "type": "triangle", "points": [[250,150], [550,150], [400,400]], "fill": "#3b82f620", "stroke": "#3b82f6", "strokeWidth": 3, "label": "" },
+    { "type": "line", "points": [[250,150], [550,150]], "stroke": "#ef4444", "strokeWidth": 2 },
+    { "type": "text", "x": 400, "y": 130, "text": "base (b)", "fontSize": 18, "color": "#ef4444" },
+    { "type": "line", "points": [[400,150], [400,400]], "stroke": "#10b981", "strokeWidth": 2 },
+    { "type": "text", "x": 420, "y": 275, "text": "height (h)", "fontSize": 18, "color": "#10b981" },
+    { "type": "text", "x": 250, "y": 480, "text": "Area = ½ × base × height", "fontSize": 24, "color": "#1f2937" },
+    { "type": "text", "x": 280, "y": 520, "text": "A = ½ × b × h", "fontSize": 20, "color": "#6366f1" }
+  ]
+}`
+        },
+        {
+          role: "user",
+          content: `Create drawing instructions for: ${prompt}\n\nReturn ONLY the JSON object, no markdown or explanation.`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+
+    const content = completion.choices[0].message.content.trim();
+    
+    // Remove markdown code blocks if present
+    let jsonStr = content;
+    if (content.startsWith('```')) {
+      jsonStr = content.replace(/```json?\n?/g, '').replace(/```\n?$/g, '').trim();
+    }
+
+    let drawingData;
+    try {
+      drawingData = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('❌ Failed to parse GPT-4 response:', jsonStr);
+      return res.status(500).json({ 
+        error: 'Failed to parse drawing instructions',
+        details: parseError.message,
+        rawResponse: content
+      });
+    }
+
+    console.log('✅ Drawing instructions generated:', drawingData.title);
+    res.json(drawingData);
+  } catch (error) {
+    console.error('❌ Error generating drawing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Generate drawing instructions for Rough.js (Fast Compact Format)
+app.post("/api/generate-drawing-fast", async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    console.log('⚡ Generating drawing (compact):', prompt);
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    if (!openai) {
+      return res.status(500).json({ error: 'OpenAI API not configured' });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert at creating educational diagrams using ULTRA COMPACT notation.
+
+Canvas: 800x600 (origin top-left)
+
+COMPACT FORMAT (saves 80% tokens vs JSON):
+- tri:x1,y1,x2,y2,x3,y3,stroke,fill           → triangle
+- rect:x,y,w,h,stroke,fill                     → rectangle  
+- circ:x,y,radius,stroke,fill                  → circle
+- line:x1,y1,x2,y2,color,width                 → line
+- arrow:x1,y1,x2,y2,color,label text           → arrow with label
+- txt:x,y,size,color,text content              → text
+
+Colors: #3b82f6(blue) #10b981(green) #f59e0b(orange) #ef4444(red) #8b5cf6(purple)
+Fills: Add "20" for 20% opacity (e.g., #3b82f620)
+
+EXAMPLES:
+
+Triangle area:
+{
+  "title": "Triangle Area",
+  "elements": [
+    "tri:250,150,550,150,400,400,#3b82f6,#3b82f620",
+    "line:250,150,550,150,#ef4444,3",
+    "txt:400,130,18,#ef4444,base (b)",
+    "line:400,150,400,400,#10b981,2",
+    "txt:430,275,18,#10b981,height (h)",
+    "txt:400,480,24,#1f2937,Area = ½ × base × height"
+  ]
+}
+
+Solar system:
+{
+  "title": "Solar System",
+  "elements": [
+    "circ:400,300,60,#f59e0b,#f59e0b",
+    "txt:400,310,20,#fff,Sun",
+    "circ:280,300,15,#8b5cf6,#8b5cf650",
+    "circ:520,300,15,#3b82f6,#3b82f650",
+    "circ:340,240,12,#ef4444,#ef444450",
+    "circ:460,360,12,#10b981,#10b98150"
+  ]
+}
+
+Return ONLY compact JSON. Be educational and clear!`
+        },
+        {
+          role: "user",
+          content: `Create compact drawing for: ${prompt}\n\nReturn ONLY JSON with title and elements array (compact format).`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 800  // Much less tokens needed!
+    });
+
+    const content = completion.choices[0].message.content.trim();
+    
+    // Remove markdown code blocks if present
+    let jsonStr = content;
+    if (content.startsWith('```')) {
+      jsonStr = content.replace(/```json?\n?/g, '').replace(/```\n?$/g, '').trim();
+    }
+
+    let drawingData;
+    try {
+      drawingData = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('❌ Failed to parse GPT-4 response:', jsonStr);
+      return res.status(500).json({ 
+        error: 'Failed to parse drawing instructions',
+        details: parseError.message,
+        rawResponse: content
+      });
+    }
+
+    console.log('✅ Drawing generated:', drawingData.title, `(${drawingData.elements.length} elements)`);
+    res.json(drawingData);
+  } catch (error) {
+    console.error('❌ Error generating drawing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start server only in local development (not on Vercel)
 if (process.env.NODE_ENV !== 'production') {
   app.listen(port, () => {
