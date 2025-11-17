@@ -155,14 +155,14 @@ export const anatomyTemplates = {
       { type: 'ellipse', x: 500, y: 320, rx: 70, ry: 100, stroke: '#e74c3c', fill: '#fadbd8', strokeWidth: 3 },
       { type: 'text', x: 470, y: 325, text: 'Right Lung', size: 13, color: '#1f2937' },
       
-      // Bronchioles in lungs (small branches)
-      { type: 'line', x1: 320, y1: 250, x2: 290, y2: 280, stroke: '#95a5a6', strokeWidth: 4 },
-      { type: 'line', x1: 320, y1: 250, x2: 310, y2: 290, stroke: '#95a5a6', strokeWidth: 4 },
-      { type: 'line', x1: 320, y1: 250, x2: 330, y2: 290, stroke: '#95a5a6', strokeWidth: 4 },
+      // Bronchioles in lungs (small branches) - FIXED: darker color
+      { type: 'line', x1: 320, y1: 250, x2: 290, y2: 280, stroke: '#5d6d7e', strokeWidth: 4 },
+      { type: 'line', x1: 320, y1: 250, x2: 310, y2: 290, stroke: '#5d6d7e', strokeWidth: 4 },
+      { type: 'line', x1: 320, y1: 250, x2: 330, y2: 290, stroke: '#5d6d7e', strokeWidth: 4 },
       
-      { type: 'line', x1: 480, y1: 250, x2: 510, y2: 280, stroke: '#95a5a6', strokeWidth: 4 },
-      { type: 'line', x1: 480, y1: 250, x2: 490, y2: 290, stroke: '#95a5a6', strokeWidth: 4 },
-      { type: 'line', x1: 480, y1: 250, x2: 470, y2: 290, stroke: '#95a5a6', strokeWidth: 4 },
+      { type: 'line', x1: 480, y1: 250, x2: 510, y2: 280, stroke: '#5d6d7e', strokeWidth: 4 },
+      { type: 'line', x1: 480, y1: 250, x2: 490, y2: 290, stroke: '#5d6d7e', strokeWidth: 4 },
+      { type: 'line', x1: 480, y1: 250, x2: 470, y2: 290, stroke: '#5d6d7e', strokeWidth: 4 },
       
       // Diaphragm
       { type: 'path', points: [
@@ -210,10 +210,10 @@ export const anatomyTemplates = {
       { type: 'ellipse', x: 420, y: 370, rx: 20, ry: 12, stroke: '#e67e22', fill: '#fdebd0', strokeWidth: 2 },
       { type: 'text', x: 240, y: 295, text: 'Mitochondria', size: 10, color: '#1f2937' },
       
-      // Endoplasmic Reticulum (wavy lines around nucleus)
+      // Endoplasmic Reticulum (wavy lines around nucleus) - FIXED: darker color
       { type: 'path', points: [
         [280, 250], [270, 260], [280, 270], [270, 280], [280, 290]
-      ], stroke: '#95a5a6', fill: 'none', strokeWidth: 3 },
+      ], stroke: '#5d6d7e', fill: 'none', strokeWidth: 3 },
       { type: 'text', x: 240, y: 270, text: 'ER', size: 10, color: '#1f2937' },
       
       // Golgi Body (stacked curved lines)
@@ -303,24 +303,24 @@ export const anatomyTemplates = {
     title: 'Human Eye Structure',
     canvasSize: { width: 800, height: 600 },
     elements: [
-      // Eyeball (large sphere)
-      { type: 'circle', x: 400, y: 300, r: 120, stroke: '#ecf0f1', fill: '#ffffff', strokeWidth: 3 },
+      // Eyeball (large sphere) - FIXED: darker stroke
+      { type: 'circle', x: 400, y: 300, r: 120, stroke: '#34495e', fill: '#ffffff', strokeWidth: 3 },
       
-      // Cornea (front transparent bulge)
-      { type: 'circle', x: 480, y: 300, r: 60, stroke: '#bdc3c7', fill: 'none', strokeWidth: 2 },
+      // Cornea (front transparent bulge) - FIXED: darker stroke
+      { type: 'circle', x: 480, y: 300, r: 60, stroke: '#2c3e50', fill: 'none', strokeWidth: 2 },
       { type: 'text', x: 550, y: 280, text: 'Cornea', size: 14, color: '#1f2937' },
       { type: 'text', x: 550, y: 295, text: '(Transparent)', size: 11, color: '#7f8c8d' },
       
       // Iris (colored part)
-      { type: 'circle', x: 480, y: 300, r: 35, stroke: '#3498db', fill: '#5dade2', strokeWidth: 3 },
+      { type: 'circle', x: 480, y: 300, r: 35, stroke: '#1565c0', fill: '#5dade2', strokeWidth: 3 },
       { type: 'text', x: 520, y: 340, text: 'Iris', size: 13, color: '#1f2937' },
       
       // Pupil (black center)
       { type: 'circle', x: 480, y: 300, r: 15, stroke: '#000', fill: '#000', strokeWidth: 1 },
       { type: 'text', x: 505, y: 305, text: 'Pupil', size: 12, color: '#1f2937' },
       
-      // Lens (behind iris)
-      { type: 'ellipse', x: 450, y: 300, rx: 25, ry: 40, stroke: '#95a5a6', fill: 'none', strokeWidth: 2 },
+      // Lens (behind iris) - FIXED: darker stroke
+      { type: 'ellipse', x: 450, y: 300, rx: 25, ry: 40, stroke: '#5d6d7e', fill: 'none', strokeWidth: 2 },
       { type: 'text', x: 430, y: 260, text: 'Lens', size: 12, color: '#1f2937' },
       
       // Retina (back inner layer)
@@ -334,17 +334,17 @@ export const anatomyTemplates = {
       
       // Sclera label (white part)
       { type: 'text', x: 340, y: 210, text: 'Sclera (White)', size: 12, color: '#1f2937' },
-      { type: 'arrow', x1: 360, y1: 220, x2: 370, y2: 250, color: '#95a5a6', label: '' },
+      { type: 'arrow', x1: 360, y1: 220, x2: 370, y2: 250, color: '#5d6d7e', label: '' },
       
       // Vitreous humor (gel inside)
       { type: 'text', x: 380, y: 340, text: 'Vitreous', size: 11, color: '#7f8c8d' },
       { type: 'text', x: 380, y: 355, text: 'Humor (Gel)', size: 11, color: '#7f8c8d' },
       
       // Muscles (simplified)
-      { type: 'rect', x: 380, y: 180, width: 40, height: 15, stroke: '#e74c3c', fill: '#fadbd8', strokeWidth: 1 },
+      { type: 'rect', x: 380, y: 180, width: 40, height: 15, stroke: '#c0392b', fill: '#fadbd8', strokeWidth: 2 },
       { type: 'text', x: 400, y: 172, text: 'Eye Muscles', size: 10, color: '#1f2937' },
       
-      { type: 'rect', x: 380, y: 405, width: 40, height: 15, stroke: '#e74c3c', fill: '#fadbd8', strokeWidth: 1 },
+      { type: 'rect', x: 380, y: 405, width: 40, height: 15, stroke: '#c0392b', fill: '#fadbd8', strokeWidth: 2 },
       
       // Light path arrows
       { type: 'arrow', x1: 600, y1: 300, x2: 540, y2: 300, color: '#f39c12', label: 'Light' },
