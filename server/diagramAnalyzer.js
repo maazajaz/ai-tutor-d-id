@@ -1,430 +1,425 @@
-/**
- * Diagram Analyzer - Analyzes chat conversation and generates diagram instructions
- * Uses AI to determine what type of diagram to create and what elements to include
- */
+import OpenAI from 'openai';
+import { anatomyTemplates } from './anatomyTemplates.js';
 
-import OpenAI from "openai";
-import dotenv from "dotenv";
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-dotenv.config();
-
-const openai = process.env.OPENAI_API_KEY 
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) 
-  : null;
-
-/**
- * Analyze chat text and determine appropriate diagram type or image using AI
- * @param {string} chatText - The chat conversation text
- * @returns {Promise<{diagramType: string, elements: Array, imageQuery?: string, shouldGenerateImage?: boolean}>}
- */
-async function analyzeDiagram(chatText) {
-  try {
-    // If OpenAI is available, use AI-powered analysis
-    if (openai) {
-      return await analyzeWithAI(chatText);
+// Match template keywords
+function matchAnatomyTemplate(prompt) {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  const keywords = {
+    'human-heart': ['heart', 'cardiac', 'atrium', 'ventricle', 'cardiovascular'],
+    'human-brain': ['brain', 'cerebral', 'cortex', 'lobe', 'frontal', 'parietal', 'temporal', 'occipital'],
+    'digestive-system': ['digest', 'stomach', 'intestine', 'esophagus', 'liver', 'pancreas', 'gastrointestinal'],
+    'respiratory-system': ['respiratory', 'lung', 'bronchi', 'trachea', 'alveoli', 'breathing'],
+    'plant-cell': ['plant cell', 'chloroplast', 'cell wall', 'vacuole', 'photosynthesis'],
+    'dog-anatomy': ['dog', 'canine', 'puppy'],
+    'eye-structure': ['eye', 'vision', 'retina', 'cornea', 'iris', 'lens', 'pupil', 'optic'],
+    'atom-structure': ['atom', 'atomic', 'electron', 'proton', 'neutron', 'nucleus', 'orbital', 'shell'],
+    'butterfly-lifecycle': ['butterfly', 'metamorphosis', 'caterpillar', 'chrysalis', 'pupa', 'lifecycle']
+  };
+  
+  for (const [templateId, terms] of Object.entries(keywords)) {
+    if (terms.some(term => lowerPrompt.includes(term))) {
+      console.log(`✅ Matched template: ${templateId}`);
+      return templateId;
     }
-    
-    // Fallback to pattern-based analysis
-    return analyzeDiagramWithPatterns(chatText);
-  } catch (error) {
-    console.error('Error analyzing diagram:', error);
-    // Fallback to pattern-based if AI fails
-    return analyzeDiagramWithPatterns(chatText);
   }
+  
+  return null;
 }
 
-/**
- * Use OpenAI to intelligently analyze and generate diagram or determine if image is better
- */
-async function analyzeWithAI(chatText) {
-  const response = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
-    messages: [{
-      role: "system",
-      content: `You are a visual content expert for educational content. Analyze the user's question and decide the best visual representation.
+// Convert template to compact format
+function convertTemplateToCompact(template) {
+  let compact = '';
+  
+  for (const element of template.elements) {
+    switch (element.type) {
+      case 'circle':
+        compact += `circ:${element.x},${element.y},${element.radius},${element.color},${element.fill || 'none'}\n`;
+        break;
+      case 'ellipse':
+        compact += `ell:${element.x},${element.y},${element.width},${element.height},${element.color},${element.fill || 'none'}\n`;
+        break;
+      case 'rect':
+        compact += `rect:${element.x},${element.y},${element.width},${element.height},${element.color},${element.fill || 'none'}\n`;
+        break;
+      case 'triangle':
+        compact += `tri:${element.x1},${element.y1},${element.x2},${element.y2},${element.x3},${element.y3},${element.color},${element.fill || 'none'}\n`;
+        break;
+      case 'line':
+        compact += `line:${element.x1},${element.y1},${element.x2},${element.y2},${element.color}\n`;
+        break;
+      case 'arrow':
+        compact += `arrow:${element.x1},${element.y1},${element.x2},${element.y2},${element.color}\n`;
+        break;
+      case 'text':
+        compact += `txt:${element.x},${element.y},${element.text},${element.color},${element.size || 12}\n`;
+        break;
+      case 'path':
+        const pathCoords = element.points.map(p => `${p.x},${p.y}`).join(',');
+        compact += `path:${pathCoords},${element.color},${element.fill || 'none'}\n`;
+        break;
+    }
+  }
+  
+  return compact;
+}
+
+export default async function handler(req, res) {
+  console.log('🔍 Diagram Analysis Request Received');
+  console.log('Environment Check:', {
+    hasOpenAI: !!process.env.OPENAI_API_KEY,
+    keyPrefix: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 7) : 'missing',
+    nodeEnv: process.env.NODE_ENV
+  });
+
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  try {
+    // Ensure request method is POST
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    // Log request details
+    console.log('📝 Request Body:', req.body);
+    
+    // Get text from request body
+    const { chatText } = req.body;
+
+    if (!chatText) {
+      console.log('❌ Missing chatText in request');
+      return res.status(400).json({ error: 'Chat text is required' });
+    }
+    
+    console.log('📝 Processing text:', chatText);
+
+    // 🚀 STEP 1: Check if this matches any anatomy template (INSTANT)
+    const templateId = matchAnatomyTemplate(chatText);
+    
+    if (templateId && anatomyTemplates[templateId]) {
+      console.log(`⚡ Using template ${templateId} - INSTANT rendering!`);
+      const template = anatomyTemplates[templateId];
+      const compactDrawing = convertTemplateToCompact(template);
+      
+      return res.status(200).json({
+        diagramType: 'fast_drawing',
+        drawing: compactDrawing,
+        templateId: templateId,
+        source: 'template',
+        renderTime: '0ms'
+      });
+    }
+
+    // STEP 2: Call OpenAI to analyze the text and generate diagram data or determine if image is better
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are a visual content expert for educational content. Analyze the user's question and decide the best visual representation.
 
 CRITICAL DECISION RULES:
 
-1. USE DALL-E IMAGE GENERATION FOR:
-   - Mathematical concepts/explanations (geometry, algebra, calculus)
-   - Scientific processes/concepts (physics, chemistry, biology diagrams)
-   - Educational explanations that need custom illustration
-   - Abstract concepts that need visual representation
-   - "How to calculate", "explain formula", "show process"
+1. USE FAST DRAWING FOR:
+   - Anatomy diagrams (already handled by template matching, but you can request custom ones)
+   - Scientific diagrams that need real-time animation
+   - Educational sketches, flowcharts, concept maps
+   - Simple geometric diagrams
+   - Return: { "diagramType": "fast_drawing", "drawingPrompt": "describe what to draw..." }
+
+2. USE DALL-E IMAGE GENERATION FOR:
+   - Complex realistic scenes that can't be drawn simply
+   - Photorealistic concepts that need detailed illustration
+   - Complex composite images
+   - When fast_drawing would be too abstract
    - Return: { "diagramType": "dalle_image", "imagePrompt": "educational illustration..." }
 
-2. USE UNSPLASH/STOCK PHOTOS FOR:
+3. USE UNSPLASH/STOCK PHOTOS FOR:
    - Real-world objects, animals, places (lion, Eiffel Tower, butterfly)
    - Natural phenomena you can photograph (sunset, volcano, ocean)
    - Landmarks, buildings, landscapes
    - People, faces, everyday objects
    - Return: { "diagramType": "image", "imageQuery": "photo of..." }
 
-3. USE TRADITIONAL DIAGRAMS FOR:
+4. USE TRADITIONAL DIAGRAMS FOR:
    - Step-by-step processes/algorithms (flowcharts)
    - Concept relationships (mindmaps)
    - Data comparisons (graphs)
    - Return: { "diagramType": "flowchart|mindmap|graph", "elements": [...] }
 
+PRIORITY ORDER: fast_drawing (fastest) > traditional diagrams > dalle_image > stock photos
+
 EXAMPLES:
-❌ Wrong: "perimeter of square" → Unsplash photo (generic square image)
-✅ Right: "perimeter of square" → DALL-E ("educational diagram showing square with labeled sides and perimeter formula P=4s")
+✅ "perimeter of rectangle" → { "diagramType": "fast_drawing", "drawingPrompt": "rectangle with labeled sides (length and width) and formula P=2(l+w)" }
+✅ "photosynthesis process" → { "diagramType": "fast_drawing", "drawingPrompt": "plant with arrows showing CO2, sunlight, water input and O2 output with labels" }
+✅ "solar system" → { "diagramType": "fast_drawing", "drawingPrompt": "sun in center with 8 planets in orbit (Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune)" }
+✅ "what does a lion look like" → { "diagramType": "image", "imageQuery": "realistic photo of lion in savanna" }
+✅ "complex city skyline" → { "diagramType": "dalle_image", "imagePrompt": "detailed city skyline with modern buildings" }
 
-❌ Wrong: "photosynthesis process" → Unsplash photo (plant photo)
-✅ Right: "photosynthesis process" → DALL-E ("scientific diagram of photosynthesis with labeled arrows showing CO2, sunlight, and O2")
-
-✅ Right: "what does a lion look like" → Unsplash ("realistic photo of lion in savanna")
-
-Response format:
+Response format (MUST be valid JSON):
 {
-  "diagramType": "dalle_image|image|flowchart|mindmap|graph|diagram",
+  "diagramType": "fast_drawing|dalle_image|image|flowchart|mindmap|graph",
+  "drawingPrompt": "detailed description (only for fast_drawing)",
   "imagePrompt": "detailed DALL-E prompt (only for dalle_image)",
-  "imageQuery": "search query (only for image/stock photos)",
-  "elements": [
-    // For traditional diagrams only
-  ]
-}
+  "imageQuery": "search query (only for image)",
+  "elements": [...] (only for flowchart/mindmap/graph)
+}`
+        }, {
+          role: "user",
+          content: `Analyze and determine best visual for: ${chatText}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000,
+    });
 
-Return ONLY valid JSON, no markdown or explanation.`
-    }, {
-      role: "user",
-      content: `Analyze and determine best visual for: ${chatText}`
-    }],
-    temperature: 0.7,
-    max_tokens: 500
-  });
-
-  const result = JSON.parse(response.choices[0].message.content);
-  
-  // Validate the result
-  if (!result.diagramType) {
-    throw new Error('Invalid AI response format');
-  }
-  
-  return result;
-}
-
-/**
- * Pattern-based fallback analysis - now includes image detection
- * @param {string} chatText - The chat conversation text
- * @returns {Promise<{diagramType: string, elements: Array, imageQuery?: string, imagePrompt?: string}>}
- */
-async function analyzeDiagramWithPatterns(chatText) {
-  try {
-    // Check for educational/mathematical concepts that need DALL-E
-    const dallePatterns = {
-      dalle_image: /\b(how\s+to\s+(calculate|find|solve|compute)|explain.*formula|perimeter|area|volume|theorem|equation|proof|derive|geometric|trigonometry|calculus|physics|chemistry|biology.*process|photosynthesis|cellular|molecular|atomic|circuit|diagram.*how)\b/i,
-    };
+    // Extract and parse the JSON response
+    const result = JSON.parse(completion.choices[0].message.content);
     
-    // Check if it's a DALL-E educational image request
-    for (const [type, pattern] of Object.entries(dallePatterns)) {
-      if (pattern.test(chatText)) {
-        // Extract the educational concept
-        const concept = chatText.replace(/how\s+to\s+|what\s+is\s+|explain\s+/gi, '').trim();
+    // Validate the response format
+    if (!result.diagramType) {
+      throw new Error('Invalid response format from OpenAI - missing diagramType');
+    }
+    
+    // For diagrams (flowchart/mindmap/graph), elements are required
+    if (['flowchart', 'mindmap', 'graph', 'diagram'].includes(result.diagramType) && !Array.isArray(result.elements)) {
+      throw new Error('Invalid response format from OpenAI - missing elements for diagram');
+    }
+    
+    // For images, imageQuery is required
+    if (result.diagramType === 'image' && !result.imageQuery) {
+      throw new Error('Invalid response format from OpenAI - missing imageQuery for image type');
+    }
+    
+    // For DALL-E images, imagePrompt is required
+    if (result.diagramType === 'dalle_image' && !result.imagePrompt) {
+      throw new Error('Invalid response format from OpenAI - missing imagePrompt for dalle_image type');
+    }
+    
+    // For fast drawings, drawingPrompt is required
+    if (result.diagramType === 'fast_drawing' && !result.drawingPrompt) {
+      throw new Error('Invalid response format from OpenAI - missing drawingPrompt for fast_drawing type');
+    }
+
+    console.log('✅ Generated visual data:', {
+      type: result.diagramType,
+      hasElements: !!result.elements,
+      hasImageQuery: !!result.imageQuery,
+      hasImagePrompt: !!result.imagePrompt,
+      hasDrawingPrompt: !!result.drawingPrompt
+    });
+
+    // 🚀 Handle fast_drawing type - Call our fast drawing API
+    if (result.diagramType === 'fast_drawing' && result.drawingPrompt) {
+      console.log('🎨 Generating fast drawing with prompt:', result.drawingPrompt);
+      
+      try {
+        // Call our generate-drawing-fast endpoint
+        const drawingResponse = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/generate-drawing-fast`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: result.drawingPrompt })
+        });
+
+        if (drawingResponse.ok) {
+          const drawingData = await drawingResponse.json();
+          console.log('✅ Fast drawing generated:', drawingData.approach);
+          
+          result.drawing = drawingData.drawing;
+          result.source = drawingData.approach || 'gpt';
+          result.renderTime = drawingData.generationTime || '1-2s';
+          
+        } else {
+          console.error('❌ Fast drawing generation failed, falling back to DALL-E');
+          // Fall back to DALL-E
+          result.diagramType = 'dalle_image';
+          result.imagePrompt = result.drawingPrompt;
+        }
+      } catch (drawingError) {
+        console.error('❌ Failed to generate fast drawing:', drawingError);
+        // Fall back to DALL-E
+        result.diagramType = 'dalle_image';
+        result.imagePrompt = result.drawingPrompt;
+      }
+    }
+
+    // If it's an image type, fetch/generate the actual image
+    if (result.diagramType === 'dalle_image' && result.imagePrompt) {
+      console.log('🎨 Generating DALL-E image with prompt:', result.imagePrompt);
+      
+      try {
+        const imageResponse = await openai.images.generate({
+          model: "dall-e-3",
+          prompt: result.imagePrompt,
+          n: 1,
+          size: "1024x1024",
+          quality: "standard",
+        });
+
+        const dalleUrl = imageResponse.data[0].url;
+        const revisedPrompt = imageResponse.data[0].revised_prompt;
         
-        return {
-          diagramType: 'dalle_image',
-          imagePrompt: `Educational diagram explaining ${concept}. Clear, labeled illustration with formulas, arrows, and annotations. Professional textbook style.`,
-          elements: [],
-          confidence: 'high'
-        };
-      }
-    }
-    
-    // Check if user is asking for visual representation of a concrete object/concept
-    const imagePatterns = {
-      image: /\b(what\s+(does|is|are)|show\s+me|looks?\s+like|picture\s+of|image\s+of|photo\s+of|appearance|visual)\b.*\b(lion|tiger|elephant|animal|bird|fish|plant|flower|tree|mountain|ocean|building|car|vehicle|person|face|sunset|landscape|country|city|planet|star|galaxy|dinosaur|fossil|artwork|painting|sculpture|Eiffel|Tower|monument|landmark)\b/i,
-    };
-    
-    // Check if it's a stock photo request (real-world objects)
-    for (const [type, pattern] of Object.entries(imagePatterns)) {
-      if (pattern.test(chatText)) {
-        // Extract the subject from the question
-        const subjectMatch = chatText.match(/\b(lion|tiger|elephant|animal|bird|fish|plant|flower|tree|mountain|ocean|building|car|vehicle|person|face|sunset|landscape|country|city|planet|star|galaxy|dinosaur|fossil|artwork|painting|sculpture|Eiffel|Tower|monument|landmark|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/i);
-        const subject = subjectMatch ? subjectMatch[0] : 'concept';
+        console.log('✅ DALL-E image generated:', dalleUrl);
         
-        return {
-          diagramType: 'image',
-          imageQuery: `educational photo of ${subject}, high quality, detailed`,
-          elements: [],
-          confidence: 'high'
-        };
+        // Download and convert to base64 to avoid CORS issues
+        const imageBuffer = await fetch(dalleUrl).then(res => res.arrayBuffer());
+        const base64Image = `data:image/png;base64,${Buffer.from(imageBuffer).toString('base64')}`;
+        
+        result.imageUrl = base64Image;
+        result.imageSource = 'DALL-E 3';
+        result.imageAttribution = 'Generated by DALL-E 3';
+        result.revisedPrompt = revisedPrompt;
+        
+      } catch (imageError) {
+        console.error('❌ Failed to generate DALL-E image:', imageError);
+        // Fall back to diagram type
+        result.diagramType = 'flowchart';
+        result.elements = [
+          { type: 'process', text: 'Image generation failed', x: 400, y: 100, width: 200, height: 60 }
+        ];
       }
-    }
-
-    // Keywords and patterns for different diagram types
-    const patterns = {
-      flowchart: /\b(steps?|process|algorithm|flow|procedure|sequence|first|then|next|finally|how\s+to|explain.*steps|sorting|quicksort|mergesort|bubblesort)\b/i,
-      mindmap: /\b(concept|idea|brain\s?storm|mind\s?map|central|topic|related|connection|types?\s+of|categories|show\s+me.*concepts?|what\s+is.*oop|oop|object.?oriented|ai|artificial|data.?structure|web.?dev)\b/i,
-      graph: /\b(chart|graph|data|statistics|compare|versus|vs|numbers?|percentage|analysis|performance)\b/i,
-      diagram: /\b(diagram|structure|architecture|component|system|model|design|tree|binary|hierarchy)\b/i,
-      equation: /\b(equation|formula|math|calculate|solve|express|=|\+|-|\*|\/)\b/i,
-    };
-
-    // Detect diagram type based on keywords
-    let diagramType = 'diagram'; // default
-    let maxScore = 0;
-
-    for (const [type, pattern] of Object.entries(patterns)) {
-      const matches = chatText.match(new RegExp(pattern, 'gi'));
-      if (matches && matches.length > maxScore) {
-        maxScore = matches.length;
-        diagramType = type;
-      }
-    }
-
-    // Extract key elements from the chat
-    const elements = extractElements(chatText, diagramType);
-
-    return {
-      diagramType,
-      elements,
-      confidence: maxScore > 0 ? 'high' : 'low'
-    };
-  } catch (error) {
-    console.error('Error analyzing diagram:', error);
-    throw error;
-  }
-}
-
-/**
- * Extract key elements from chat text based on diagram type
- * @param {string} text - The text to analyze
- * @param {string} diagramType - The type of diagram
- * @returns {Array} Array of elements with text and optional value
- */
-function extractElements(text, diagramType) {
-  const elements = [];
-
-  switch (diagramType) {
-    case 'flowchart':
-      // Check if it's a known algorithm
-      if (/quicksort|quick\s+sort/i.test(text)) {
-        elements.push(
-          { text: 'Choose pivot element', type: 'step' },
-          { text: 'Partition array around pivot', type: 'step' },
-          { text: 'Elements < pivot go left', type: 'step' },
-          { text: 'Elements > pivot go right', type: 'step' },
-          { text: 'Recursively sort left partition', type: 'step' },
-          { text: 'Recursively sort right partition', type: 'step' },
-          { text: 'Combine sorted partitions', type: 'step' }
-        );
-        return elements;
-      }
+    } else if (result.diagramType === 'image' && result.imageQuery) {
+      console.log('📸 Fetching Unsplash image for:', result.imageQuery);
       
-      if (/mergesort|merge\s+sort/i.test(text)) {
-        elements.push(
-          { text: 'Divide array into two halves', type: 'step' },
-          { text: 'Recursively sort left half', type: 'step' },
-          { text: 'Recursively sort right half', type: 'step' },
-          { text: 'Merge sorted halves', type: 'step' },
-          { text: 'Compare elements from both halves', type: 'step' },
-          { text: 'Place smaller element first', type: 'step' },
-          { text: 'Repeat until all merged', type: 'step' }
-        );
-        return elements;
-      }
-      
-      if (/bubblesort|bubble\s+sort/i.test(text)) {
-        elements.push(
-          { text: 'Start at beginning of array', type: 'step' },
-          { text: 'Compare adjacent elements', type: 'step' },
-          { text: 'Swap if left > right', type: 'step' },
-          { text: 'Move to next pair', type: 'step' },
-          { text: 'Repeat until end of array', type: 'step' },
-          { text: 'Largest element bubbled to end', type: 'step' },
-          { text: 'Repeat for remaining elements', type: 'step' }
-        );
-        return elements;
-      }
-      
-      // Extract steps from numbered lists or sequences
-      const stepPatterns = [
-        /(?:step\s*)?(\d+)[:.)\s]+([^.?\n]+)/gi,
-        /(?:first|then|next|finally|after that)[,:\s]+([^.?\n]+)/gi,
-      ];
-      
-      stepPatterns.forEach(pattern => {
-        let match;
-        while ((match = pattern.exec(text)) !== null) {
-          const stepText = match[2] || match[1];
-          if (stepText && stepText.length < 100) {
-            elements.push({
-              text: stepText.trim(),
-              type: 'step'
-            });
+      try {
+        // Call Unsplash API (you need to add UNSPLASH_ACCESS_KEY to Vercel env)
+        const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
+        
+        if (!unsplashKey) {
+          console.warn('⚠️ Unsplash API key not configured, falling back to diagram');
+          result.diagramType = 'flowchart';
+          result.elements = [
+            { type: 'process', text: result.imageQuery, x: 400, y: 100, width: 200, height: 60 }
+          ];
+        } else {
+          const unsplashResponse = await fetch(
+            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(result.imageQuery)}&per_page=1&orientation=landscape`,
+            {
+              headers: {
+                'Authorization': `Client-ID ${unsplashKey}`
+              }
+            }
+          );
+
+          if (unsplashResponse.ok) {
+            const unsplashData = await unsplashResponse.json();
+            
+            if (unsplashData.results && unsplashData.results.length > 0) {
+              const photo = unsplashData.results[0];
+              
+              // Download and convert to base64
+              const imageBuffer = await fetch(photo.urls.regular).then(res => res.arrayBuffer());
+              const base64Image = `data:image/jpeg;base64,${Buffer.from(imageBuffer).toString('base64')}`;
+              
+              result.imageUrl = base64Image;
+              result.imageSource = 'Unsplash';
+              result.imageAttribution = `Photo by ${photo.user.name} on Unsplash`;
+              result.imageAttributionUrl = photo.links.html;
+              
+              console.log('✅ Unsplash image fetched');
+            } else {
+              console.warn('⚠️ No Unsplash results found');
+              result.diagramType = 'flowchart';
+              result.elements = [
+                { type: 'process', text: result.imageQuery, x: 400, y: 100, width: 200, height: 60 }
+              ];
+            }
+          } else {
+            console.error('❌ Unsplash API error:', unsplashResponse.status);
+            result.diagramType = 'flowchart';
+            result.elements = [
+              { type: 'process', text: result.imageQuery, x: 400, y: 100, width: 200, height: 60 }
+            ];
           }
         }
-      });
-
-      // If no steps found, extract sentences
-      if (elements.length === 0) {
-        const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
-        sentences.slice(0, 5).forEach(sentence => {
-          elements.push({
-            text: sentence.trim().substring(0, 80),
-            type: 'step'
-          });
-        });
-      }
-      break;
-
-    case 'mindmap':
-      // Check for known topics first
-      if (/\boop\b|object.?oriented/i.test(text)) {
-        // OOP concepts
-        return [
-          { text: 'OOP', type: 'center' },
-          { text: 'Encapsulation', type: 'node' },
-          { text: 'Inheritance', type: 'node' },
-          { text: 'Polymorphism', type: 'node' },
-          { text: 'Abstraction', type: 'node' },
-          { text: 'Classes & Objects', type: 'node' },
-          { text: 'Data Hiding', type: 'node' }
-        ];
-      } else if (/\bai\b|artificial.intelligence/i.test(text)) {
-        return [
-          { text: 'AI', type: 'center' },
-          { text: 'Machine Learning', type: 'node' },
-          { text: 'Neural Networks', type: 'node' },
-          { text: 'Natural Language', type: 'node' },
-          { text: 'Computer Vision', type: 'node' },
-          { text: 'Robotics', type: 'node' }
-        ];
-      } else if (/\bweb.?dev|web.?development/i.test(text)) {
-        return [
-          { text: 'Web Dev', type: 'center' },
-          { text: 'HTML/CSS', type: 'node' },
-          { text: 'JavaScript', type: 'node' },
-          { text: 'Backend', type: 'node' },
-          { text: 'Databases', type: 'node' },
-          { text: 'APIs', type: 'node' }
-        ];
-      } else if (/\bdata.?structure/i.test(text)) {
-        return [
-          { text: 'Data Structures', type: 'center' },
-          { text: 'Arrays', type: 'node' },
-          { text: 'Linked Lists', type: 'node' },
-          { text: 'Trees', type: 'node' },
-          { text: 'Graphs', type: 'node' },
-          { text: 'Hash Tables', type: 'node' }
+      } catch (imageError) {
+        console.error('❌ Failed to fetch Unsplash image:', imageError);
+        result.diagramType = 'flowchart';
+        result.elements = [
+          { type: 'process', text: result.imageQuery, x: 400, y: 100, width: 200, height: 60 }
         ];
       }
-      
-      // Extract key concepts (nouns and noun phrases)
-      const concepts = extractKeyPhrases(text);
-      concepts.slice(0, 8).forEach(concept => {
-        elements.push({
-          text: concept,
-          type: 'node'
-        });
-      });
-      break;
+    }
 
-    case 'graph':
-      // Try to extract numerical data
-      const numberPattern = /([a-zA-Z\s]+)[:=\s]+(\d+(?:\.\d+)?)\s*%?/g;
-      let numMatch;
-      while ((numMatch = numberPattern.exec(text)) !== null) {
-        elements.push({
-          text: numMatch[1].trim(),
-          value: numMatch[2],
-          type: 'bar'
-        });
-      }
+    // Return the diagram data
+    res.status(200).json(result);
 
-      // If no numbers found, create sample data from key terms
-      if (elements.length === 0) {
-        const terms = extractKeyPhrases(text).slice(0, 5);
-        terms.forEach((term, index) => {
-          elements.push({
-            text: term,
-            value: (index + 1) * 20, // Sample values
-            type: 'bar'
-          });
-        });
-      }
-      break;
-
-    case 'equation':
-      // Extract mathematical expressions
-      const mathPattern = /([^.!?]*(?:[+\-*/=^]|\\frac|\\sum|\\int)[^.!?]*)/g;
-      const mathMatches = text.match(mathPattern) || [];
-      mathMatches.slice(0, 3).forEach(expr => {
-        elements.push({
-          text: expr.trim(),
-          type: 'expression'
-        });
-      });
-
-      // If no equations found, extract formulas from text
-      if (elements.length === 0) {
-        const formulaPattern = /([a-zA-Z]\s*=\s*[^.!?\n]+)/g;
-        const formulas = text.match(formulaPattern) || [];
-        formulas.slice(0, 3).forEach(formula => {
-          elements.push({
-            text: formula.trim(),
-            type: 'formula'
-          });
-        });
-      }
-      break;
-
-    case 'diagram':
-    default:
-      // Extract key components/items
-      const items = extractKeyPhrases(text);
-      items.slice(0, 6).forEach(item => {
-        elements.push({
-          text: item,
-          type: 'component'
-        });
-      });
-      break;
-  }
-
-  // Ensure we have at least some elements
-  if (elements.length === 0) {
-    elements.push({
-      text: 'No specific structure detected',
-      type: 'default'
+  } catch (error) {
+    console.error('❌ Error in diagram analysis:', error);
+    
+    // Detailed environment check on error
+    console.error('🔑 Environment Check:', {
+      hasOpenAI: !!process.env.OPENAI_API_KEY,
+      keyLength: process.env.OPENAI_API_KEY?.length || 0,
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV
     });
-    elements.push({
-      text: 'Drawing from conversation',
-      type: 'default'
+    
+    // Handle OpenAI API errors
+    if (error.name === 'OpenAIError') {
+      console.error('🔥 OpenAI Error:', {
+        status: error.status,
+        message: error.message,
+        type: error.type,
+        code: error.code
+      });
+
+      // Return appropriate error response based on error type
+      if (error.status === 401) {
+        return res.status(401).json({
+          error: 'OpenAI API Authentication Error',
+          message: 'Please check your API key configuration',
+          code: error.code
+        });
+      }
+
+      return res.status(error.status || 500).json({
+        error: 'OpenAI API Error',
+        message: error.message,
+        type: error.type,
+        code: error.code
+      });
+    }
+
+    // Handle JSON parsing errors
+    if (error instanceof SyntaxError) {
+      console.error('🔥 Invalid JSON response from OpenAI');
+      return res.status(500).json({
+        error: 'Invalid API Response',
+        message: 'Failed to parse diagram data from OpenAI response',
+        details: error.message
+      });
+    }
+
+    // Handle all other errors
+    console.error('💥 Unhandled Error:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.split('\n').slice(0, 3)
+    });
+
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'An unexpected error occurred while generating the diagram',
+      details: error.message
     });
   }
-
-  return elements;
-}
-
-/**
- * Extract key phrases from text (simple implementation)
- * @param {string} text - The text to analyze
- * @returns {Array<string>} Array of key phrases
- */
-function extractKeyPhrases(text) {
-  // Remove common words
-  const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'when', 'where', 'why', 'how']);
-
-  // Split into words and filter
-  const words = text.toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter(word => word.length > 3 && !commonWords.has(word));
-
-  // Count frequency
-  const frequency = {};
-  words.forEach(word => {
-    frequency[word] = (frequency[word] || 0) + 1;
-  });
-
-  // Sort by frequency and return top phrases
-  const sorted = Object.entries(frequency)
-    .sort((a, b) => b[1] - a[1])
-    .map(([word]) => word);
-
-  return sorted.slice(0, 10);
-}
-
-export { analyzeDiagram };
+};

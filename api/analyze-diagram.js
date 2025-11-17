@@ -1,9 +1,73 @@
 import OpenAI from 'openai';
+import { anatomyTemplates } from './anatomyTemplates.js';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Match template keywords
+function matchAnatomyTemplate(prompt) {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  const keywords = {
+    'human-heart': ['heart', 'cardiac', 'atrium', 'ventricle', 'cardiovascular'],
+    'human-brain': ['brain', 'cerebral', 'cortex', 'lobe', 'frontal', 'parietal', 'temporal', 'occipital'],
+    'digestive-system': ['digest', 'stomach', 'intestine', 'esophagus', 'liver', 'pancreas', 'gastrointestinal'],
+    'respiratory-system': ['respiratory', 'lung', 'bronchi', 'trachea', 'alveoli', 'breathing'],
+    'plant-cell': ['plant cell', 'chloroplast', 'cell wall', 'vacuole', 'photosynthesis'],
+    'dog-anatomy': ['dog', 'canine', 'puppy'],
+    'eye-structure': ['eye', 'vision', 'retina', 'cornea', 'iris', 'lens', 'pupil', 'optic'],
+    'atom-structure': ['atom', 'atomic', 'electron', 'proton', 'neutron', 'nucleus', 'orbital', 'shell'],
+    'butterfly-lifecycle': ['butterfly', 'metamorphosis', 'caterpillar', 'chrysalis', 'pupa', 'lifecycle']
+  };
+  
+  for (const [templateId, terms] of Object.entries(keywords)) {
+    if (terms.some(term => lowerPrompt.includes(term))) {
+      console.log(`✅ Matched template: ${templateId}`);
+      return templateId;
+    }
+  }
+  
+  return null;
+}
+
+// Convert template to compact format
+function convertTemplateToCompact(template) {
+  let compact = '';
+  
+  for (const element of template.elements) {
+    switch (element.type) {
+      case 'circle':
+        compact += `circ:${element.x},${element.y},${element.radius},${element.color},${element.fill || 'none'}\n`;
+        break;
+      case 'ellipse':
+        compact += `ell:${element.x},${element.y},${element.width},${element.height},${element.color},${element.fill || 'none'}\n`;
+        break;
+      case 'rect':
+        compact += `rect:${element.x},${element.y},${element.width},${element.height},${element.color},${element.fill || 'none'}\n`;
+        break;
+      case 'triangle':
+        compact += `tri:${element.x1},${element.y1},${element.x2},${element.y2},${element.x3},${element.y3},${element.color},${element.fill || 'none'}\n`;
+        break;
+      case 'line':
+        compact += `line:${element.x1},${element.y1},${element.x2},${element.y2},${element.color}\n`;
+        break;
+      case 'arrow':
+        compact += `arrow:${element.x1},${element.y1},${element.x2},${element.y2},${element.color}\n`;
+        break;
+      case 'text':
+        compact += `txt:${element.x},${element.y},${element.text},${element.color},${element.size || 12}\n`;
+        break;
+      case 'path':
+        const pathCoords = element.points.map(p => `${p.x},${p.y}`).join(',');
+        compact += `path:${pathCoords},${element.color},${element.fill || 'none'}\n`;
+        break;
+    }
+  }
+  
+  return compact;
+}
 
 export default async function handler(req, res) {
   console.log('🔍 Diagram Analysis Request Received');
@@ -47,7 +111,24 @@ export default async function handler(req, res) {
     
     console.log('📝 Processing text:', chatText);
 
-    // Call OpenAI to analyze the text and generate diagram data or determine if image is better
+    // 🚀 STEP 1: Check if this matches any anatomy template (INSTANT)
+    const templateId = matchAnatomyTemplate(chatText);
+    
+    if (templateId && anatomyTemplates[templateId]) {
+      console.log(`⚡ Using template ${templateId} - INSTANT rendering!`);
+      const template = anatomyTemplates[templateId];
+      const compactDrawing = convertTemplateToCompact(template);
+      
+      return res.status(200).json({
+        diagramType: 'fast_drawing',
+        drawing: compactDrawing,
+        templateId: templateId,
+        source: 'template',
+        renderTime: '0ms'
+      });
+    }
+
+    // STEP 2: Call OpenAI to analyze the text and generate diagram data or determine if image is better
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -57,36 +138,46 @@ export default async function handler(req, res) {
 
 CRITICAL DECISION RULES:
 
-1. USE DALL-E IMAGE GENERATION FOR:
-   - Mathematical concepts/explanations (geometry, algebra, calculus, perimeter, area, volume)
-   - Scientific processes/concepts (physics, chemistry, biology diagrams)
-   - Educational explanations that need custom illustration
-   - Abstract concepts that need visual representation
-   - "How to calculate", "explain formula", "show process", "perimeter", "theorem"
+1. USE FAST DRAWING FOR:
+   - Anatomy diagrams (already handled by template matching, but you can request custom ones)
+   - Scientific diagrams that need real-time animation
+   - Educational sketches, flowcharts, concept maps
+   - Simple geometric diagrams
+   - Return: { "diagramType": "fast_drawing", "drawingPrompt": "describe what to draw..." }
+
+2. USE DALL-E IMAGE GENERATION FOR:
+   - Complex realistic scenes that can't be drawn simply
+   - Photorealistic concepts that need detailed illustration
+   - Complex composite images
+   - When fast_drawing would be too abstract
    - Return: { "diagramType": "dalle_image", "imagePrompt": "educational illustration..." }
 
-2. USE UNSPLASH/STOCK PHOTOS FOR:
+3. USE UNSPLASH/STOCK PHOTOS FOR:
    - Real-world objects, animals, places (lion, Eiffel Tower, butterfly)
    - Natural phenomena you can photograph (sunset, volcano, ocean)
    - Landmarks, buildings, landscapes
    - People, faces, everyday objects
    - Return: { "diagramType": "image", "imageQuery": "photo of..." }
 
-3. USE TRADITIONAL DIAGRAMS FOR:
+4. USE TRADITIONAL DIAGRAMS FOR:
    - Step-by-step processes/algorithms (flowcharts)
    - Concept relationships (mindmaps)
    - Data comparisons (graphs)
    - Return: { "diagramType": "flowchart|mindmap|graph", "elements": [...] }
 
+PRIORITY ORDER: fast_drawing (fastest) > traditional diagrams > dalle_image > stock photos
+
 EXAMPLES:
-✅ "perimeter of rectangle" → { "diagramType": "dalle_image", "imagePrompt": "educational diagram showing rectangle with labeled sides (length and width) and perimeter formula P=2(l+w)" }
-✅ "photosynthesis process" → { "diagramType": "dalle_image", "imagePrompt": "scientific diagram of photosynthesis with labeled arrows showing CO2, sunlight, and O2" }
+✅ "perimeter of rectangle" → { "diagramType": "fast_drawing", "drawingPrompt": "rectangle with labeled sides (length and width) and formula P=2(l+w)" }
+✅ "photosynthesis process" → { "diagramType": "fast_drawing", "drawingPrompt": "plant with arrows showing CO2, sunlight, water input and O2 output with labels" }
+✅ "solar system" → { "diagramType": "fast_drawing", "drawingPrompt": "sun in center with 8 planets in orbit (Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune)" }
 ✅ "what does a lion look like" → { "diagramType": "image", "imageQuery": "realistic photo of lion in savanna" }
-✅ "steps to make coffee" → { "diagramType": "flowchart", "elements": [...] }
+✅ "complex city skyline" → { "diagramType": "dalle_image", "imagePrompt": "detailed city skyline with modern buildings" }
 
 Response format (MUST be valid JSON):
 {
-  "diagramType": "dalle_image|image|flowchart|mindmap|graph",
+  "diagramType": "fast_drawing|dalle_image|image|flowchart|mindmap|graph",
+  "drawingPrompt": "detailed description (only for fast_drawing)",
   "imagePrompt": "detailed DALL-E prompt (only for dalle_image)",
   "imageQuery": "search query (only for image)",
   "elements": [...] (only for flowchart/mindmap/graph)
@@ -122,13 +213,53 @@ Response format (MUST be valid JSON):
     if (result.diagramType === 'dalle_image' && !result.imagePrompt) {
       throw new Error('Invalid response format from OpenAI - missing imagePrompt for dalle_image type');
     }
+    
+    // For fast drawings, drawingPrompt is required
+    if (result.diagramType === 'fast_drawing' && !result.drawingPrompt) {
+      throw new Error('Invalid response format from OpenAI - missing drawingPrompt for fast_drawing type');
+    }
 
     console.log('✅ Generated visual data:', {
       type: result.diagramType,
       hasElements: !!result.elements,
       hasImageQuery: !!result.imageQuery,
-      hasImagePrompt: !!result.imagePrompt
+      hasImagePrompt: !!result.imagePrompt,
+      hasDrawingPrompt: !!result.drawingPrompt
     });
+
+    // 🚀 Handle fast_drawing type - Call our fast drawing API
+    if (result.diagramType === 'fast_drawing' && result.drawingPrompt) {
+      console.log('🎨 Generating fast drawing with prompt:', result.drawingPrompt);
+      
+      try {
+        // Call our generate-drawing-fast endpoint
+        const drawingResponse = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/generate-drawing-fast`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: result.drawingPrompt })
+        });
+
+        if (drawingResponse.ok) {
+          const drawingData = await drawingResponse.json();
+          console.log('✅ Fast drawing generated:', drawingData.approach);
+          
+          result.drawing = drawingData.drawing;
+          result.source = drawingData.approach || 'gpt';
+          result.renderTime = drawingData.generationTime || '1-2s';
+          
+        } else {
+          console.error('❌ Fast drawing generation failed, falling back to DALL-E');
+          // Fall back to DALL-E
+          result.diagramType = 'dalle_image';
+          result.imagePrompt = result.drawingPrompt;
+        }
+      } catch (drawingError) {
+        console.error('❌ Failed to generate fast drawing:', drawingError);
+        // Fall back to DALL-E
+        result.diagramType = 'dalle_image';
+        result.imagePrompt = result.drawingPrompt;
+      }
+    }
 
     // If it's an image type, fetch/generate the actual image
     if (result.diagramType === 'dalle_image' && result.imagePrompt) {

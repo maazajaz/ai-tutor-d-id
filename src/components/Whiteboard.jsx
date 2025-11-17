@@ -340,6 +340,314 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
     }
   };
 
+  // 🎨 Parse compact format drawing data
+  const parseCompactFormat = (compactStr) => {
+    const lines = compactStr.trim().split('\n');
+    const elements = [];
+    
+    for (const line of lines) {
+      if (!line.trim() || line.startsWith('//')) continue;
+      
+      const [type, ...params] = line.split(':');
+      if (params.length === 0) continue;
+      
+      const values = params[0].split(',');
+      
+      switch (type.trim()) {
+        case 'circ':
+        case 'circle':
+          elements.push({
+            type: 'circle',
+            x: parseFloat(values[0]),
+            y: parseFloat(values[1]),
+            radius: parseFloat(values[2]),
+            color: values[3]?.trim() || '#000',
+            fill: values[4]?.trim() || 'none'
+          });
+          break;
+        
+        case 'ell':
+        case 'ellipse':
+          elements.push({
+            type: 'ellipse',
+            x: parseFloat(values[0]),
+            y: parseFloat(values[1]),
+            width: parseFloat(values[2]),
+            height: parseFloat(values[3]),
+            color: values[4]?.trim() || '#000',
+            fill: values[5]?.trim() || 'none'
+          });
+          break;
+        
+        case 'rect':
+          elements.push({
+            type: 'rect',
+            x: parseFloat(values[0]),
+            y: parseFloat(values[1]),
+            width: parseFloat(values[2]),
+            height: parseFloat(values[3]),
+            color: values[4]?.trim() || '#000',
+            fill: values[5]?.trim() || 'none'
+          });
+          break;
+        
+        case 'tri':
+        case 'triangle':
+          elements.push({
+            type: 'triangle',
+            x1: parseFloat(values[0]),
+            y1: parseFloat(values[1]),
+            x2: parseFloat(values[2]),
+            y2: parseFloat(values[3]),
+            x3: parseFloat(values[4]),
+            y3: parseFloat(values[5]),
+            color: values[6]?.trim() || '#000',
+            fill: values[7]?.trim() || 'none'
+          });
+          break;
+        
+        case 'line':
+          elements.push({
+            type: 'line',
+            x1: parseFloat(values[0]),
+            y1: parseFloat(values[1]),
+            x2: parseFloat(values[2]),
+            y2: parseFloat(values[3]),
+            color: values[4]?.trim() || '#000'
+          });
+          break;
+        
+        case 'arrow':
+          elements.push({
+            type: 'arrow',
+            x1: parseFloat(values[0]),
+            y1: parseFloat(values[1]),
+            x2: parseFloat(values[2]),
+            y2: parseFloat(values[3]),
+            color: values[4]?.trim() || '#000'
+          });
+          break;
+        
+        case 'txt':
+        case 'text':
+          elements.push({
+            type: 'text',
+            x: parseFloat(values[0]),
+            y: parseFloat(values[1]),
+            text: values.slice(2, -2).join(','),
+            color: values[values.length - 2]?.trim() || '#000',
+            size: parseInt(values[values.length - 1]) || 12
+          });
+          break;
+        
+        case 'path':
+          const coords = [];
+          let i = 0;
+          while (i < values.length - 2) {
+            coords.push({
+              x: parseFloat(values[i]),
+              y: parseFloat(values[i + 1])
+            });
+            i += 2;
+          }
+          elements.push({
+            type: 'path',
+            points: coords,
+            color: values[values.length - 2]?.trim() || '#000',
+            fill: values[values.length - 1]?.trim() || 'none'
+          });
+          break;
+      }
+    }
+    
+    return elements;
+  };
+
+  // 🎨 Animate drawing at a specific position (for whiteboard)
+  const drawWithAnimationAtPosition = async (ctx, elements, positionY, canvasWidth, blockHeight) => {
+    ctx.save();
+    ctx.translate(0, positionY);
+    
+    for (const element of elements) {
+      try {
+        switch (element.type) {
+          case 'circle':
+            await animateCircle(ctx, element.x, element.y, element.radius, element.color, element.fill);
+            break;
+          
+          case 'ellipse':
+            await animateEllipse(ctx, element.x, element.y, element.width, element.height, element.color, element.fill);
+            break;
+          
+          case 'rect':
+          case 'triangle':
+            await animateShape(ctx, element);
+            break;
+          
+          case 'line':
+            await animateLine(ctx, element.x1, element.y1, element.x2, element.y2, element.color);
+            break;
+          
+          case 'arrow':
+            await animateLine(ctx, element.x1, element.y1, element.x2, element.y2, element.color);
+            const angle = Math.atan2(element.y2 - element.y1, element.x2 - element.x1);
+            const headlen = 10;
+            await animateLine(
+              ctx,
+              element.x2,
+              element.y2,
+              element.x2 - headlen * Math.cos(angle - Math.PI / 6),
+              element.y2 - headlen * Math.sin(angle - Math.PI / 6),
+              element.color
+            );
+            await animateLine(
+              ctx,
+              element.x2,
+              element.y2,
+              element.x2 - headlen * Math.cos(angle + Math.PI / 6),
+              element.y2 - headlen * Math.sin(angle + Math.PI / 6),
+              element.color
+            );
+            break;
+          
+          case 'text':
+            ctx.fillStyle = element.color;
+            ctx.font = `${element.size}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText(element.text, element.x, element.y);
+            break;
+          
+          case 'path':
+            await animatePath(ctx, element.points, element.color, element.fill);
+            break;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 300)); // Shorter pause for whiteboard
+      } catch (err) {
+        console.error('Error drawing element:', err);
+      }
+    }
+    
+    ctx.restore();
+  };
+
+  const animateLine = async (ctx, x1, y1, x2, y2, color) => {
+    const steps = 15; // Fewer steps for faster rendering in whiteboard
+    for (let i = 0; i <= steps; i++) {
+      const progress = i / steps;
+      const currentX = x1 + (x2 - x1) * progress;
+      const currentY = y1 + (y2 - y1) * progress;
+      
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      
+      if (i === 0) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+      }
+      
+      ctx.lineTo(currentX, currentY);
+      ctx.stroke();
+      
+      await new Promise(resolve => setTimeout(resolve, 20)); // Faster animation
+    }
+  };
+
+  const animateCircle = async (ctx, x, y, radius, color, fill) => {
+    const segments = 25; // Fewer segments for faster rendering
+    
+    if (fill && fill !== 'none') {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, angle);
+      ctx.stroke();
+      
+      await new Promise(resolve => setTimeout(resolve, 15)); // Faster
+    }
+  };
+
+  const animateEllipse = async (ctx, x, y, width, height, color, fill) => {
+    const segments = 25;
+    
+    if (fill && fill !== 'none') {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.ellipse(x, y, width / 2, height / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      
+      ctx.beginPath();
+      ctx.ellipse(x, y, width / 2, height / 2, 0, 0, angle);
+      ctx.stroke();
+      
+      await new Promise(resolve => setTimeout(resolve, 15));
+    }
+  };
+
+  const animateShape = async (ctx, element) => {
+    if (element.fill && element.fill !== 'none') {
+      ctx.fillStyle = element.fill;
+      ctx.beginPath();
+      
+      if (element.type === 'rect') {
+        ctx.rect(element.x, element.y, element.width, element.height);
+      } else if (element.type === 'triangle') {
+        ctx.moveTo(element.x1, element.y1);
+        ctx.lineTo(element.x2, element.y2);
+        ctx.lineTo(element.x3, element.y3);
+        ctx.closePath();
+      }
+      
+      ctx.fill();
+    }
+    
+    if (element.type === 'rect') {
+      await animateLine(ctx, element.x, element.y, element.x + element.width, element.y, element.color);
+      await animateLine(ctx, element.x + element.width, element.y, element.x + element.width, element.y + element.height, element.color);
+      await animateLine(ctx, element.x + element.width, element.y + element.height, element.x, element.y + element.height, element.color);
+      await animateLine(ctx, element.x, element.y + element.height, element.x, element.y, element.color);
+    } else if (element.type === 'triangle') {
+      await animateLine(ctx, element.x1, element.y1, element.x2, element.y2, element.color);
+      await animateLine(ctx, element.x2, element.y2, element.x3, element.y3, element.color);
+      await animateLine(ctx, element.x3, element.y3, element.x1, element.y1, element.color);
+    }
+  };
+
+  const animatePath = async (ctx, points, color, fill) => {
+    if (fill && fill !== 'none') {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    for (let i = 0; i < points.length - 1; i++) {
+      await animateLine(ctx, points[i].x, points[i].y, points[i + 1].x, points[i + 1].y, color);
+    }
+  };
+
   // Clear only the drawing area (not saved diagrams)
   const clearCanvas = () => {
     const canvas = canvasRef.current;
@@ -537,13 +845,101 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion }
       const result = await analysisResponse.json();
       console.log('Analysis result:', result);
       
-      const { diagramType, elements, imageUrl, imageSource, imageAttribution, imageAttributionUrl, imagePrompt, revisedPrompt } = result;
+      const { diagramType, elements, imageUrl, imageSource, imageAttribution, imageAttributionUrl, imagePrompt, revisedPrompt, drawing, templateId, source } = result;
       
       // Calculate position for new content (append below existing content)
       const lastBlock = contentBlocks[contentBlocks.length - 1];
       const positionY = lastBlock 
         ? (lastBlock.position_y || 0) + (lastBlock.height || 600) + 60  // 60px gap
         : 60; // Start 60px from top
+      
+      // 🚀 Handle FAST_DRAWING type - Real-time animated diagrams
+      if (diagramType === 'fast_drawing' && drawing) {
+        console.log(`🎨 Rendering fast drawing (${source || 'gpt'})...`);
+        
+        const blockHeight = 600;
+        const requiredHeight = positionY + blockHeight + 600;
+        
+        if (requiredHeight > canvasHeight) {
+          setCanvasHeight(requiredHeight);
+        }
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        
+        // Make sure canvas is tall enough
+        if (canvas.height < requiredHeight) {
+          const oldImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          canvas.height = requiredHeight;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.putImageData(oldImageData, 0, 0);
+        }
+        
+        // Clear the drawing area
+        ctx.save();
+        ctx.translate(0, positionY);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, blockHeight);
+        ctx.restore();
+        
+        // Parse and animate the drawing
+        try {
+          const elements = parseCompactFormat(drawing);
+          console.log(`✅ Parsed ${elements.length} elements, starting animation...`);
+          
+          // Animate with context translated to position
+          await drawWithAnimationAtPosition(ctx, elements, positionY, canvas.width, blockHeight);
+          
+          // Capture this section as image
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = canvas.width;
+          tempCanvas.height = blockHeight;
+          const tempCtx = tempCanvas.getContext('2d');
+          tempCtx.drawImage(canvas, 0, positionY, canvas.width, blockHeight, 0, 0, canvas.width, blockHeight);
+          const canvasData = tempCanvas.toDataURL('image/png');
+
+          // Save to database
+          if (whiteboardSessionId) {
+            const { data: savedContent, error } = await saveWhiteboardContent(whiteboardSessionId, {
+              contentType: 'fast_drawing',
+              diagramType: 'fast_drawing',
+              question,
+              aiResponse: `Animated diagram ${templateId ? `(${templateId} template)` : '(AI-generated)'}`,
+              canvasData,
+              elements: [],
+              positionY,
+              height: blockHeight,
+              canvasWidth: canvas.width,
+              drawing,
+              templateId,
+              source
+            });
+
+            if (error) {
+              console.error('Error saving content:', error);
+            } else if (savedContent) {
+              setContentBlocks(prev => [...prev, savedContent]);
+              setCurrentContentId(savedContent.id);
+            }
+          }
+          
+          // Scroll to show the diagram
+          setTimeout(() => {
+            if (containerRef.current) {
+              containerRef.current.scrollTop = positionY - 50;
+            }
+          }, 100);
+          
+        } catch (parseError) {
+          console.error('Failed to parse drawing:', parseError);
+          alert('Failed to render diagram. Please try again.');
+        }
+        
+        setUserInput('');
+        setIsGenerating(false);
+        return;
+      }
       
       // Handle IMAGE type (both DALL-E and stock photos)
       if ((diagramType === 'image' || diagramType === 'dalle_image') && imageUrl) {
