@@ -50,14 +50,17 @@ CRITICAL LAYOUT RULES:
 2. Use dark colors for text: #1f2937 (dark gray), #000 (black), or matching element color
 3. For cycles/processes, ALWAYS add arrows between elements to show flow
 4. SPACE OUT elements properly - don't overlap! Use the full 800x600 canvas
-5. For solar system: place sun at center, planets spread out horizontally or in orbit
-6. For life cycles: arrange in circle/square pattern with good spacing
+5. For solar system: place sun at center, planets spread out horizontally (NO orbit arrows needed)
+6. For life cycles: arrange in circle/square pattern with good spacing and connecting arrows
 7. Leave margins: keep elements at least 50px from edges
+8. Keep diagrams simple and clear - avoid unnecessary decorative elements
 
 SPACING EXAMPLES:
-- Solar system: Sun at (400,300), planets at (200,300), (300,300), (500,300), (600,300) etc.
+- Solar system: Sun at (400,300), planets at (240,300), (300,300), (360,300), (440,300), (520,300), (600,300), (670,300), (730,300) etc.
 - Life cycle: corners like (200,150), (600,150), (600,450), (200,450)
 - Vertical flow: top (400,100), middle (400,300), bottom (400,500)
+
+IMPORTANT: When asked for solar system, include ALL 8 PLANETS in order: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune
 
 Colors: #3b82f6(blue) #10b981(green) #f59e0b(orange) #ef4444(red) #8b5cf6(purple) #1f2937(dark)
 Fills: Add "20" for 20% opacity (e.g., #3b82f620)
