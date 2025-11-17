@@ -17,6 +17,7 @@ const CollaborativeStudy = lazy(() => import("./components/CollaborativeStudy").
 const PracticeProblems = lazy(() => import("./components/PracticeProblems"));
 const RoughDrawTest = lazy(() => import("./components/RoughDrawTest"));
 const RoughDrawTestV2 = lazy(() => import("./components/RoughDrawTestV2"));
+const VisualWhiteboard = lazy(() => import("./components/VisualWhiteboard").then(module => ({ default: module.VisualWhiteboard })));
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -31,7 +32,7 @@ const ComponentLoader = () => (
 // Main App Content (when authenticated)
 const AppContent = () => {
   const { user, profile, signOut, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'chat', 'practice'
+  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'chat', 'practice', 'whiteboard'
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showChat, setShowChat] = useState(true); // Chat visibility state
@@ -131,6 +132,7 @@ const AppContent = () => {
           <Dashboard 
             onNavigateToChat={() => setCurrentView('chat')}
             onNavigateToPractice={() => setCurrentView('practice')}
+            onNavigateToWhiteboard={() => setCurrentView('whiteboard')}
             onNavigateToCustomize={() => {
               // Navigate to chat and open sidebar with settings
               setCurrentView('chat');
@@ -138,6 +140,13 @@ const AppContent = () => {
             }}
             onOpenCollabStudy={() => setShowCollabStudy(true)}
           />
+        </Suspense>
+      </div>
+
+      {/* Visual Whiteboard View */}
+      <div style={{ display: currentView === 'whiteboard' ? 'block' : 'none' }}>
+        <Suspense fallback={<ComponentLoader />}>
+          <VisualWhiteboard onBack={() => setCurrentView('dashboard')} />
         </Suspense>
       </div>
 

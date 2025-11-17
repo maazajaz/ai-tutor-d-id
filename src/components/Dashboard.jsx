@@ -6,7 +6,7 @@ import { RecentConversations } from './RecentConversations'
 import { QuizGenerator } from './QuizGenerator'
 import { DashboardLoader } from './DashboardLoader'
 
-export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenCollabStudy, onNavigateToPractice }) => {
+export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenCollabStudy, onNavigateToPractice, onNavigateToWhiteboard }) => {
   const { user, profile } = useAuth()
   const { initialLoading } = useChat()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -238,6 +238,44 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
               <svg className="w-3 h-3 md:w-4 md:h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
+            </div>
+          </button>
+
+          {/* Visual Whiteboard Card - NEW */}
+          <button
+            onClick={onNavigateToWhiteboard}
+            className="group bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl md:rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-4 md:p-6 text-left border-2 border-transparent hover:border-pink-500 transform hover:-translate-y-1"
+          >
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
+                🎨
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-pink-100 text-pink-600 text-xs font-semibold rounded-full">
+                  NEW
+                </span>
+                <div className="w-7 h-7 md:w-8 md:h-8 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 group-hover:bg-pink-500 group-hover:text-white transition-colors">
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2 group-hover:text-pink-600 transition-colors">
+              Visual Whiteboard
+            </h3>
+            <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4">
+              Create real-time animated diagrams with AI - templates for anatomy, science & more
+            </p>
+            <div className="flex items-center gap-4 text-xs md:text-sm">
+              <div className="flex items-center gap-2 text-pink-600 font-medium">
+                <span className="text-lg">⚡</span>
+                <span>Instant Templates</span>
+              </div>
+              <div className="flex items-center gap-2 text-pink-600 font-medium">
+                <span className="text-lg">🖌️</span>
+                <span>Live Animation</span>
+              </div>
             </div>
           </button>
 
