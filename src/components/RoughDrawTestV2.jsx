@@ -248,9 +248,9 @@ const RoughDrawTestV2 = () => {
             ctx.font = `bold ${size || 16}px sans-serif`;
             ctx.textAlign = 'center';
             
-            // Draw text character by character
+            // Draw text character by character WITHOUT clearing background
             for (let j = 0; j <= text.length; j++) {
-              ctx.clearRect(+x - 200, +y - 30, 400, 40);
+              // Just redraw the text progressively, don't clear anything
               ctx.fillText(text.substring(0, j), +x, +y);
               await new Promise(resolve => setTimeout(resolve, 60));  // Slower: 60ms per character
             }
