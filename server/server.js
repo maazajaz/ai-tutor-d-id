@@ -18,6 +18,87 @@ const openaiApiKey = process.env.OPENAI_API_KEY;
 // Initialize OpenAI
 const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;
 
+// Anatomy templates for complex diagrams
+import { anatomyTemplates } from "./anatomyTemplates.js";
+
+function matchAnatomyTemplate(prompt) {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  const keywords = {
+    'human-heart': ['heart', 'cardiac', 'atrium', 'ventricle', 'cardiovascular'],
+    'human-brain': ['brain', 'cerebral', 'lobe', 'frontal', 'cerebellum', 'neural'],
+    'digestive-system': ['digestive', 'stomach', 'intestine', 'digestion', 'gut', 'esophagus'],
+    'respiratory-system': ['respiratory', 'lung', 'breathing', 'trachea', 'bronchi', 'respiration'],
+    'plant-cell': ['plant cell', 'chloroplast', 'vacuole', 'cell wall', 'plant structure']
+  };
+  
+  for (const [templateId, keywordList] of Object.entries(keywords)) {
+    if (keywordList.some(keyword => lowerPrompt.includes(keyword))) {
+      return anatomyTemplates[templateId];
+    }
+  }
+  
+  return null;
+}
+
+function detectComplexDiagram(prompt) {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  // Complex diagram keywords (biological, anatomical, detailed systems)
+  const complexKeywords = [
+    'anatomy', 'biological', 'organ', 'cell', 'tissue',
+    'nervous system', 'circulatory', 'skeletal', 'muscular',
+    'kidney', 'liver', 'eye structure', 'ear structure',
+    'dna', 'molecule', 'chemical structure', 'atom',
+    'detailed', 'cross-section', 'internal structure',
+    'photosynthesis', 'cellular respiration', 'mitosis', 'meiosis'
+  ];
+  
+  // Simple diagram keywords (geometric, basic concepts, cycles)
+  const simpleKeywords = [
+    'solar system', 'water cycle', 'life cycle', 'food chain',
+    'triangle', 'circle', 'rectangle', 'square', 'perimeter', 'area',
+    'simple', 'basic', 'diagram', 'chart', 'flow'
+  ];
+  
+  // If explicitly asks for simple, use GPT-3.5
+  if (simpleKeywords.some(keyword => lowerPrompt.includes(keyword))) {
+    return false;
+  }
+  
+  // If matches complex keywords, use GPT-4
+  if (complexKeywords.some(keyword => lowerPrompt.includes(keyword))) {
+    return true;
+  }
+  
+  // Default to simple/fast for unknown prompts
+  return false;
+}
+
+function convertTemplateToCompactFormat(elements) {
+  return elements.map(el => {
+    switch (el.type) {
+      case 'circle':
+        return `circ:${el.x},${el.y},${el.r},${el.stroke},${el.fill}`;
+      case 'ellipse':
+        return `ellipse:${el.x},${el.y},${el.rx},${el.ry},${el.stroke},${el.fill}`;
+      case 'rect':
+        return `rect:${el.x},${el.y},${el.width},${el.height},${el.stroke},${el.fill}`;
+      case 'line':
+        return `line:${el.x1},${el.y1},${el.x2},${el.y2},${el.stroke},${el.strokeWidth}`;
+      case 'arrow':
+        return `arrow:${el.x1},${el.y1},${el.x2},${el.y2},${el.color},${el.label || ''}`;
+      case 'text':
+        return `txt:${el.x},${el.y},${el.size},${el.color},${el.text}`;
+      case 'path':
+        const pointsStr = el.points.map(p => `${p[0]},${p[1]}`).join(',');
+        return `path:${pointsStr}:${el.stroke}:${el.fill || 'none'}:${el.strokeWidth}`;
+      default:
+        return null;
+    }
+  }).filter(Boolean);
+}
+
 // Debug environment variables
 console.log('🔧 Environment Check:');
 console.log('D-ID API Key present:', !!didApiKey);
@@ -1174,12 +1255,30 @@ app.post("/api/generate-drawing-fast", async (req, res) => {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
+    // Check if this matches a pre-defined anatomy template
+    const anatomyTemplate = matchAnatomyTemplate(prompt);
+    if (anatomyTemplate) {
+      console.log('📋 Using pre-defined template:', anatomyTemplate.title);
+      return res.json({
+        title: anatomyTemplate.title,
+        elements: convertTemplateToCompactFormat(anatomyTemplate.elements),
+        isTemplate: true
+      });
+    }
+
     if (!openai) {
       return res.status(500).json({ error: 'OpenAI API not configured' });
     }
 
+    // Detect if this is a complex diagram (use GPT-4) or simple (use GPT-3.5)
+    const isComplexDiagram = detectComplexDiagram(prompt);
+    const model = isComplexDiagram ? "gpt-4" : "gpt-3.5-turbo";
+    const maxTokens = isComplexDiagram ? 1200 : 800;
+    
+    console.log(`🤖 Using ${model} (${isComplexDiagram ? 'complex' : 'simple'} diagram)`);
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",  // Faster than GPT-4 (1-2 sec vs 5-10 sec)
+      model,
       messages: [
         {
           role: "system",
@@ -1309,7 +1408,7 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
         }
       ],
       temperature: 0.7,
-      max_tokens: 800  // Much less tokens needed!
+      max_tokens: maxTokens  // 800 for simple, 1200 for complex
     });
 
     const content = completion.choices[0].message.content.trim();

@@ -195,12 +195,59 @@ const RoughDrawTestV2 = () => {
             }
             
             // Fill if specified
-            if (fill && fill !== 'transparent') {
+            if (fill && fill !== 'transparent' && fill !== 'none') {
               ctx.fillStyle = fill;
               ctx.beginPath();
               ctx.arc(+x, +y, radius, 0, 2 * Math.PI);
               ctx.fill();
             }
+            break;
+          }
+
+          case 'ellipse': { // ellipse - for anatomy templates
+            const [x,y,rx,ry,color,fill] = params[0].split(',');
+            const steps = 40;
+            
+            ctx.strokeStyle = color || '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            
+            for (let i = 0; i <= steps; i++) {
+              const angle1 = (i - 1) * (2 * Math.PI / steps);
+              const angle2 = i * (2 * Math.PI / steps);
+              
+              ctx.beginPath();
+              ctx.ellipse(+x, +y, +rx, +ry, 0, angle1, angle2);
+              ctx.stroke();
+              await new Promise(resolve => setTimeout(resolve, 25));
+            }
+            
+            // Fill if specified
+            if (fill && fill !== 'transparent' && fill !== 'none') {
+              ctx.fillStyle = fill;
+              ctx.beginPath();
+              ctx.ellipse(+x, +y, +rx, +ry, 0, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+            break;
+          }
+
+          case 'path': { // path - for complex shapes in templates
+            // Format: path:x1,y1,x2,y2,x3,y3,...:stroke:fill:strokeWidth
+            const parts = params.join(':').split(':');
+            const pointsStr = parts[0];
+            const stroke = parts[1] || '#34495e';
+            const fill = parts[2] || 'none';
+            const strokeWidth = parts[3] || 2;
+            
+            const coords = pointsStr.split(',').map(Number);
+            const points = [];
+            for (let i = 0; i < coords.length; i += 2) {
+              points.push([coords[i], coords[i + 1]]);
+            }
+            
+            // Draw path progressively
+            await animateShape(ctx, points, stroke, +strokeWidth, fill);
             break;
           }
           
