@@ -517,7 +517,7 @@ app.post("/api/analyze-diagram", async (req, res) => {
     
     if (template) {
       console.log(`⚡ Template matched - instant rendering!`);
-      const compactArray = convertTemplateToCompactFormat(template);
+      const compactArray = convertTemplateToCompactFormat(template.elements);
       const compactDrawing = compactArray.join('\n'); // Convert array to string
       
       return res.send({
