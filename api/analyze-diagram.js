@@ -45,8 +45,8 @@ function convertTemplateToCompact(template) {
         compact += `arrow:${element.x1},${element.y1},${element.x2},${element.y2},${element.color}\n`;
         break;
       case 'text':
-        // Parser format: txt:x,y,text,color,size
-        compact += `txt:${element.x},${element.y},${element.text},${element.color},${element.size || 12}\n`;
+        // Parser format: txt:x,y,size,color,text (text at end to handle spaces)
+        compact += `txt:${element.x},${element.y},${element.size || 12},${element.color},${element.text}\n`;
         break;
       case 'path':
         const pathCoords = element.points.map(p => `${p[0]},${p[1]}`).join(',');

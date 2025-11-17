@@ -112,13 +112,20 @@ export const VisualWhiteboard = ({ onBack }) => {
         
         case 'txt':
         case 'text':
+          // Format: txt:x,y,size,color,text (text is everything after 4th comma)
+          const textX = parseFloat(values[0]);
+          const textY = parseFloat(values[1]);
+          const textSize = parseInt(values[2]) || 12;
+          const textColor = values[3]?.trim() || '#000';
+          const textContent = values.slice(4).join(','); // Rejoin remaining parts
+          
           elements.push({
             type: 'text',
-            x: parseFloat(values[0]),
-            y: parseFloat(values[1]),
-            text: values.slice(2, -2).join(','),
-            color: values[values.length - 2]?.trim() || '#000',
-            size: parseInt(values[values.length - 1]) || 12
+            x: textX,
+            y: textY,
+            size: textSize,
+            color: textColor,
+            text: textContent
           });
           break;
         
