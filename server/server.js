@@ -506,71 +506,61 @@ app.post("/api/analyze-diagram", async (req, res) => {
   try {
     const { chatText } = req.body;
     
-    console.log('📊 Analyzing chat for visual content generation...');
+    console.log('📊 Analyzing chat for diagram generation...');
     
     if (!chatText) {
       return res.status(400).send({ error: 'No chat text provided' });
     }
 
-    // Import the diagram analyzer
-    const { analyzeDiagram } = await import('./diagramAnalyzer.js');
+    // 🚀 STEP 1: Check if this matches any anatomy template (INSTANT)
+    const template = matchAnatomyTemplate(chatText);
     
-    // Analyze the chat text
-    const result = await analyzeDiagram(chatText);
-    
-    console.log(`✅ Analysis complete:`, result);
-    
-    // If it's a DALL-E educational image request, generate with DALL-E
-    if (result.diagramType === 'dalle_image' && result.imagePrompt) {
-      console.log('🎨 DALL-E educational image requested, generating...');
+    if (template) {
+      console.log(`⚡ Template matched - instant rendering!`);
+      const compactDrawing = convertTemplateToCompactFormat(template);
       
-      try {
-        const imageResult = await fetchEducationalImage(result.imagePrompt, 'dalle');
+      return res.send({
+        diagramType: 'fast_drawing',
+        drawing: compactDrawing,
+        source: 'template',
+        renderTime: '0ms'
+      });
+    }
+
+    // STEP 2: Call /api/generate-drawing-fast for custom diagrams
+    console.log('🎨 No template match, using fast drawing API...');
+    
+    try {
+      const drawingResponse = await fetch('http://localhost:3000/api/generate-drawing-fast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: chatText })
+      });
+
+      if (drawingResponse.ok) {
+        const drawingData = await drawingResponse.json();
+        console.log('✅ Fast drawing generated:', drawingData.approach);
         
         return res.send({
-          ...result,
-          imageUrl: imageResult.imageUrl,
-          imageSource: imageResult.source,
-          imageAttribution: imageResult.attribution,
-          revisedPrompt: imageResult.revisedPrompt
+          diagramType: 'fast_drawing',
+          drawing: drawingData.drawing,
+          source: drawingData.approach || 'gpt',
+          renderTime: drawingData.generationTime || '1-2s'
         });
-      } catch (imageError) {
-        console.error('❌ Error generating DALL-E image:', imageError);
-        // Fall back to diagram if DALL-E fails
-        result.diagramType = 'diagram';
-        result.elements = [
-          { text: 'Image generation failed', type: 'component' },
-          { text: `Tried to generate: ${result.imagePrompt}`, type: 'component' }
-        ];
+      } else {
+        throw new Error(`Drawing API returned ${drawingResponse.status}`);
       }
+    } catch (drawingError) {
+      console.error('❌ Failed to generate drawing:', drawingError);
+      // Fall back to simple diagram
+      return res.send({
+        diagramType: 'diagram',
+        elements: [
+          { text: 'Failed to generate diagram', type: 'component' },
+          { text: chatText, type: 'component' }
+        ]
+      });
     }
-    
-    // If it's a stock photo request, fetch from Unsplash/Pexels
-    if (result.diagramType === 'image' && result.imageQuery) {
-      console.log('🖼️ Stock photo requested, fetching from source...');
-      
-      try {
-        const imageResult = await fetchEducationalImage(result.imageQuery);
-        
-        return res.send({
-          ...result,
-          imageUrl: imageResult.imageUrl,
-          imageSource: imageResult.source,
-          imageAttribution: imageResult.attribution,
-          imageAttributionUrl: imageResult.attributionUrl
-        });
-      } catch (imageError) {
-        console.error('❌ Error fetching image:', imageError);
-        // Fall back to diagram if image fetch fails
-        result.diagramType = 'diagram';
-        result.elements = [
-          { text: 'Image fetch failed', type: 'component' },
-          { text: `Searched for: ${result.imageQuery}`, type: 'component' }
-        ];
-      }
-    }
-    
-    res.send(result);
     
   } catch (error) {
     console.error('❌ Error analyzing diagram:', error);
