@@ -13,7 +13,8 @@ function matchAnatomyTemplate(prompt) {
     'human-brain': ['brain', 'cerebral', 'lobe', 'frontal', 'cerebellum', 'neural'],
     'digestive-system': ['digestive', 'stomach', 'intestine', 'digestion', 'gut', 'esophagus'],
     'respiratory-system': ['respiratory', 'lung', 'breathing', 'trachea', 'bronchi', 'respiration'],
-    'plant-cell': ['plant cell', 'chloroplast', 'vacuole', 'cell wall', 'plant structure']
+    'plant-cell': ['plant cell', 'chloroplast', 'vacuole', 'cell wall', 'plant structure'],
+    'dog-anatomy': ['dog', 'dog body', 'dog anatomy', 'dog parts', 'canine']
   };
   
   for (const [templateId, keywordList] of Object.entries(keywords)) {

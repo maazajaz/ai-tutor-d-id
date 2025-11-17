@@ -228,6 +228,75 @@ export const anatomyTemplates = {
       ], stroke: '#f39c12', fill: 'none', strokeWidth: 2 },
       { type: 'text', x: 430, y: 210, text: 'Golgi', size: 10, color: '#1f2937' },
     ]
+  },
+
+  'dog-anatomy': {
+    title: 'Dog Body Parts',
+    canvasSize: { width: 800, height: 600 },
+    elements: [
+      // Head (large circle)
+      { type: 'circle', x: 600, y: 250, r: 60, stroke: '#8b4513', fill: '#d2b48c', strokeWidth: 3 },
+      { type: 'text', x: 600, y: 260, text: 'Head', size: 16, color: '#1f2937' },
+      
+      // Snout/Muzzle (ellipse extending from head)
+      { type: 'ellipse', x: 660, y: 265, rx: 35, ry: 25, stroke: '#8b4513', fill: '#c9a87c', strokeWidth: 2 },
+      { type: 'text', x: 660, y: 310, text: 'Snout', size: 12, color: '#1f2937' },
+      
+      // Ears (triangular shapes - two)
+      { type: 'path', points: [[570, 200], [550, 230], [590, 230]], stroke: '#8b4513', fill: '#d2b48c', strokeWidth: 2 },
+      { type: 'text', x: 550, y: 195, text: 'Ear', size: 11, color: '#1f2937' },
+      
+      { type: 'path', points: [[630, 200], [610, 230], [650, 230]], stroke: '#8b4513', fill: '#d2b48c', strokeWidth: 2 },
+      { type: 'text', x: 630, y: 195, text: 'Ear', size: 11, color: '#1f2937' },
+      
+      // Eyes (small circles)
+      { type: 'circle', x: 585, y: 240, r: 8, stroke: '#000', fill: '#000', strokeWidth: 1 },
+      { type: 'circle', x: 615, y: 240, r: 8, stroke: '#000', fill: '#000', strokeWidth: 1 },
+      
+      // Nose (small triangle at end of snout)
+      { type: 'path', points: [[680, 260], [690, 270], [680, 280]], stroke: '#000', fill: '#000', strokeWidth: 1 },
+      
+      // Neck (connecting rectangle)
+      { type: 'rect', x: 520, y: 260, width: 50, height: 40, stroke: '#8b4513', fill: '#d2b48c', strokeWidth: 2 },
+      { type: 'text', x: 545, y: 325, text: 'Neck', size: 12, color: '#1f2937' },
+      
+      // Body (large ellipse - horizontal)
+      { type: 'ellipse', x: 400, y: 320, rx: 130, ry: 80, stroke: '#8b4513', fill: '#d2b48c', strokeWidth: 3 },
+      { type: 'text', x: 400, y: 330, text: 'Body/Torso', size: 16, color: '#1f2937' },
+      
+      // Chest/Ribcage indicator
+      { type: 'text', x: 460, y: 310, text: 'Chest', size: 11, color: '#654321' },
+      
+      // Abdomen indicator
+      { type: 'text', x: 330, y: 340, text: 'Abdomen', size: 11, color: '#654321' },
+      
+      // Front Left Leg
+      { type: 'line', x1: 470, y1: 380, x2: 470, y2: 480, stroke: '#8b4513', strokeWidth: 12 },
+      { type: 'ellipse', x: 470, y: 490, rx: 15, ry: 8, stroke: '#8b4513', fill: '#654321', strokeWidth: 2 },
+      { type: 'text', x: 440, y: 430, text: 'Front Leg', size: 11, color: '#1f2937' },
+      { type: 'text', x: 460, y: 510, text: 'Paw', size: 10, color: '#1f2937' },
+      
+      // Front Right Leg
+      { type: 'line', x1: 430, y1: 380, x2: 430, y2: 480, stroke: '#8b4513', strokeWidth: 12 },
+      { type: 'ellipse', x: 430, y: 490, rx: 15, ry: 8, stroke: '#8b4513', fill: '#654321', strokeWidth: 2 },
+      
+      // Back Left Leg
+      { type: 'line', x1: 330, y1: 380, x2: 320, y2: 480, stroke: '#8b4513', strokeWidth: 12 },
+      { type: 'ellipse', x: 320, y: 490, rx: 15, ry: 8, stroke: '#8b4513', fill: '#654321', strokeWidth: 2 },
+      { type: 'text', x: 290, y: 430, text: 'Back Leg', size: 11, color: '#1f2937' },
+      
+      // Back Right Leg (partially hidden)
+      { type: 'line', x1: 290, y1: 380, x2: 280, y2: 480, stroke: '#8b4513', strokeWidth: 11 },
+      { type: 'ellipse', x: 280, y: 490, rx: 15, ry: 8, stroke: '#8b4513', fill: '#654321', strokeWidth: 2 },
+      
+      // Tail (curved - using connected lines to simulate curve)
+      { type: 'line', x1: 270, y1: 300, x2: 220, y2: 260, stroke: '#8b4513', strokeWidth: 10 },
+      { type: 'line', x1: 220, y1: 260, x2: 200, y2: 240, stroke: '#8b4513', strokeWidth: 8 },
+      { type: 'text', x: 205, y: 230, text: 'Tail', size: 12, color: '#1f2937' },
+      
+      // Additional labels
+      { type: 'text', x: 400, y: 520, text: 'Key Parts: Head, Ears, Eyes, Nose, Neck, Body, Legs, Paws, Tail', size: 13, color: '#2c3e50' },
+    ]
   }
 };
 
