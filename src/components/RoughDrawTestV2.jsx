@@ -92,9 +92,9 @@ const RoughDrawTestV2 = () => {
     }
   };
 
-  // Animate line drawing stroke-by-stroke
+  // Animate line drawing stroke-by-stroke (slower for D-ID agent explanation)
   const animateLine = async (ctx, x1, y1, x2, y2, color, width) => {
-    const steps = 20;
+    const steps = 25;  // More steps for smoother animation
     const dx = (x2 - x1) / steps;
     const dy = (y2 - y1) / steps;
     
@@ -112,7 +112,7 @@ const RoughDrawTestV2 = () => {
       }
       ctx.lineTo(x1 + dx * i, y1 + dy * i);
       ctx.stroke();
-      await new Promise(resolve => setTimeout(resolve, 15));
+      await new Promise(resolve => setTimeout(resolve, 40));  // Slower: 40ms per step
     }
   };
 
@@ -175,10 +175,10 @@ const RoughDrawTestV2 = () => {
             break;
           }
           
-          case 'circ': { // circle - draw as segments
+          case 'circ': { // circle - draw as segments (slower for explanation)
             const [x,y,r,color,fill] = params[0].split(',');
             const radius = +r;
-            const steps = 30;
+            const steps = 40;  // More steps for smoother circle
             
             ctx.strokeStyle = color || '#f59e0b';
             ctx.lineWidth = 3;
@@ -191,7 +191,7 @@ const RoughDrawTestV2 = () => {
               ctx.beginPath();
               ctx.arc(+x, +y, radius, angle1, angle2);
               ctx.stroke();
-              await new Promise(resolve => setTimeout(resolve, 10));
+              await new Promise(resolve => setTimeout(resolve, 30));  // Slower: 30ms per segment
             }
             
             // Fill if specified
@@ -239,7 +239,7 @@ const RoughDrawTestV2 = () => {
             break;
           }
           
-          case 'txt': { // text - animate character by character
+          case 'txt': { // text - animate character by character (slower for explanation)
             const parts = params[0].split(',');
             const [x,y,size,color] = parts.slice(0, 4);
             const text = parts.slice(4).join(',');
@@ -252,7 +252,7 @@ const RoughDrawTestV2 = () => {
             for (let j = 0; j <= text.length; j++) {
               ctx.clearRect(+x - 200, +y - 30, 400, 40);
               ctx.fillText(text.substring(0, j), +x, +y);
-              await new Promise(resolve => setTimeout(resolve, 30));
+              await new Promise(resolve => setTimeout(resolve, 60));  // Slower: 60ms per character
             }
             break;
           }
@@ -264,8 +264,8 @@ const RoughDrawTestV2 = () => {
         console.error('Draw error:', el, err);
       }
       
-      // Small pause between elements
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Longer pause between elements for D-ID agent to explain
+      await new Promise(resolve => setTimeout(resolve, 500));  // 500ms pause between elements
     }
   };
 
