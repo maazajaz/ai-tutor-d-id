@@ -7,7 +7,7 @@ import { ChatNotes } from "./ChatNotes";
 import { MessageDisplay } from "./MessageDisplay";
 import { Whiteboard } from "./Whiteboard";
 
-export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, ...props }) => {
+export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, whiteboardLaunchKey = 0, ...props }) => {
   const input = useRef();
   const whiteboardRef = useRef();
   const previewVideoRef = useRef(); // Separate ref for preview video
@@ -107,6 +107,15 @@ Come on, you got this! What's your answer? 🎮"]`;
       hasVideoRef: !!videoRef.current
     });
   }, [emotionDetectionEnabled, isInitialized, isLoading, error]);
+
+  // Auto-open whiteboard when dashboard navigation requests it
+  useEffect(() => {
+    if (!whiteboardLaunchKey) return;
+    setShowWhiteboard(true);
+    if (typeof setShowChat === 'function') {
+      setShowChat(true);
+    }
+  }, [whiteboardLaunchKey, setShowChat]);
   
   // Update preview video when the main video starts playing OR when preview is toggled
   useEffect(() => {
@@ -575,9 +584,9 @@ Come on, you got this! What's your answer? 🎮"]`;
         chatSessionId={currentChatId}
       />
       
-      <div className="h-full flex flex-col bg-white shadow-2xl">
+      <div className="h-full flex flex-col bg-gradient-to-br from-black via-[#130a04] to-[#2f1a00] text-gray-100">
         {/* Whiteboard Header */}
-        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-2 lg:p-4 shadow-lg">
+        <div className="bg-black/50 backdrop-blur-lg text-white p-2 lg:p-4 shadow-[0_10px_30px_rgba(0,0,0,0.6)] border-b border-white/10">
           <div className="flex items-center justify-between gap-2">
             {/* Left: Logo and Title */}
             <div className="flex items-center gap-2 lg:gap-3 min-w-0">
@@ -587,9 +596,9 @@ Come on, you got this! What's your answer? 🎮"]`;
                 alt="Sharda Informatics 360" 
                 className="h-8 lg:h-12 w-auto flex-shrink-0"
               />
-              <div className="min-w-0 border-l-2 border-white/30 pl-2 lg:pl-3">
+              <div className="min-w-0 border-l border-amber-300/50 pl-2 lg:pl-3">
                 <h1 className="text-xs lg:text-xl font-bold truncate">AI Digital Tutor</h1>
-                <p className="text-green-100 text-[10px] lg:text-xs hidden sm:block">
+                <p className="text-amber-200 text-[10px] lg:text-xs hidden sm:block">
                   <a href="http://Informatics360.ai" target="_blank" rel="noopener noreferrer" className="hover:underline">
                     Informatics360.ai
                   </a>
@@ -602,7 +611,7 @@ Come on, you got this! What's your answer? 🎮"]`;
               {/* History Button */}
               <button
                 onClick={handleSidebarToggle}
-                className="bg-purple-500 hover:bg-purple-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
+                className="bg-white/10 hover:bg-white/20 text-amber-200 p-1 lg:p-2 rounded-lg transition-colors border border-white/15"
                 title="Chat History"
               >
                 <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -613,7 +622,7 @@ Come on, you got this! What's your answer? 🎮"]`;
               {/* Notes Button */}
               <button
                 onClick={handleNotesToggle}
-                className="bg-yellow-500 hover:bg-yellow-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
+                className="bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black p-1 lg:p-2 rounded-lg transition-colors font-semibold shadow-lg"
                 title="Download Chat Notes"
               >
                 <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -626,16 +635,16 @@ Come on, you got this! What's your answer? 🎮"]`;
                 onClick={() => setEmotionDetectionEnabled(!emotionDetectionEnabled)}
                 className={`p-1 lg:p-2 rounded-lg transition-all relative ${
                   emotionDetectionEnabled 
-                    ? "bg-green-500 hover:bg-green-400" 
-                    : "bg-gray-500 hover:bg-gray-400"
-                } text-white`}
+                    ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow-md" 
+                    : "bg-white/10 hover:bg-white/20 text-white"
+                } `}
                 title={emotionDetectionEnabled ? "Emotion: ON" : "Emotion: OFF"}
               >
                 <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 {isInitialized && emotionDetectionEnabled && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
                 )}
               </button>
               
@@ -645,9 +654,9 @@ Come on, you got this! What's your answer? 🎮"]`;
                   onClick={() => setShowCameraPreview(!showCameraPreview)}
                   className={`p-1 lg:p-2 rounded-lg transition-all ${
                     showCameraPreview 
-                      ? "bg-blue-500 hover:bg-blue-400" 
-                      : "bg-gray-500 hover:bg-gray-400"
-                  } text-white`}
+                      ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow-md" 
+                      : "bg-white/10 hover:bg-white/20 text-white"
+                  } `}
                   title={showCameraPreview ? "Hide Camera" : "Show Camera"}
                 >
                   <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -673,9 +682,9 @@ Come on, you got this! What's your answer? 🎮"]`;
                 }}
                 className={`p-1 lg:p-2 rounded-lg transition-all ${
                   !showWhiteboard && showChat
-                    ? "bg-indigo-500 hover:bg-indigo-400" 
-                    : "bg-gray-500 hover:bg-gray-400"
-                } text-white`}
+                    ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow-md" 
+                    : "bg-white/10 hover:bg-white/20 text-white"
+                }`}
                 title={!showWhiteboard && showChat ? "Hide Chat" : "Show Chat"}
               >
                 <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -699,9 +708,9 @@ Come on, you got this! What's your answer? 🎮"]`;
                 }}
                 className={`p-1 lg:p-2 rounded-lg transition-all ${
                   showWhiteboard 
-                    ? "bg-purple-500 hover:bg-purple-400" 
-                    : "bg-gray-500 hover:bg-gray-400"
-                } text-white`}
+                    ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow-md" 
+                    : "bg-white/10 hover:bg-white/20 text-white"
+                } `}
                 title={showWhiteboard ? "Close Whiteboard" : "Open Whiteboard"}
               >
                 <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -712,7 +721,7 @@ Come on, you got this! What's your answer? 🎮"]`;
               {/* New Chat */}
               <button
                 onClick={handleNewChat}
-                className="bg-blue-500 hover:bg-blue-400 text-white p-1 lg:p-2 rounded-lg transition-colors"
+                className="bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black p-1 lg:p-2 rounded-lg transition-colors font-semibold shadow-lg"
                 title="New Chat"
               >
                 <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -726,8 +735,8 @@ Come on, you got this! What's your answer? 🎮"]`;
                 disabled={chatHistory.length === 0}
                 className={`p-1 lg:p-2 rounded-lg transition-colors ${
                   chatHistory.length === 0 
-                    ? "bg-gray-400 cursor-not-allowed text-gray-200" 
-                    : "bg-red-500 hover:bg-red-400 text-white"
+                    ? "bg-gray-600 cursor-not-allowed text-gray-400" 
+                    : "bg-red-600 hover:bg-red-500 text-white"
                 }`}
                 title={chatHistory.length === 0 ? "No chat to clear" : "Clear Chat History"}
               >
@@ -757,15 +766,15 @@ Come on, you got this! What's your answer? 🎮"]`;
         /* Chat Mode */
         <div 
           ref={whiteboardRef}
-          className="flex-1 p-2 lg:p-6 overflow-y-auto bg-white whiteboard-scroll whiteboard-grid"
+          className="flex-1 p-2 lg:p-6 overflow-y-auto whiteboard-scroll bg-white/5 backdrop-blur-xl border-t border-white/10"
         >
         {/* Live Mode Indicator */}
         {isLiveMode && (
-          <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white p-3 rounded-xl mb-4 shadow-lg animate-pulse">
+          <div className="bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 text-black p-3 rounded-2xl mb-4 shadow-[0_15px_35px_rgba(0,0,0,0.5)] animate-pulse">
             <div className="flex items-center justify-center gap-3">
-              <div className="w-3 h-3 bg-white rounded-full animate-ping"></div>
+              <div className="w-3 h-3 bg-black rounded-full animate-ping"></div>
               <p className="font-bold text-lg">🎙️ LIVE CONVERSATION MODE</p>
-              <div className="w-3 h-3 bg-white rounded-full animate-ping"></div>
+              <div className="w-3 h-3 bg-black rounded-full animate-ping"></div>
             </div>
             <p className="text-center text-sm mt-2 opacity-90">
               Speak naturally - Your voice will be sent immediately to the AI tutor
@@ -776,14 +785,14 @@ Come on, you got this! What's your answer? 🎮"]`;
         {/* Welcome Message */}
         {chatHistory.length === 0 && (
           <div className="text-center py-3 lg:py-12">
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 lg:p-8 max-w-md mx-auto">
-              <h3 className="text-base lg:text-xl font-semibold text-blue-800 mb-2">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 lg:p-8 max-w-md mx-auto shadow-[0_15px_35px_rgba(0,0,0,0.45)]">
+              <h3 className="text-base lg:text-xl font-semibold text-amber-200 mb-2">
                 🚀 Welcome to AI Avatar Class!
               </h3>
-              <p className="text-blue-600 mb-3 text-xs lg:text-base">
+              <p className="text-gray-200 mb-3 text-xs lg:text-base">
                 Ask me anything! I can help you learn any subject in both English and Hinglish!
               </p>
-              <div className="text-xs lg:text-sm text-blue-500">
+              <div className="text-xs lg:text-sm text-gray-300">
                 <p><strong>Try asking:</strong></p>
                 <p>• "Python code to write factorial function"</p>
                 <p>• "What is a node in data structure?"</p>
@@ -800,14 +809,14 @@ Come on, you got this! What's your answer? 🎮"]`;
               {msg.sender === 'user' ? (
                 // User message
                 <div className="flex justify-end mb-2 lg:mb-4">
-                  <div className="bg-blue-500 text-white rounded-xl p-2 lg:p-4 max-w-xs lg:max-w-md shadow-sm">
+                  <div className="bg-gradient-to-r from-amber-400 to-yellow-500 text-black rounded-2xl p-2 lg:p-4 max-w-xs lg:max-w-md shadow-[0_10px_25px_rgba(0,0,0,0.45)] border border-white/10">
                     <div className="flex items-start gap-2 lg:gap-3">
                       <div className="flex-1">
-                        <p className="text-white leading-relaxed font-medium text-sm lg:text-base">
+                        <p className="text-black leading-relaxed font-medium text-sm lg:text-base">
                           {msg.text}
                         </p>
                       </div>
-                      <div className="w-6 h-6 lg:w-8 lg:h-8 bg-blue-400 rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm">
+                      <div className="w-6 h-6 lg:w-8 lg:h-8 bg-black/70 border border-white/10 rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm">
                         👤
                       </div>
                     </div>
@@ -815,20 +824,20 @@ Come on, you got this! What's your answer? 🎮"]`;
                 </div>
               ) : (
                 // AI message
-                <div className="bg-white border-2 border-gray-200 rounded-xl p-2 lg:p-4 shadow-sm">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-2 lg:p-4 shadow-[0_15px_35px_rgba(0,0,0,0.45)]">
                   <div className="flex items-start gap-2 lg:gap-3">
-                    <div className="w-6 h-6 lg:w-8 lg:h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm">
+                    <div className="w-6 h-6 lg:w-8 lg:h-8 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full flex items-center justify-center text-black font-bold text-xs lg:text-sm">
                       🤖
                     </div>
                     <div className="flex-1">
-                      <div className="bg-gray-50 rounded-lg p-2 lg:p-3 border border-gray-200">
-                        <div className="text-gray-800 leading-relaxed font-medium text-sm lg:text-base">
+                      <div className="bg-black/40 rounded-2xl p-2 lg:p-3 border border-white/10 shadow-inner">
+                        <div className="text-gray-100 leading-relaxed font-medium text-sm lg:text-base">
                           <MessageDisplay message={msg.text} />
                         </div>
                       </div>
                       <div className="mt-2 flex items-center justify-between">
                         {msg.played && (
-                          <div className="text-xs text-green-600 flex items-center gap-1">
+                          <div className="text-xs text-amber-200 flex items-center gap-1">
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
@@ -846,12 +855,12 @@ Come on, you got this! What's your answer? 🎮"]`;
 
         {/* Loading Message */}
         {(loading || message) && (
-          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 mt-4">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mt-4 shadow-[0_10px_25px_rgba(0,0,0,0.45)]">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-white">
-                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full flex items-center justify-center text-black">
+                <div className="animate-spin w-4 h-4 border-2 border-black/70 border-t-transparent rounded-full"></div>
               </div>
-              <p className="text-yellow-800 font-medium">Your tutor is thinking...</p>
+              <p className="text-amber-100 font-medium">Your tutor is thinking...</p>
             </div>
           </div>
         )}
@@ -860,11 +869,11 @@ Come on, you got this! What's your answer? 🎮"]`;
 
       {/* Input Area - Sticky at bottom on mobile - Show only in chat mode */}
       {!showWhiteboard && (
-      <div className="border-t-2 border-gray-200 p-1 lg:p-4 bg-gray-50 sticky bottom-0 left-0 right-0 z-30">
+      <div className="border-t border-white/10 p-1 lg:p-4 bg-black/70 backdrop-blur-2xl sticky bottom-0 left-0 right-0 z-30 shadow-[0_-10px_25px_rgba(0,0,0,0.6)]">
         <div className="flex items-center gap-1 lg:gap-2">
           <div className="flex-1 relative">
             <input
-              className="w-full p-2 lg:p-4 pr-8 lg:pr-12 border-2 border-gray-300 rounded-xl bg-white placeholder:text-gray-500 focus:border-green-500 focus:outline-none text-gray-800 font-medium enhanced-input transition-all text-xs lg:text-base"
+              className="w-full p-2 lg:p-4 pr-8 lg:pr-12 border border-white/15 rounded-2xl bg-black/40 text-white placeholder:text-gray-400 focus:border-amber-300 focus:ring-2 focus:ring-amber-400/40 focus:outline-none font-medium enhanced-input transition-all text-xs lg:text-base"
               placeholder={isListening ? "Listening..." : "Ask any question..."}
               ref={input}
               value={inputValue}
@@ -886,9 +895,9 @@ Come on, you got this! What's your answer? 🎮"]`;
               <button
                 onClick={toggleVoiceInput}
                 disabled={loading || message}
-                className={`p-2 lg:p-3 rounded-xl transition-all transform bg-gray-500 hover:bg-gray-600 text-white ${
+                className={`p-2 lg:p-3 rounded-2xl transition-all transform bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-semibold shadow-lg ${
                   loading || message 
-                    ? "cursor-not-allowed opacity-50" 
+                    ? "cursor-not-allowed opacity-40" 
                     : "hover:scale-105"
                 }`}
                 title="Transcribe voice to text"
@@ -903,9 +912,9 @@ Come on, you got this! What's your answer? 🎮"]`;
               <button
                 onClick={toggleLiveMode}
                 disabled={loading || message}
-                className={`p-2 lg:p-3 rounded-xl transition-all transform bg-pink-500 hover:bg-pink-600 text-white ${
+                className={`p-2 lg:p-3 rounded-2xl transition-all transform bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-semibold shadow-lg ${
                   loading || message 
-                    ? "cursor-not-allowed opacity-50" 
+                    ? "cursor-not-allowed opacity-40" 
                     : "hover:scale-105"
                 }`}
                 title="Start live conversation mode"
@@ -925,7 +934,7 @@ Come on, you got this! What's your answer? 🎮"]`;
             <button
               onClick={toggleVoiceInput}
               disabled={loading || message}
-              className="p-2 lg:p-3 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-all transform hover:scale-105"
+              className="p-2 lg:p-3 rounded-2xl bg-red-600/80 hover:bg-red-500 text-white transition-all transform hover:scale-105 shadow-lg"
               title="Stop recording"
             >
               <svg className="w-5 h-5 lg:w-6 lg:h-6 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
@@ -942,15 +951,15 @@ Come on, you got this! What's your answer? 🎮"]`;
             <button
               disabled={loading || message || !inputValue.trim()}
               onClick={sendMessage}
-              className={`bg-green-600 hover:bg-green-700 text-white p-2 lg:p-3 rounded-xl transition-all transform ${
+              className={`bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black p-2 lg:p-3 rounded-2xl transition-all transform font-semibold shadow-lg ${
                 loading || message || !inputValue.trim()
-                  ? "cursor-not-allowed opacity-50" 
+                  ? "cursor-not-allowed opacity-40" 
                   : "hover:scale-105"
               }`}
               title="Send message"
             >
               {loading ? (
-                <div className="w-4 h-4 lg:w-5 lg:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-4 h-4 lg:w-5 lg:h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -963,7 +972,7 @@ Come on, you got this! What's your answer? 🎮"]`;
           {isLiveMode && (
             <button
               onClick={toggleLiveMode}
-              className="p-2 lg:p-3 rounded-xl bg-red-500 hover:bg-red-600 text-white animate-pulse"
+              className="p-2 lg:p-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white animate-pulse shadow-lg"
               title="Stop live conversation"
             >
               <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -978,10 +987,10 @@ Come on, you got this! What's your answer? 🎮"]`;
           <button 
             onClick={() => handleQuickAction("Python code to write factorial function")}
             disabled={loading || message}
-            className={`text-[10px] lg:text-xs px-1.5 lg:px-3 py-0.5 lg:py-1 rounded-full transition-colors ${
+            className={`text-[10px] lg:text-xs px-1.5 lg:px-3 py-0.5 lg:py-1 rounded-full transition-colors border ${
               loading || message 
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
-                : "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                ? "bg-white/5 text-gray-500 cursor-not-allowed border-white/10" 
+                : "bg-white/10 hover:bg-white/20 text-amber-200 font-semibold border-white/20"
             }`}
           >
             Python code
@@ -989,10 +998,10 @@ Come on, you got this! What's your answer? 🎮"]`;
           <button 
             onClick={() => handleQuickAction("What is a node in data structure?")}
             disabled={loading || message}
-            className={`text-[10px] lg:text-xs px-1.5 lg:px-3 py-0.5 lg:py-1 rounded-full transition-colors ${
+            className={`text-[10px] lg:text-xs px-1.5 lg:px-3 py-0.5 lg:py-1 rounded-full transition-colors border ${
               loading || message 
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
-                : "bg-purple-100 hover:bg-purple-200 text-purple-700"
+                ? "bg-white/5 text-gray-500 cursor-not-allowed border-white/10" 
+                : "bg-white/10 hover:bg-white/20 text-amber-200 font-semibold border-white/20"
             }`}
           >
             Data structures
@@ -1000,10 +1009,10 @@ Come on, you got this! What's your answer? 🎮"]`;
           <button 
             onClick={() => handleQuickAction("What are classes and objects in C++?")}
             disabled={loading || message}
-            className={`text-[10px] lg:text-xs px-1.5 lg:px-3 py-0.5 lg:py-1 rounded-full transition-colors ${
+            className={`text-[10px] lg:text-xs px-1.5 lg:px-3 py-0.5 lg:py-1 rounded-full transition-colors border ${
               loading || message 
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
-                : "bg-green-100 hover:bg-green-200 text-green-700"
+                ? "bg-white/5 text-gray-500 cursor-not-allowed border-white/10" 
+                : "bg-white/10 hover:bg-white/20 text-amber-200 font-semibold border-white/20"
             }`}
           >
             C++ classes
@@ -1031,12 +1040,12 @@ Come on, you got this! What's your answer? 🎮"]`;
       {/* Camera Preview - Much smaller mobile optimized with Yawn Detection Stats */}
       {emotionDetectionEnabled && showCameraPreview && (
         <div className="fixed bottom-20 lg:bottom-32 left-1 lg:left-4 z-50 transition-all duration-300">
-          <div className="bg-white border-2 border-green-500 rounded-lg p-1 lg:p-2 shadow-lg">
+          <div className="bg-black/70 backdrop-blur-xl border border-white/15 rounded-xl p-1.5 lg:p-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.6)]">
             <div className="flex items-center justify-between mb-0.5">
-              <div className="text-[8px] lg:text-xs text-gray-600 font-semibold">Detection</div>
+              <div className="text-[8px] lg:text-xs text-amber-200 font-semibold">Detection</div>
               <button
                 onClick={() => setShowCameraPreview(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-100 transition-colors"
                 title="Hide Preview"
               >
                 <svg className="w-2.5 h-2.5 lg:w-4 lg:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1049,7 +1058,7 @@ Come on, you got this! What's your answer? 🎮"]`;
               autoPlay
               muted
               playsInline
-              className="w-20 h-16 lg:w-48 lg:h-36 rounded border border-gray-300 object-cover bg-gray-100"
+              className="w-20 h-16 lg:w-48 lg:h-36 rounded border border-white/10 object-cover bg-black/60"
               onLoadedMetadata={() => {
                 console.log('🎬 Preview video metadata loaded');
                 // Force play on metadata load
@@ -1062,9 +1071,9 @@ Come on, you got this! What's your answer? 🎮"]`;
               onError={(e) => console.error('❌ Preview video error:', e)}
             />
             {/* Yawn Detection Stats - Smaller text */}
-            <div className="text-[7px] lg:text-[10px] text-gray-600 mt-0.5 space-y-0.5">
+            <div className="text-[7px] lg:text-[10px] text-gray-200 mt-0.5 space-y-0.5">
               {error ? (
-                <div className="text-red-600 font-semibold text-center text-[7px]">
+                <div className="text-red-500 font-semibold text-center text-[7px]">
                   ❌ {error}
                 </div>
               ) : (
@@ -1079,28 +1088,28 @@ Come on, you got this! What's your answer? 🎮"]`;
                   </div>
                   {/* Live Metrics for Calibration */}
                   {detectionStats.currentMAR > 0 && (
-                    <div className="flex justify-between items-center border-t border-gray-300 pt-0.5 mt-0.5 gap-1">
-                      <span className="text-gray-500">MAR:</span>
-                      <span className={`font-mono font-semibold ${detectionStats.currentMAR > 0.5 ? 'text-orange-600' : 'text-green-600'}`}>
+                    <div className="flex justify-between items-center border-t border-white/10 pt-0.5 mt-0.5 gap-1">
+                      <span className="text-gray-300">MAR:</span>
+                      <span className={`font-mono font-semibold ${detectionStats.currentMAR > 0.5 ? 'text-orange-300' : 'text-amber-200'}`}>
                         {detectionStats.currentMAR.toFixed(2)}
                       </span>
                     </div>
                   )}
                   {detectionStats.currentEAR > 0 && (
                     <div className="flex justify-between items-center gap-1">
-                      <span className="text-gray-500">EAR:</span>
-                      <span className={`font-mono font-semibold ${detectionStats.currentEAR < 0.15 ? 'text-red-600' : 'text-green-600'}`}>
+                      <span className="text-gray-300">EAR:</span>
+                      <span className={`font-mono font-semibold ${detectionStats.currentEAR < 0.15 ? 'text-red-400' : 'text-amber-200'}`}>
                         {detectionStats.currentEAR.toFixed(2)}
                       </span>
                     </div>
                   )}
                   {detectionStats.yawnDuration > 0 && (
-                    <div className="text-orange-600 font-semibold animate-pulse text-[7px]">
+                    <div className="text-orange-400 font-semibold animate-pulse text-[7px]">
                       ⚠️ {detectionStats.yawnDuration.toFixed(1)}s
                     </div>
                   )}
                   {detectionStats.microsleepDuration > 0 && (
-                    <div className="text-red-600 font-semibold animate-pulse text-[7px]">
+                    <div className="text-red-500 font-semibold animate-pulse text-[7px]">
                       💤 {detectionStats.microsleepDuration.toFixed(1)}s
                     </div>
                   )}
@@ -1109,15 +1118,15 @@ Come on, you got this! What's your answer? 🎮"]`;
             </div>
             <div className={`text-[10px] lg:text-xs mt-1 text-center font-semibold ${
               error ? 'text-red-500' : 
-              isInitialized ? 'text-green-500' : 
-              isLoading ? 'text-yellow-500' :
-              emotionDetectionEnabled ? 'text-blue-500' :
+              isInitialized ? 'text-amber-200' : 
+              isLoading ? 'text-amber-300' :
+              emotionDetectionEnabled ? 'text-amber-100' :
               'text-gray-400'
             }`}>
               {error ? '❌ Error' : 
-               isInitialized ? '✅ Active' : 
+               isInitialized ? '🟡 Active' : 
                isLoading ? '⏳ Loading...' :
-               emotionDetectionEnabled ? '🔵 Starting...' :
+               emotionDetectionEnabled ? '🟡 Starting...' :
                '⚪ Disabled'}
             </div>
           </div>

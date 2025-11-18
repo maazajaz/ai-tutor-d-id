@@ -1663,26 +1663,26 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
   };
 
   return (
-    <div className="h-full w-full bg-white flex flex-col relative">
+    <div className="h-full w-full flex flex-col relative bg-gradient-to-br from-black via-[#130a04] to-[#2f1a00] text-amber-50">
       {/* Loading Overlay */}
       {isLoadingSession && (
-        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading whiteboard...</p>
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50">
+          <div className="text-center text-amber-100">
+            <div className="w-16 h-16 border-4 border-amber-400/70 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-sm tracking-wide uppercase">Loading whiteboard...</p>
           </div>
         </div>
       )}
 
       {/* Toolbar */}
-      <div className={`bg-gradient-to-r from-purple-500 to-indigo-600 p-2 flex items-center gap-2 flex-wrap transition-all ${showToolbar ? 'h-auto' : 'h-0 overflow-hidden'}`}>
+      <div className={`p-2 lg:p-4 flex items-center gap-2 flex-wrap transition-all bg-black/60 backdrop-blur-2xl border-b border-white/10 shadow-[0_15px_35px_rgba(0,0,0,0.65)] ${showToolbar ? 'h-auto' : 'h-0 overflow-hidden'}`}>
         {/* Paint Mode Toggle */}
         <button
           onClick={() => setIsPaintModeEnabled(!isPaintModeEnabled)}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-4 py-2 rounded-xl font-semibold tracking-wide border transition-all ${
             isPaintModeEnabled 
-              ? 'bg-green-500 text-white hover:bg-green-600' 
-              : 'bg-white text-gray-700 hover:bg-gray-100'
+              ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow-lg border-amber-300/50' 
+              : 'bg-white/5 text-amber-100 border-white/10 hover:bg-white/10'
           }`}
           title={isPaintModeEnabled ? "Paint Mode ON (Click to turn OFF)" : "Paint Mode OFF (Click to turn ON)"}
         >
@@ -1694,13 +1694,13 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
           </div>
         </button>
         
-        <div className="w-px h-8 bg-white/30"></div>
+        <div className="w-px h-8 bg-white/20"></div>
         
         {/* Tool Selection */}
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-2xl p-1 shadow-inner">
           <button
             onClick={() => setTool('pen')}
-            className={`p-2 rounded ${tool === 'pen' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-600 hover:bg-gray-100'}`}
+            className={`p-2 rounded-xl border transition ${tool === 'pen' ? 'bg-amber-400/20 text-amber-100 border-amber-200 shadow-lg' : 'text-amber-200 border-transparent hover:bg-white/10'}`}
             title="Pen"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1709,7 +1709,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
           </button>
           <button
             onClick={() => setTool('eraser')}
-            className={`p-2 rounded ${tool === 'eraser' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-600 hover:bg-gray-100'}`}
+            className={`p-2 rounded-xl border transition ${tool === 'eraser' ? 'bg-amber-400/20 text-amber-100 border-amber-200 shadow-lg' : 'text-amber-200 border-transparent hover:bg-white/10'}`}
             title="Eraser"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1719,19 +1719,19 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
         </div>
 
         {/* Color Picker */}
-        <div className="flex items-center gap-2 bg-white rounded-lg p-1">
+        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl p-1">
           <input
             type="color"
             value={color}
             onChange={(e) => setColor(e.target.value)}
-            className="w-8 h-8 rounded cursor-pointer"
+            className="w-8 h-8 rounded cursor-pointer border border-white/20 bg-transparent"
             title="Color"
           />
           {['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00'].map((c) => (
             <button
               key={c}
               onClick={() => setColor(c)}
-              className={`w-6 h-6 rounded border-2 ${color === c ? 'border-gray-800' : 'border-gray-300'}`}
+              className={`w-6 h-6 rounded border-2 ${color === c ? 'border-amber-300' : 'border-white/20'}`}
               style={{ backgroundColor: c }}
               title={c}
             />
@@ -1739,8 +1739,8 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
         </div>
 
         {/* Line Width */}
-        <div className="flex items-center gap-2 bg-white rounded-lg p-1">
-          <span className="text-xs text-gray-600 px-2">Size:</span>
+        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl p-1">
+          <span className="text-xs text-amber-100/80 px-2">Size:</span>
           <input
             type="range"
             min="1"
@@ -1749,18 +1749,18 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
             onChange={(e) => setLineWidth(Number(e.target.value))}
             className="w-20"
           />
-          <span className="text-xs text-gray-600 w-6">{lineWidth}</span>
+          <span className="text-xs text-amber-50 w-6 text-center">{lineWidth}</span>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1 ml-auto">
+        <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-2xl p-1 ml-auto shadow-inner">
           <button
             onClick={handleSaveDrawing}
             disabled={!hasUnsavedChanges || isSaving}
-            className={`px-3 py-2 rounded text-sm font-medium transition-all ${
+            className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all border ${
               hasUnsavedChanges && !isSaving
-                ? 'bg-green-500 hover:bg-green-600 text-white'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow-lg border-amber-200'
+                : 'bg-white/10 text-amber-200/60 border-white/5 cursor-not-allowed'
             }`}
             title={hasUnsavedChanges ? 'Save your drawing' : 'No unsaved changes'}
           >
@@ -1775,7 +1775,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
           </button>
           <button
             onClick={clearCanvas}
-            className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded text-sm font-medium"
+            className="px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white rounded-xl text-sm font-semibold shadow-lg"
             title="Clear canvas"
           >
             Clear
@@ -1786,22 +1786,22 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
       {/* Canvas Container - Scrollable */}
       <div 
         ref={containerRef}
-        className="flex-1 relative overflow-y-auto overflow-x-hidden bg-gray-50 p-4"
+        className="flex-1 relative overflow-y-auto overflow-x-hidden p-4 bg-white/5 backdrop-blur-2xl border-t border-white/10 whiteboard-scroll"
         style={{ scrollBehavior: 'smooth' }}
       >
         {/* Loading Indicator */}
         {isLoadingSession && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-50">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading whiteboard...</p>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-2xl z-50">
+            <div className="text-center text-amber-100">
+              <div className="w-12 h-12 border-4 border-amber-400/60 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-sm tracking-wide uppercase">Loading whiteboard...</p>
             </div>
           </div>
         )}
         
         {/* Main Canvas - For manual drawing */}
         {contentBlocks.length === 0 && (
-          <div className="flex items-center justify-center bg-gray-50 rounded-lg p-4">
+          <div className="flex items-center justify-center bg-black/40 border border-white/10 rounded-2xl p-4 shadow-[inset_0_0_30px_rgba(0,0,0,0.6)]">
             <canvas
               ref={canvasRef}
               width={800}
@@ -1813,7 +1813,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
               onTouchStart={startDrawing}
               onTouchMove={draw}
               onTouchEnd={stopDrawing}
-              className={`border-2 border-gray-300 rounded-lg bg-white shadow-inner ${isPaintModeEnabled ? 'cursor-crosshair touch-none' : 'cursor-default'}`}
+              className={`border-2 border-white/15 rounded-2xl bg-black/80 shadow-[0_20px_45px_rgba(0,0,0,0.5)] ${isPaintModeEnabled ? 'cursor-crosshair touch-none' : 'cursor-default'}`}
               style={{ 
                 touchAction: isPaintModeEnabled ? 'none' : 'auto',
                 display: 'block',
@@ -1843,9 +1843,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
             }
             
             return (
-              <div key={block.id} className="bg-white rounded-lg shadow-lg border-2 border-purple-200 overflow-hidden">
+              <div key={block.id} className="bg-white/5 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.65)] border border-white/10 overflow-hidden backdrop-blur-xl">
                 {/* Header with Question */}
-                <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white p-4">
+                <div className="bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 text-black p-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold text-lg flex items-center gap-2">
                       <span>🎨</span>
@@ -1853,7 +1853,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
                     </h3>
                     <button
                       onClick={() => handleDeleteDiagram(block.id)}
-                      className="text-white hover:text-red-200 transition-colors"
+                      className="text-black/70 hover:text-red-600 transition-colors"
                       title="Delete"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1862,7 +1862,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
                     </button>
                   </div>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="px-2 py-1 bg-white bg-opacity-20 rounded text-xs">
+                    <span className="px-2 py-1 bg-black/10 rounded-full text-xs font-semibold">
                       {block.diagram_type === 'fast_drawing' ? '⚡ Fast Drawing' : block.diagram_type}
                     </span>
                     <span className="text-xs opacity-75">
@@ -1873,12 +1873,12 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
                 
                 {/* AI Explanation Section */}
                 {didResponse && (
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 border-b-2 border-purple-100">
+                  <div className="bg-black/40 p-4 border-b border-white/10">
                     <div className="flex items-start gap-3">
                       <span className="text-2xl flex-shrink-0">🎭</span>
                       <div className="flex-1">
-                        <h4 className="font-semibold text-blue-800 mb-2">AI Agent Explanation:</h4>
-                        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                        <h4 className="font-semibold text-amber-200 mb-2">AI Agent Explanation:</h4>
+                        <p className="text-amber-50 text-sm leading-relaxed whitespace-pre-wrap">
                           {didResponse}
                         </p>
                       </div>
@@ -1887,19 +1887,19 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
                 )}
                 
                 {/* Canvas for this specific diagram */}
-                <div className="p-4 bg-gray-50 flex items-center justify-center">
+                <div className="p-4 bg-black/50 flex items-center justify-center border-t border-white/10">
                   <canvas
                     id={`canvas-${block.id}`}
                     width={800}
                     height={600}
-                    className="border-2 border-gray-300 rounded-lg bg-white shadow-inner max-w-full h-auto"
+                    className="border border-white/15 rounded-2xl bg-black/80 shadow-[0_20px_45px_rgba(0,0,0,0.5)] max-w-full h-auto"
                   />
                 </div>
                 
                 {/* AI Response if available */}
                 {block.ai_response && (
-                  <div className="p-4 bg-gray-50 border-t border-gray-200">
-                    <p className="text-sm text-gray-600 italic">
+                  <div className="p-4 bg-black/40 border-t border-white/10">
+                    <p className="text-sm text-amber-100/90 italic">
                       {block.ai_response}
                     </p>
                   </div>
@@ -1913,28 +1913,28 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
       {/* Toolbar Toggle Button */}
       <button
         onClick={() => setShowToolbar(!showToolbar)}
-        className="absolute top-2 right-2 bg-white shadow-lg rounded-full p-2 hover:bg-gray-100 transition-colors z-10"
+        className="absolute top-2 right-2 bg-black/70 border border-white/15 shadow-lg rounded-full p-2 hover:bg-black/60 transition-colors z-10 text-amber-100"
         title={showToolbar ? 'Hide toolbar' : 'Show toolbar'}
       >
-        <svg className={`w-5 h-5 text-gray-600 transition-transform ${showToolbar ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`w-5 h-5 transition-transform ${showToolbar ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {/* Question Input Area - Bottom */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent p-2 md:p-4 border-t-2 border-gray-200 z-50">
+      <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-2xl p-2 md:p-4 border-t border-white/10 z-50">
         <div className="flex items-center gap-1 md:gap-2 max-w-4xl mx-auto">
           {/* Microphone Button */}
           <button
             onClick={toggleVoiceInput}
             disabled={isGenerating || loading}
-            className={`p-2 md:p-3 rounded-full transition-all ${
+            className={`p-2 md:p-3 rounded-full transition-all shadow-lg ${
               isListening
-                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse text-white'
                 : isGenerating || loading
-                ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-purple-500 hover:bg-purple-600'
-            } text-white shadow-lg`}
+                ? 'bg-white/10 text-amber-200/40 cursor-not-allowed'
+                : 'bg-gradient-to-r from-amber-400 to-yellow-500 text-black hover:from-amber-300 hover:to-yellow-400'
+            }`}
             title={isListening ? 'Stop listening' : 'Voice input'}
           >
             <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1960,18 +1960,18 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
             }}
             placeholder={isListening ? '🎤 Listening...' : 'Ask a question...'}
             disabled={isGenerating || loading || isListening}
-            className="flex-1 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none text-gray-800 placeholder:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="flex-1 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base border border-white/15 rounded-2xl bg-black/40 text-amber-50 placeholder:text-amber-200/40 focus:border-amber-300 focus:ring-2 focus:ring-amber-400/30 disabled:bg-black/30 disabled:text-amber-200/30 disabled:cursor-not-allowed"
           />
 
           {/* Send Button */}
           <button
             onClick={() => handleAskQuestion()}
             disabled={!userInput.trim() || isGenerating || loading}
-            className={`p-2 md:p-3 rounded-full transition-all ${
+            className={`p-2 md:p-3 rounded-full transition-all shadow-lg ${
               !userInput.trim() || isGenerating || loading
-                ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
-            } text-white shadow-lg`}
+                ? 'bg-white/10 text-amber-200/40 cursor-not-allowed'
+                : 'bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 text-black hover:brightness-110'
+            }`}
             title="Send question"
           >
             {isGenerating || loading ? (
@@ -1986,7 +1986,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
 
         {/* Status Text */}
         {(isGenerating || loading) && (
-          <div className="text-center mt-2 text-sm text-purple-600 font-medium">
+          <div className="text-center mt-2 text-sm text-amber-200 font-medium">
             <span className="inline-flex items-center gap-2">
               <span className="animate-pulse">🤖</span>
               Analyzing and drawing diagram...
@@ -1997,22 +1997,22 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
 
       {/* Info Badge - Updated position to avoid input area */}
       {contentBlocks.length === 0 && !userInput && !isGenerating && (
-        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-400 rounded-xl px-6 py-3 text-sm text-gray-800 z-40 shadow-lg max-w-md">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-black/70 border border-white/10 rounded-2xl px-6 py-4 text-sm text-amber-50 z-40 shadow-[0_20px_45px_rgba(0,0,0,0.6)] max-w-md backdrop-blur-xl">
+          <div className="flex items-center gap-2 mb-2 text-amber-200">
             <span className="text-2xl">💡</span>
-            <span className="font-bold text-yellow-800">Smart Whiteboard</span>
+            <span className="font-bold tracking-wide">Smart Whiteboard</span>
           </div>
-          <div className="space-y-1 text-xs">
+          <div className="space-y-2 text-xs text-amber-100">
             <div className="flex items-start gap-2">
-              <span className="text-green-600">🖼️</span>
+              <span className="text-green-300">🖼️</span>
               <span>Ask about <strong>real objects</strong> → Unsplash photos!</span>
             </div>
             <div className="flex items-start gap-2">
-              <span className="text-purple-600">🎨</span>
+              <span className="text-purple-300">🎨</span>
               <span>Ask <strong>how to calculate/explain</strong> → AI diagrams!</span>
             </div>
             <div className="flex items-start gap-2">
-              <span className="text-blue-600">📊</span>
+              <span className="text-blue-300">📊</span>
               <span>Ask about <strong>processes/steps</strong> → Flowcharts!</span>
             </div>
           </div>

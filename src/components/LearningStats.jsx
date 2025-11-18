@@ -3,36 +3,38 @@ import { useChat } from '../hooks/useChat';
 
 export const LearningStats = () => {
   const { chatSessions, initialLoading } = useChat();
+  const panelClasses = 'rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_15px_45px_rgba(0,0,0,0.45)] p-6 text-gray-100';
+  const statCardClasses = 'rounded-xl bg-white/5 border border-white/10 p-4';
   
   // Show loading state while data is being fetched
   if (initialLoading) {
     return (
-      <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-transparent">
+      <div className={panelClasses}>
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-1">
+            <h3 className="text-2xl font-bold text-white mb-1">
               📊 Learning Statistics
             </h3>
-            <p className="text-sm text-gray-600">Loading your stats...</p>
+            <p className="text-sm text-gray-300">Loading your stats...</p>
           </div>
         </div>
 
         {/* Loading Skeleton */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-gray-100 rounded-xl p-4 animate-pulse">
-              <div className="h-4 bg-gray-300 rounded w-24 mb-3"></div>
-              <div className="h-8 bg-gray-300 rounded w-16 mb-2"></div>
-              <div className="h-3 bg-gray-300 rounded w-20"></div>
+            <div key={i} className="bg-white/5 rounded-xl p-4 animate-pulse border border-white/5">
+              <div className="h-4 bg-white/10 rounded w-24 mb-3"></div>
+              <div className="h-8 bg-white/10 rounded w-16 mb-2"></div>
+              <div className="h-3 bg-white/10 rounded w-20"></div>
             </div>
           ))}
         </div>
 
         <div className="mb-6">
-          <div className="h-4 bg-gray-300 rounded w-32 mb-3"></div>
+          <div className="h-4 bg-white/10 rounded w-32 mb-3"></div>
           <div className="flex items-end justify-between gap-2 h-32">
             {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-              <div key={i} className="flex-1 bg-gray-200 rounded-t-lg animate-pulse"></div>
+              <div key={i} className="flex-1 bg-white/10 rounded-t-lg animate-pulse"></div>
             ))}
           </div>
         </div>
@@ -139,71 +141,71 @@ export const LearningStats = () => {
   }, [chatSessions]); // Only recalculate when chatSessions reference changes
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-transparent">
+    <div className={panelClasses}>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-1">
+          <h3 className="text-2xl font-bold text-white mb-1">
             📊 Learning Statistics
           </h3>
-          <p className="text-sm text-gray-600">Your learning journey at a glance</p>
+          <p className="text-sm text-gray-300">Your learning journey at a glance</p>
         </div>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         {/* Total Sessions */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4">
+        <div className={statCardClasses}>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">💬</span>
-            <span className="text-xs font-medium text-gray-600">Total Sessions</span>
+            <span className="text-xs font-medium text-gray-300">Total Sessions</span>
           </div>
-          <div className="text-3xl font-bold text-gray-800">{stats.totalSessions}</div>
-          <div className="text-xs text-gray-500 mt-1">All time</div>
+          <div className="text-3xl font-bold text-white">{stats.totalSessions}</div>
+          <div className="text-xs text-gray-400 mt-1">All time</div>
         </div>
 
         {/* Learning Streak */}
-        <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4">
+        <div className={statCardClasses}>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">🔥</span>
-            <span className="text-xs font-medium text-gray-600">Streak</span>
+            <span className="text-xs font-medium text-gray-300">Streak</span>
           </div>
-          <div className="text-3xl font-bold text-gray-800">{stats.learningStreak}</div>
-          <div className="text-xs text-gray-500 mt-1">days in a row</div>
+          <div className="text-3xl font-bold text-white">{stats.learningStreak}</div>
+          <div className="text-xs text-gray-400 mt-1">days in a row</div>
         </div>
 
         {/* Total Messages */}
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4">
+        <div className={statCardClasses}>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">💭</span>
-            <span className="text-xs font-medium text-gray-600">Messages</span>
+            <span className="text-xs font-medium text-gray-300">Messages</span>
           </div>
-          <div className="text-3xl font-bold text-gray-800">{stats.totalMessages}</div>
-          <div className="text-xs text-gray-500 mt-1">total exchanges</div>
+          <div className="text-3xl font-bold text-white">{stats.totalMessages}</div>
+          <div className="text-xs text-gray-400 mt-1">total exchanges</div>
         </div>
 
         {/* Avg Session Length */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4">
+        <div className={statCardClasses}>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">⏱️</span>
-            <span className="text-xs font-medium text-gray-600">Avg Length</span>
+            <span className="text-xs font-medium text-gray-300">Avg Length</span>
           </div>
-          <div className="text-3xl font-bold text-gray-800">{stats.averageSessionLength}</div>
-          <div className="text-xs text-gray-500 mt-1">messages/session</div>
+          <div className="text-3xl font-bold text-white">{stats.averageSessionLength}</div>
+          <div className="text-xs text-gray-400 mt-1">messages/session</div>
         </div>
       </div>
 
       {/* Weekly Activity Chart */}
       <div className="mb-6">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Weekly Activity</h4>
+        <h4 className="text-sm font-semibold text-gray-200 mb-3">Weekly Activity</h4>
         <div className="flex items-end justify-between gap-2 h-32">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => {
             const maxActivity = Math.max(...stats.weeklyActivity, 1);
             const height = (stats.weeklyActivity[index] / maxActivity) * 100;
             return (
               <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full bg-gray-100 rounded-t-lg relative flex items-end justify-center" style={{ height: '100%' }}>
+                <div className="w-full bg-white/5 rounded-t-lg relative flex items-end justify-center" style={{ height: '100%' }}>
                   <div 
-                    className="w-full bg-gradient-to-t from-green-500 to-blue-500 rounded-t-lg transition-all duration-300"
+                    className="w-full bg-gradient-to-t from-amber-400 to-yellow-500 rounded-t-lg transition-all duration-300"
                     style={{ height: `${height}%`, minHeight: stats.weeklyActivity[index] > 0 ? '10%' : '0%' }}
                   >
                     {stats.weeklyActivity[index] > 0 && (
@@ -213,33 +215,33 @@ export const LearningStats = () => {
                     )}
                   </div>
                 </div>
-                <span className="text-xs font-medium text-gray-600">{day}</span>
+                <span className="text-xs font-medium text-gray-300">{day}</span>
               </div>
             );
           })}
         </div>
-        <div className="text-xs text-gray-500 text-center mt-2">
-          Most active: <span className="font-semibold text-gray-700">{stats.mostActiveDay}</span>
+        <div className="text-xs text-gray-400 text-center mt-2">
+          Most active: <span className="font-semibold text-gray-100">{stats.mostActiveDay}</span>
         </div>
       </div>
 
       {/* Top Topics */}
       {stats.topicsDiscussed.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-3">Top Topics</h4>
+          <h4 className="text-sm font-semibold text-gray-200 mb-3">Top Topics</h4>
           <div className="space-y-2">
             {stats.topicsDiscussed.map((item, index) => (
               <div key={index} className="flex items-center gap-3">
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-gray-700 truncate">
+                    <span className="text-xs font-medium text-gray-100 truncate">
                       {item.topic}
                     </span>
-                    <span className="text-xs text-gray-500">{item.count}x</span>
+                    <span className="text-xs text-gray-400">{item.count}x</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div className="w-full bg-white/10 rounded-full h-1.5">
                     <div 
-                      className="bg-gradient-to-r from-green-500 to-blue-500 h-1.5 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-amber-400 to-yellow-500 h-1.5 rounded-full transition-all duration-300"
                       style={{ width: `${(item.count / stats.topicsDiscussed[0].count) * 100}%` }}
                     />
                   </div>
@@ -253,7 +255,7 @@ export const LearningStats = () => {
       {stats.totalSessions === 0 && (
         <div className="text-center py-8">
           <div className="text-6xl mb-3">📚</div>
-          <p className="text-gray-600 text-sm">
+          <p className="text-gray-300 text-sm">
             Start your first learning session to see statistics!
           </p>
         </div>

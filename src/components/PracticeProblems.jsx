@@ -323,60 +323,89 @@ const PracticeProblems = ({ onBack }) => {
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
-      case 'easy': return 'text-green-600 bg-green-100';
-      case 'medium': return 'text-yellow-600 bg-yellow-100';
-      case 'hard': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'easy': return 'text-emerald-200 bg-emerald-500/10 border border-emerald-400/40';
+      case 'medium': return 'text-amber-200 bg-amber-500/10 border border-amber-400/30';
+      case 'hard': return 'text-rose-200 bg-rose-500/10 border border-rose-400/40';
+      default: return 'text-amber-100/80 bg-white/5 border border-white/10';
     }
   };
 
+  const gradientBackground = "bg-gradient-to-br from-black via-[#130a04] to-[#2f1a00]";
+  const glassPanel = "bg-black/60 border border-white/10 backdrop-blur-2xl shadow-[0_20px_45px_rgba(0,0,0,0.65)]";
+
   return (
-    <div className="flex h-screen bg-gray-50 relative">
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 bg-indigo-600 text-white p-3 rounded-lg shadow-lg"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {isSidebarOpen ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    <div className={`${gradientBackground} text-amber-50 min-h-screen flex flex-col`}>
+      {/* Mobile Top Nav */}
+      <div className="lg:hidden sticky top-0 z-30 border-b border-white/10 bg-black/70 backdrop-blur-2xl shadow-[0_10px_30px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow-[0_10px_25px_rgba(0,0,0,0.45)] border border-amber-200"
+            aria-label="Toggle problem menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isSidebarOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+
+          <div className="text-center">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-amber-300">Informatics360.ai</p>
+            <p className="text-sm font-semibold text-amber-50 mt-0.5">Practice Problems</p>
+          </div>
+
+          {onBack ? (
+            <button
+              onClick={onBack}
+              className="px-3 py-2 rounded-xl border border-white/15 text-amber-50 bg-white/5 hover:bg-white/10 text-sm font-medium flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </button>
           ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            <span className="w-10" />
           )}
-        </svg>
-      </button>
+        </div>
+      </div>
 
       {/* Overlay for mobile */}
       {isSidebarOpen && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          className="lg:hidden fixed inset-0 bg-black/60 z-40"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
+      <div className="flex flex-1 relative lg:flex-row">
+
       {/* Left Sidebar - Problem List */}
       <div className={`
-        w-full sm:w-80 lg:w-80 bg-white border-r border-gray-200 flex flex-col
-        fixed lg:relative inset-y-0 left-0 z-40
+        w-full sm:w-80 lg:w-80 ${glassPanel} flex flex-col text-amber-50
+        fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto
         transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="p-4 border-b border-white/10 bg-white/5 backdrop-blur-xl">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <img src={logo} alt="Sharda Informatics" className="h-8 w-auto" />
               <div>
-                <h1 className="text-lg font-bold text-white flex items-center gap-2">
+                <h1 className="text-lg font-bold text-amber-100 flex items-center gap-2">
                   Practice Problems
                 </h1>
-                <p className="text-xs text-blue-100">Informatics360.ai</p>
+                <p className="text-xs text-amber-300">Informatics360.ai</p>
               </div>
             </div>
             {onBack && (
               <button
                 onClick={onBack}
-                className="flex items-center gap-2 px-3 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-2 border border-white/10 bg-white/5 hover:bg-white/15 text-amber-100 rounded-lg transition-colors text-sm"
                 title="Back to Dashboard"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -386,33 +415,33 @@ const PracticeProblems = ({ onBack }) => {
               </button>
             )}
           </div>
-          <div className="flex items-center justify-between bg-white bg-opacity-20 rounded-lg p-3">
+          <div className="flex items-center justify-between bg-black/40 border border-white/10 rounded-xl p-3">
             <div>
-              <p className="text-sm text-white font-semibold">
+              <p className="text-sm text-amber-200 font-semibold">
                 {completedProblems.size} / {PROBLEMS_DATABASE.length} completed
               </p>
             </div>
             <div className="text-center">
               <div className="flex items-center gap-2">
-                <FireIcon className="w-5 h-5 text-yellow-300" />
-                <span className="text-lg font-bold text-white">3</span>
-                <TrophyIcon className="w-5 h-5 text-yellow-300" />
+                <FireIcon className="w-5 h-5 text-amber-300" />
+                <span className="text-lg font-bold text-amber-200">3</span>
+                <TrophyIcon className="w-5 h-5 text-amber-300" />
               </div>
-              <span className="text-xs text-blue-100">Day Streak</span>
+              <span className="text-xs text-amber-300/80">Day Streak</span>
             </div>
           </div>
         </div>
 
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-white/10 bg-black/40">
           {/* Search */}
           <div className="relative mb-3">
-            <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            <MagnifyingGlassIcon className="w-5 h-5 text-amber-300 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search problems..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-white/15 rounded-2xl bg-black/60 text-amber-50 placeholder:text-amber-200/40 focus:ring-2 focus:ring-amber-300"
             />
           </div>
 
@@ -421,7 +450,7 @@ const PracticeProblems = ({ onBack }) => {
             <select
               value={filterDifficulty}
               onChange={(e) => setFilterDifficulty(e.target.value)}
-              className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 px-3 py-2 text-sm border border-white/15 rounded-xl bg-black/60 text-amber-50 focus:ring-2 focus:ring-amber-300"
             >
               <option value="all">All Levels</option>
               <option value="easy">Easy</option>
@@ -432,7 +461,7 @@ const PracticeProblems = ({ onBack }) => {
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 px-3 py-2 text-sm border border-white/15 rounded-xl bg-black/60 text-amber-50 focus:ring-2 focus:ring-amber-300"
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>
@@ -444,7 +473,7 @@ const PracticeProblems = ({ onBack }) => {
         </div>
 
         {/* Problem List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-black/20 p-3 space-y-3">
           {filteredProblems.map((problem) => {
             const isCompleted = completedProblems.has(problem.id);
             const isSelected = selectedProblem?.id === problem.id;
@@ -456,27 +485,27 @@ const PracticeProblems = ({ onBack }) => {
                   setSelectedProblem(problem);
                   setIsSidebarOpen(false); // Close sidebar on mobile after selection
                 }}
-                className={`p-4 border-b border-gray-100 cursor-pointer transition-colors ${
+                className={`p-4 rounded-2xl border cursor-pointer transition-all shadow-[0_10px_30px_rgba(0,0,0,0.55)] ${
                   isSelected 
-                    ? 'bg-indigo-50 border-l-4 border-l-indigo-600' 
-                    : 'hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-amber-400/20 to-yellow-500/10 border-amber-300/40' 
+                    : 'bg-black/40 border-white/10 hover:border-amber-200/40'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       {isCompleted && (
-                        <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        <CheckCircleIcon className="w-5 h-5 text-amber-300 flex-shrink-0" />
                       )}
-                      <h3 className={`font-semibold text-sm ${isCompleted ? 'text-green-700' : 'text-gray-800'}`}>
+                      <h3 className={`font-semibold text-sm ${isCompleted ? 'text-amber-200' : 'text-amber-50'}`}>
                         {problem.title}
                       </h3>
                     </div>
-                    <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                    <p className="text-xs text-amber-100/60 mb-2 line-clamp-2">
                       {problem.description}
                     </p>
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getDifficultyColor(problem.difficulty)}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${getDifficultyColor(problem.difficulty)}`}>
                         {problem.difficulty}
                       </span>
                       <span className="text-xs text-gray-500">{problem.category}</span>
@@ -488,7 +517,7 @@ const PracticeProblems = ({ onBack }) => {
           })}
 
           {filteredProblems.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-amber-200/70">
               <p>No problems found</p>
               <p className="text-sm mt-1">Try adjusting your filters</p>
             </div>
@@ -497,25 +526,26 @@ const PracticeProblems = ({ onBack }) => {
       </div>
 
       {/* Right Panel - Code Editor */}
-      <div className="flex-1">
+      <div className="flex-1 w-full px-4 pb-8 pt-4 lg:p-8">
         {selectedProblem ? (
           <CodeEditor 
             problem={selectedProblem} 
             onComplete={handleProblemComplete}
           />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <CodeBracketIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-600 mb-2">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center bg-black/40 border border-white/10 backdrop-blur-2xl rounded-3xl p-8 shadow-[0_25px_60px_rgba(0,0,0,0.55)]">
+              <CodeBracketIcon className="w-16 h-16 text-amber-300 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-amber-50 mb-2">
                 Select a problem to start coding
               </h2>
-              <p className="text-gray-500">
+              <p className="text-amber-100/70">
                 Choose from {PROBLEMS_DATABASE.length} practice problems
               </p>
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

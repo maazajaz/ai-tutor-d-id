@@ -17,7 +17,6 @@ const CollaborativeStudy = lazy(() => import("./components/CollaborativeStudy").
 const PracticeProblems = lazy(() => import("./components/PracticeProblems"));
 const RoughDrawTest = lazy(() => import("./components/RoughDrawTest"));
 const RoughDrawTestV2 = lazy(() => import("./components/RoughDrawTestV2"));
-const VisualWhiteboard = lazy(() => import("./components/VisualWhiteboard").then(module => ({ default: module.VisualWhiteboard })));
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -32,12 +31,13 @@ const ComponentLoader = () => (
 // Main App Content (when authenticated)
 const AppContent = () => {
   const { user, profile, signOut, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'chat', 'practice', 'whiteboard'
+  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'chat', 'practice'
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showChat, setShowChat] = useState(true); // Chat visibility state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile menu state
   const [showCollabStudy, setShowCollabStudy] = useState(false); // Collaborative study modal state (persists across tab switches)
+  const [whiteboardLaunchKey, setWhiteboardLaunchKey] = useState(0); // Triggers chat whiteboard view
   const [cameraStatus, setCameraStatus] = useState({ // Camera status from UI
     isEnabled: false,
     isModelLoaded: false,
@@ -132,7 +132,11 @@ const AppContent = () => {
           <Dashboard 
             onNavigateToChat={() => setCurrentView('chat')}
             onNavigateToPractice={() => setCurrentView('practice')}
-            onNavigateToWhiteboard={() => setCurrentView('whiteboard')}
+            onNavigateToWhiteboard={() => {
+              setCurrentView('chat');
+              setShowChat(true);
+              setWhiteboardLaunchKey(prev => prev + 1);
+            }}
             onNavigateToCustomize={() => {
               // Navigate to chat and open sidebar with settings
               setCurrentView('chat');
@@ -143,30 +147,10 @@ const AppContent = () => {
         </Suspense>
       </div>
 
-      {/* Visual Whiteboard View */}
-      <div style={{ display: currentView === 'whiteboard' ? 'block' : 'none' }}>
-        <Suspense fallback={<ComponentLoader />}>
-          <VisualWhiteboard onBack={() => setCurrentView('dashboard')} />
-        </Suspense>
-      </div>
-
       {/* Practice Problems View */}
       <div style={{ display: currentView === 'practice' ? 'block' : 'none' }}>
         <Suspense fallback={<ComponentLoader />}>
-          <div className="relative h-screen">
-            {/* Back to Dashboard Button - Positioned to not overlap with hamburger */}
-            <button
-              onClick={() => setCurrentView('dashboard')}
-              className="absolute top-4 left-1/2 -translate-x-1/2 lg:left-4 lg:translate-x-0 z-40 px-4 py-2 bg-white hover:bg-gray-100 text-gray-800 rounded-lg shadow-md transition-colors flex items-center gap-2 font-semibold text-sm"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span className="hidden sm:inline">Back to Dashboard</span>
-              <span className="sm:hidden">Back</span>
-            </button>
-            <PracticeProblems onBack={() => setCurrentView('dashboard')} />
-          </div>
+          <PracticeProblems onBack={() => setCurrentView('dashboard')} />
         </Suspense>
       </div>
 
@@ -505,6 +489,7 @@ const AppContent = () => {
           showChat={showChat} 
           setShowChat={setShowChat} 
           onCameraStatus={setCameraStatus}
+          whiteboardLaunchKey={whiteboardLaunchKey}
         />
       </div>
       

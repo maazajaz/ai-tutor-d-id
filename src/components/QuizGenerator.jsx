@@ -26,6 +26,8 @@ export const QuizGenerator = () => {
   const [userAnswers, setUserAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
+  const panelClasses = 'rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_15px_45px_rgba(0,0,0,0.45)] p-6 text-gray-100';
+  const infoCardClasses = 'rounded-xl bg-white/5 border border-white/10';
 
   const generateQuiz = async () => {
     if (!chatHistory || chatHistory.length === 0) {
@@ -121,10 +123,10 @@ export const QuizGenerator = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-transparent">
+    <div className={panelClasses}>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-1">
+          <h3 className="text-2xl font-bold text-white mb-1">
             🎯 Smart Quiz Generator
           </h3>
           <p className="text-sm text-gray-600">
@@ -136,10 +138,10 @@ export const QuizGenerator = () => {
       {!quiz ? (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">🧠</div>
-          <h4 className="text-lg font-semibold text-gray-800 mb-2">
+          <h4 className="text-lg font-semibold text-white mb-2">
             Ready to test your knowledge?
           </h4>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-gray-300 mb-6">
             {chatHistory && chatHistory.length > 0 
               ? 'Generate a quiz based on your recent conversations'
               : 'Start a conversation first to generate a quiz'}
@@ -172,18 +174,18 @@ export const QuizGenerator = () => {
         <div>
           {/* Quiz Header */}
           {!showResults && (
-            <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200">
+            <div className={`mb-6 p-4 ${infoCardClasses}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-xl">
+                  <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-xl">
                     📝
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-800">{quiz.title}</h4>
-                    <p className="text-xs text-gray-600">{quiz.questions.length} questions</p>
+                    <h4 className="font-semibold text-white">{quiz.title}</h4>
+                    <p className="text-xs text-gray-300">{quiz.questions.length} questions</p>
                   </div>
                 </div>
-                <span className="text-xs bg-white px-3 py-1 rounded-full font-medium text-gray-700">
+                <span className="text-xs bg-white/10 px-3 py-1 rounded-full font-medium text-gray-100 border border-white/20">
                   {Object.keys(userAnswers).length}/{quiz.questions.length} answered
                 </span>
               </div>
@@ -192,24 +194,24 @@ export const QuizGenerator = () => {
 
           {/* Results Summary */}
           {showResults && (
-            <div className="mb-6 p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border-2 border-green-300">
+            <div className={`mb-6 p-6 ${infoCardClasses}`}>
               <div className="text-center">
                 <div className="text-5xl mb-3">
                   {score === quiz.questions.length ? '🎉' : score >= quiz.questions.length / 2 ? '👍' : '💪'}
                 </div>
-                <h4 className="text-2xl font-bold text-gray-800 mb-2">
+                <h4 className="text-2xl font-bold text-white mb-2">
                   Your Score: {score}/{quiz.questions.length}
                 </h4>
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-300 mb-4">
                   {score === quiz.questions.length 
                     ? 'Perfect! You mastered this topic! 🌟'
                     : score >= quiz.questions.length / 2
                     ? 'Good job! Keep learning! 📚'
                     : 'Keep practicing! You\'ll get there! 💡'}
                 </p>
-                <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+                <div className="w-full bg-white/10 rounded-full h-3 mb-4">
                   <div 
-                    className="bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full transition-all duration-500"
+                    className="bg-gradient-to-r from-emerald-400 to-blue-500 h-3 rounded-full transition-all duration-500"
                     style={{ width: `${(score / quiz.questions.length) * 100}%` }}
                   />
                 </div>
@@ -222,25 +224,25 @@ export const QuizGenerator = () => {
             {quiz.questions.map((question, qIndex) => (
               <div 
                 key={qIndex}
-                className={`p-5 rounded-xl border-2 transition-all ${
+                className={`p-5 rounded-xl transition-all ${
                   showResults
                     ? userAnswers[qIndex] === question.correctAnswer
-                      ? 'bg-green-50 border-green-300'
-                      : 'bg-red-50 border-red-300'
-                    : 'bg-gray-50 border-gray-200'
+                      ? 'bg-emerald-500/10 border border-emerald-400/50'
+                      : 'bg-red-500/10 border border-red-400/50'
+                    : 'bg-white/5 border border-white/10'
                 }`}
               >
                 <div className="flex items-start gap-3 mb-4">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                     showResults
                       ? userAnswers[qIndex] === question.correctAnswer
-                        ? 'bg-green-500 text-white'
+                        ? 'bg-emerald-500 text-white'
                         : 'bg-red-500 text-white'
-                      : 'bg-gray-300 text-gray-700'
+                      : 'bg-white/10 text-white'
                   }`}>
                     {qIndex + 1}
                   </div>
-                  <p className="font-medium text-gray-800 flex-1">{question.question}</p>
+                  <p className="font-medium text-white flex-1">{question.question}</p>
                 </div>
 
                 <div className="space-y-2 ml-11">
@@ -253,29 +255,29 @@ export const QuizGenerator = () => {
                         key={oIndex}
                         onClick={() => handleAnswerSelect(qIndex, oIndex)}
                         disabled={showResults}
-                        className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                        className={`w-full text-left p-3 rounded-lg border transition-all ${
                           showResults
                             ? isCorrect
-                              ? 'bg-green-100 border-green-400 font-medium'
+                              ? 'bg-emerald-500/10 border-emerald-400/50 font-medium'
                               : isSelected
-                              ? 'bg-red-100 border-red-400'
-                              : 'bg-white border-gray-200'
+                              ? 'bg-red-500/10 border-red-400/50'
+                              : 'bg-white/5 border-white/10'
                             : isSelected
-                            ? 'bg-purple-100 border-purple-400 font-medium'
-                            : 'bg-white border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                            ? 'bg-purple-500/10 border-purple-400/60 font-medium'
+                            : 'bg-white/5 border-white/10 hover:border-purple-300 hover:bg-purple-500/5'
                         } ${showResults ? 'cursor-default' : 'cursor-pointer'}`}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                             showResults
                               ? isCorrect
-                                ? 'border-green-500 bg-green-500'
+                                ? 'border-emerald-400 bg-emerald-400'
                                 : isSelected
-                                ? 'border-red-500 bg-red-500'
-                                : 'border-gray-300'
+                                ? 'border-red-400 bg-red-400'
+                                : 'border-white/20'
                               : isSelected
-                              ? 'border-purple-500 bg-purple-500'
-                              : 'border-gray-300'
+                              ? 'border-purple-400 bg-purple-400'
+                              : 'border-white/20'
                           }`}>
                             {(showResults && isCorrect) || (!showResults && isSelected) ? (
                               <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -297,9 +299,9 @@ export const QuizGenerator = () => {
 
                 {/* Explanation */}
                 {showResults && question.explanation && (
-                  <div className="mt-4 ml-11 p-3 bg-white rounded-lg border-l-4 border-blue-500">
-                    <p className="text-xs font-semibold text-gray-700 mb-1">💡 Explanation:</p>
-                    <p className="text-sm text-gray-600">{question.explanation}</p>
+                  <div className="mt-4 ml-11 p-3 bg-white/5 rounded-lg border-l-4 border-indigo-400">
+                    <p className="text-xs font-semibold text-white mb-1">💡 Explanation:</p>
+                    <p className="text-sm text-gray-200">{question.explanation}</p>
                   </div>
                 )}
               </div>
@@ -315,15 +317,15 @@ export const QuizGenerator = () => {
                   disabled={Object.keys(userAnswers).length !== quiz.questions.length}
                   className={`flex-1 py-3 rounded-lg font-medium transition-all ${
                     Object.keys(userAnswers).length !== quiz.questions.length
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-green-500 to-blue-600 text-white hover:shadow-lg hover:scale-105'
+                      ? 'bg-white/10 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-emerald-400 to-blue-500 text-white hover:shadow-lg hover:scale-105'
                   }`}
                 >
                   Submit Quiz
                 </button>
                 <button
                   onClick={resetQuiz}
-                  className="px-6 py-3 rounded-lg font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                  className="px-6 py-3 rounded-lg font-medium bg-white/5 text-gray-200 border border-white/10 hover:bg-white/10 transition-colors"
                 >
                   Cancel
                 </button>
@@ -338,7 +340,7 @@ export const QuizGenerator = () => {
                 </button>
                 <button
                   onClick={resetQuiz}
-                  className="px-6 py-3 rounded-lg font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                  className="px-6 py-3 rounded-lg font-medium bg-white/5 text-gray-200 border border-white/10 hover:bg-white/10 transition-colors"
                 >
                   Close
                 </button>

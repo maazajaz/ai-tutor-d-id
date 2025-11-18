@@ -8,7 +8,7 @@ import { DashboardLoader } from './DashboardLoader'
 import logo from '../assets/logo_white.svg'
 
 export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenCollabStudy, onNavigateToPractice, onNavigateToWhiteboard }) => {
-  const { user, profile } = useAuth()
+  const { user, profile, signOut } = useAuth()
   const { initialLoading } = useChat()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -30,6 +30,9 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
     { id: 'settings', icon: '⚙️', label: 'Settings', active: false },
   ]
 
+  const glassCardClasses = 'group rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_15px_45px_rgba(0,0,0,0.45)] hover:shadow-[0_25px_65px_rgba(0,0,0,0.55)] transition-all duration-300 p-4 md:p-6 text-left transform hover:-translate-y-1';
+  const glassSectionClasses = 'rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_15px_45px_rgba(0,0,0,0.45)] p-4 md:p-6';
+
   const handleNavigationClick = (itemId) => {
     if (itemId === 'dashboard') {
       setActiveView('dashboard')
@@ -38,30 +41,42 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
     // Add other navigation handlers as needed
   }
 
+  const handleLogout = async () => {
+    await signOut();
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gradient-to-br from-black via-[#1a1305] to-[#f4b400] flex flex-col md:flex-row text-gray-100">
       {/* Mobile Header */}
-      <div className="md:hidden bg-black shadow-lg p-4 flex items-center justify-between sticky top-0 z-50 border-b-2 border-yellow-500">
+      <div className="md:hidden bg-black/40 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.45)] p-4 flex items-center justify-between sticky top-0 z-50 border border-white/10">
         <div className="flex items-center gap-3">
           <img src={logo} alt="Sharda Informatics" className="h-8 w-auto" />
           <div>
             <h1 className="text-sm font-bold text-white">Sharda Informatics</h1>
-            <p className="text-xs text-yellow-400">Informatics360.ai</p>
+            <p className="text-xs text-amber-200">Informatics360.ai</p>
           </div>
         </div>
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-          aria-label="Toggle menu"
-        >
-          <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {mobileMenuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            aria-label="Toggle menu"
+          >
+            <svg className="w-6 h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-semibold shadow-lg"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu Overlay */}
@@ -74,54 +89,77 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
 
       {/* Left Sidebar Navigation - Desktop & Mobile */}
       <aside className={`
-        bg-gray-900 shadow-xl transition-all duration-300 flex flex-col border-r-2 border-yellow-500
-        md:relative fixed inset-y-0 left-0 z-50
+        bg-white/5 backdrop-blur-xl shadow-[0_15px_45px_rgba(0,0,0,0.55)] transition-all duration-300 flex flex-col border-r border-white/10
+        fixed md:sticky md:top-0 md:h-screen md:overflow-y-auto inset-y-0 left-0 md:inset-auto md:left-auto z-50
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        ${sidebarCollapsed ? 'md:w-20 w-64' : 'w-64'}
+        ${sidebarCollapsed ? 'w-72 md:w-20' : 'w-72'}
       `}>
         {/* Logo Section */}
-        <div className="border-b-2 border-yellow-500 bg-black">
+        <div className="border-b border-white/10 bg-black/40 backdrop-blur p-5">
           {!sidebarCollapsed ? (
-            <div className="p-6 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={logo} alt="Sharda Informatics" className="h-10 w-auto" />
-                <div>
-                  <h1 className="text-base font-bold text-white">Sharda Informatics</h1>
-                  <p className="text-xs text-yellow-400">Informatics360.ai</p>
+            <>
+              <div className="flex items-center gap-3 min-w-0">
+                <img src={logo} alt="Sharda Informatics" className="h-12 w-auto" />
+                <div className="min-w-0">
+                  <h1 className="text-lg font-bold text-white leading-tight">Sharda Informatics</h1>
+                  <p className="text-xs text-amber-200">Informatics360.ai</p>
                 </div>
               </div>
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors hidden md:block flex-shrink-0"
-                title="Collapse"
-              >
-                <svg 
-                  className="w-5 h-5 text-white" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
+              <div className="hidden md:flex items-center gap-3 mt-4">
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors flex items-center justify-center"
+                  title="Collapse sidebar"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                </svg>
-              </button>
-            </div>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-semibold shadow-lg hover:brightness-110 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Logout
+                </button>
+              </div>
+              <div className="md:hidden mt-4">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-semibold shadow-lg"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  Logout
+                </button>
+              </div>
+            </>
           ) : (
-            <div className="py-4 px-2 flex flex-col items-center gap-3">
-              <img src={logo} alt="Sharda Informatics" className="h-10 w-auto" />
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors hidden md:block"
-                title="Expand"
-              >
-                <svg 
-                  className="w-5 h-5 text-white rotate-180" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
+            <div className="flex flex-col items-center gap-4">
+              <img src={logo} alt="Sharda Informatics" className="h-12 w-auto" />
+              <div className="hidden md:flex flex-col gap-3 w-full items-center">
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors flex items-center justify-center"
+                  title="Expand sidebar"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                </svg>
-              </button>
+                  <svg className="w-5 h-5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 text-black font-semibold shadow-lg flex items-center justify-center"
+                  title="Logout"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -134,8 +172,8 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
               onClick={() => handleNavigationClick(item.id)}
               className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${
                 item.active
-                  ? 'bg-gradient-to-r from-green-500 to-blue-600 text-white shadow-lg'
-                  : 'hover:bg-gray-100 text-gray-700'
+                  ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-lg font-semibold'
+                  : 'text-gray-200 hover:bg-white/10'
               }`}
               title={sidebarCollapsed ? item.label : ''}
             >
@@ -148,15 +186,15 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
         </nav>
 
         {/* User Profile Section at Bottom */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-white/10">
           <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-500 rounded-full flex items-center justify-center text-black font-bold">
               {displayName.charAt(0).toUpperCase()}
             </div>
             {!sidebarCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-800 truncate text-sm">{displayName}</p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                <p className="font-medium text-white truncate text-sm">{displayName}</p>
+                <p className="text-xs text-gray-400 truncate">{user?.email}</p>
               </div>
             )}
           </div>
@@ -167,10 +205,10 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
       <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         {/* Welcome Header */}
         <div className="mb-6 md:mb-8">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
             Welcome back, {displayName}! 👋
           </h2>
-          <p className="text-sm md:text-base text-gray-600">
+          <p className="text-sm md:text-base text-gray-400">
             Ready to continue your learning journey?
           </p>
         </div>
@@ -180,25 +218,25 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
           {/* Continue Learning Card */}
           <button
             onClick={onNavigateToChat}
-            className="group bg-white rounded-xl md:rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-4 md:p-6 text-left border-2 border-transparent hover:border-green-500 transform hover:-translate-y-1"
+            className={`${glassCardClasses} hover:border-amber-200/60`}
           >
             <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
                 🤖
               </div>
-              <div className="w-7 h-7 md:w-8 md:h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 group-hover:bg-green-500 group-hover:text-white transition-colors">
+              <div className="w-7 h-7 md:w-8 md:h-8 bg-yellow-500 bg-opacity-20 rounded-full flex items-center justify-center text-yellow-500 group-hover:bg-yellow-500 group-hover:text-black transition-colors">
                 <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2 group-hover:text-green-600 transition-colors">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-2 group-hover:text-yellow-400 transition-colors">
               Continue Learning
             </h3>
-            <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4">
+            <p className="text-gray-400 text-xs md:text-sm mb-3 md:mb-4">
               Resume your AI-powered learning session with your personal tutor
             </p>
-            <div className="flex items-center gap-2 text-xs md:text-sm text-green-600 font-medium">
+            <div className="flex items-center gap-2 text-xs md:text-sm text-yellow-500 font-medium">
               <span>Open Agent Chat</span>
               <svg className="w-3 h-3 md:w-4 md:h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -209,20 +247,20 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
           {/* Customize Agent Card */}
           <button
             onClick={onNavigateToCustomize}
-            className="group bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl md:rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-4 md:p-6 text-left border-2 border-dashed border-purple-300 hover:border-purple-500 transform hover:-translate-y-1"
+            className={`${glassCardClasses} hover:border-amber-200/60`}
           >
             <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl flex items-center justify-center border-2 border-dashed border-purple-300 group-hover:border-purple-500 transition-colors">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-black/40 rounded-xl flex items-center justify-center border border-dashed border-white/20 group-hover:border-amber-200/60 transition-colors">
                 <span className="text-2xl md:text-3xl">➕</span>
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2 group-hover:text-purple-600 transition-colors">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-2 group-hover:text-amber-200 transition-colors">
               Customize Your Agent
             </h3>
-            <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4">
+            <p className="text-gray-400 text-xs md:text-sm mb-3 md:mb-4">
               Personalize your AI tutor's appearance, voice, and teaching style
             </p>
-            <div className="flex items-center gap-2 text-xs md:text-sm text-purple-600 font-medium">
+            <div className="flex items-center gap-2 text-xs md:text-sm text-amber-200 font-medium">
               <span>Customize Now</span>
               <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -234,30 +272,30 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
           {/* Practice Problems Card - NEW */}
           <button
             onClick={onNavigateToPractice}
-            className="group bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl md:rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-4 md:p-6 text-left border-2 border-transparent hover:border-orange-500 transform hover:-translate-y-1"
+            className={`${glassCardClasses} hover:border-amber-200/60`}
           >
             <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-orange-500 to-yellow-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
                 💻
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-orange-100 text-orange-600 text-xs font-semibold rounded-full">
+                <span className="px-3 py-1 bg-amber-400/20 text-amber-100 border border-amber-200/60 text-xs font-semibold rounded-full">
                   NEW
                 </span>
-                <div className="w-7 h-7 md:w-8 md:h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                <div className="w-7 h-7 md:w-8 md:h-8 bg-amber-200/10 rounded-full flex items-center justify-center text-amber-200 group-hover:bg-amber-300 group-hover:text-black transition-colors">
                   <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </div>
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-2 group-hover:text-amber-200 transition-colors">
               Practice Problems
             </h3>
-            <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4">
+            <p className="text-gray-400 text-xs md:text-sm mb-3 md:mb-4">
               Solve coding challenges with a built-in code editor and AI-powered hints
             </p>
-            <div className="flex items-center gap-2 text-xs md:text-sm text-orange-600 font-medium">
+            <div className="flex items-center gap-2 text-xs md:text-sm text-amber-200 font-medium">
               <span>Start Coding</span>
               <svg className="w-3 h-3 md:w-4 md:h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -268,35 +306,35 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
           {/* Visual Whiteboard Card - NEW */}
           <button
             onClick={onNavigateToWhiteboard}
-            className="group bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl md:rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-4 md:p-6 text-left border-2 border-transparent hover:border-pink-500 transform hover:-translate-y-1"
+            className={`${glassCardClasses} hover:border-amber-200/60`}
           >
             <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
                 🎨
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-pink-100 text-pink-600 text-xs font-semibold rounded-full">
+                <span className="px-3 py-1 bg-amber-400/20 text-amber-100 border border-amber-200/60 text-xs font-semibold rounded-full">
                   NEW
                 </span>
-                <div className="w-7 h-7 md:w-8 md:h-8 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 group-hover:bg-pink-500 group-hover:text-white transition-colors">
+                <div className="w-7 h-7 md:w-8 md:h-8 bg-amber-200/10 rounded-full flex items-center justify-center text-amber-200 group-hover:bg-amber-300 group-hover:text-black transition-colors">
                   <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </div>
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2 group-hover:text-pink-600 transition-colors">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-2 group-hover:text-amber-200 transition-colors">
               Visual Whiteboard
             </h3>
-            <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4">
+            <p className="text-gray-400 text-xs md:text-sm mb-3 md:mb-4">
               Create real-time animated diagrams with AI - templates for anatomy, science & more
             </p>
             <div className="flex items-center gap-4 text-xs md:text-sm">
-              <div className="flex items-center gap-2 text-pink-600 font-medium">
+              <div className="flex items-center gap-2 text-amber-200 font-medium">
                 <span className="text-lg">⚡</span>
                 <span>Instant Templates</span>
               </div>
-              <div className="flex items-center gap-2 text-pink-600 font-medium">
+              <div className="flex items-center gap-2 text-amber-200 font-medium">
                 <span className="text-lg">🖌️</span>
                 <span>Live Animation</span>
               </div>
@@ -306,39 +344,39 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
           {/* Collaborate & Study Card */}
           <button
             onClick={() => onOpenCollabStudy()}
-            className="group bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl md:rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-4 md:p-6 text-left border-2 border-transparent hover:border-blue-500 transform hover:-translate-y-1 md:col-span-2"
+            className={`${glassCardClasses} hover:border-amber-200/60 md:col-span-2`}
           >
             <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
                 👥
               </div>
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-blue-100 text-blue-600 text-xs font-semibold rounded-full">
+                <span className="px-3 py-1 bg-amber-400/20 text-amber-100 border border-amber-200/60 text-xs font-semibold rounded-full">
                   NEW
                 </span>
-                <div className="w-7 h-7 md:w-8 md:h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                <div className="w-7 h-7 md:w-8 md:h-8 bg-amber-200/10 rounded-full flex items-center justify-center text-amber-200 group-hover:bg-amber-300 group-hover:text-black transition-colors">
                   <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </div>
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-2 group-hover:text-amber-200 transition-colors">
               Collaborate & Study Together
             </h3>
-            <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4">
+            <p className="text-gray-400 text-xs md:text-sm mb-3 md:mb-4">
               Create or join a study room with voice chat. Learn together with friends in real-time!
             </p>
             <div className="flex items-center gap-4 text-xs md:text-sm">
-              <div className="flex items-center gap-2 text-blue-600 font-medium">
+              <div className="flex items-center gap-2 text-amber-200 font-medium">
                 <span className="text-lg">🎤</span>
                 <span>Voice Chat</span>
               </div>
-              <div className="flex items-center gap-2 text-blue-600 font-medium">
+              <div className="flex items-center gap-2 text-amber-200 font-medium">
                 <span className="text-lg">🔗</span>
                 <span>Share Link</span>
               </div>
-              <div className="flex items-center gap-2 text-blue-600 font-medium">
+              <div className="flex items-center gap-2 text-amber-200 font-medium">
                 <span className="text-lg">💬</span>
                 <span>Live Session</span>
               </div>
@@ -361,55 +399,55 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
           </div>
 
           {/* Achievements Card */}
-          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl md:rounded-2xl shadow-lg p-4 md:p-6 border-2 border-transparent">
+          <div className={glassSectionClasses}>
             <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl flex items-center justify-center text-xl md:text-2xl">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-black/40 rounded-xl flex items-center justify-center text-xl md:text-2xl border border-white/15">
                 🏆
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4">
               Achievements
             </h3>
             <div className="flex flex-wrap gap-2">
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-lg flex items-center justify-center text-lg md:text-xl border-2 border-yellow-300 shadow-sm" title="First Session">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-black/40 rounded-lg flex items-center justify-center text-lg md:text-xl border border-white/15 shadow-sm text-amber-200" title="First Session">
                 🌟
               </div>
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-lg flex items-center justify-center text-lg md:text-xl border-2 border-blue-300 shadow-sm" title="5 Day Streak">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-black/40 rounded-lg flex items-center justify-center text-lg md:text-xl border border-white/10 shadow-sm text-amber-200" title="5 Day Streak">
                 🔥
               </div>
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-white rounded-lg flex items-center justify-center text-lg md:text-xl border-2 border-green-300 shadow-sm" title="Quick Learner">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-black/40 rounded-lg flex items-center justify-center text-lg md:text-xl border border-white/10 shadow-sm text-amber-100" title="Quick Learner">
                 ⚡
               </div>
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-gray-100 rounded-lg flex items-center justify-center text-lg md:text-xl border-2 border-dashed border-gray-300" title="Locked">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-white/5 rounded-lg flex items-center justify-center text-lg md:text-xl border border-dashed border-white/15 text-gray-300" title="Locked">
                 🔒
               </div>
             </div>
           </div>
 
           {/* Quick Actions Card */}
-          <div className="bg-white rounded-xl md:rounded-2xl shadow-lg p-4 md:p-6 border-2 border-transparent">
+          <div className={glassSectionClasses}>
             <div className="flex items-start justify-between mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center text-xl md:text-2xl">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl flex items-center justify-center text-xl md:text-2xl">
                 ⚡
               </div>
             </div>
-            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4">
+            <h3 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4">
               Quick Actions
             </h3>
             <div className="space-y-2">
               <button 
                 onClick={onNavigateToChat}
-                className="w-full text-left p-2.5 md:p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors text-xs md:text-sm font-medium text-gray-700"
+                className="w-full text-left p-2.5 md:p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xs md:text-sm font-medium text-amber-200 border border-white/15"
               >
                 📚 View All Notes
               </button>
               <button 
                 onClick={() => setActiveView('quiz')}
-                className="w-full text-left p-2.5 md:p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors text-xs md:text-sm font-medium text-gray-700"
+                className="w-full text-left p-2.5 md:p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xs md:text-sm font-medium text-amber-200 border border-white/15"
               >
                 🎯 Take a Quiz
               </button>
-              <button className="w-full text-left p-2.5 md:p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors text-xs md:text-sm font-medium text-gray-700">
+              <button className="w-full text-left p-2.5 md:p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xs md:text-sm font-medium text-amber-200 border border-white/15">
                 💡 Get Study Tips
               </button>
             </div>
