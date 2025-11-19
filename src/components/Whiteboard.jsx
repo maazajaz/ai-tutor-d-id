@@ -40,9 +40,24 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAnimatingFastDrawing, setIsAnimatingFastDrawing] = useState(false);
   
   const { chatHistory, chat, loading } = useChat();
   const { user } = useAuth();
+
+  // Ensure we always have a canvas available (offscreen if UI canvas is hidden)
+  const ensureBaseCanvas = () => {
+    if (!canvasRef.current) {
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = 800;
+      offscreenCanvas.height = Math.max(canvasHeight, 600);
+      const offscreenCtx = offscreenCanvas.getContext('2d');
+      offscreenCtx.fillStyle = '#ffffff';
+      offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+      canvasRef.current = offscreenCanvas;
+    }
+    return canvasRef.current;
+  };
 
   // Initialize whiteboard session and load content
   useEffect(() => {
@@ -96,9 +111,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
 
   // Initialize canvas with fixed size
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
+    const canvas = ensureBaseCanvas();
     const ctx = canvas.getContext('2d');
     
     // Canvas is already 800x600 from JSX width/height attributes
@@ -212,6 +225,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
   // Get canvas coordinates
   const getCanvasCoordinates = (e) => {
     const canvas = canvasRef.current;
+    if (!canvas) {
+      return { x: 0, y: 0 };
+    }
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -236,7 +252,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
     setIsDrawing(true);
     setLastPosition(pos);
 
-    const ctx = canvasRef.current.getContext('2d');
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     ctx.beginPath();
     ctx.moveTo(pos.x, pos.y);
   };
@@ -247,7 +265,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
     e.preventDefault();
 
     const pos = getCanvasCoordinates(e);
-    const ctx = canvasRef.current.getContext('2d');
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
     ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : color;
     ctx.lineWidth = tool === 'eraser' ? lineWidth * 3 : lineWidth;
@@ -280,9 +300,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
     setIsSaving(true);
 
     try {
-      const canvas = canvasRef.current;
-      if (!canvas) throw new Error('Canvas not found');
-
+      const canvas = ensureBaseCanvas();
       const canvasData = canvas.toDataURL('image/png');
 
       // If there's an existing content block (from AI diagram), update it
@@ -781,7 +799,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
 
   // Clear only the drawing area (not saved diagrams)
   const clearCanvas = () => {
-    const canvas = canvasRef.current;
+    const canvas = ensureBaseCanvas();
     const ctx = canvas.getContext('2d');
     
     // Calculate where the last diagram ends
@@ -850,7 +868,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
       }
       
       // Clear and redraw canvas
-      const canvas = canvasRef.current;
+      const canvas = ensureBaseCanvas();
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -987,116 +1005,63 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
       // 🚀 Handle FAST_DRAWING type - Real-time animated diagrams
       if (diagramType === 'fast_drawing' && drawing) {
         console.log(`🎨 Rendering fast drawing (${source || 'gpt'})...`);
+        setIsAnimatingFastDrawing(true);
+        requestAnimationFrame(() => {
+          if (canvasRef.current) {
+            canvasRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
         
         const blockHeight = 600;
-        const requiredHeight = positionY + blockHeight + 600;
-        
-        if (requiredHeight > canvasHeight) {
-          setCanvasHeight(requiredHeight);
-        }
-
-        const canvas = canvasRef.current;
+        const canvas = ensureBaseCanvas();
         const ctx = canvas.getContext('2d');
-        
-        // Make sure canvas is tall enough
-        if (canvas.height < requiredHeight) {
-          const oldImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          canvas.height = requiredHeight;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.putImageData(oldImageData, 0, 0);
+
+        // Use the overlay canvas solely for the live animation so it always starts clean
+        if (canvas.height !== blockHeight) {
+          canvas.height = blockHeight;
         }
-        
-        // Clear the drawing area
-        ctx.save();
-        ctx.translate(0, positionY);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, blockHeight);
-        ctx.restore();
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         // Parse and animate the drawing
         try {
           const elements = parseCompactFormat(drawing);
           console.log(`✅ Parsed ${elements.length} elements, starting animation...`);
-          
-          // Get D-ID explanation from chatHistory
-          let didExplanation = null;
-          const questionText = question?.trim().toLowerCase();
-          if (questionText && externalChatHistory.length > 0) {
-            const userMsgIndex = externalChatHistory.findIndex(msg => 
-              msg.sender === 'user' && msg.text?.trim().toLowerCase() === questionText
-            );
-            if (userMsgIndex !== -1 && userMsgIndex < externalChatHistory.length - 1) {
-              const nextMsg = externalChatHistory[userMsgIndex + 1];
-              if (nextMsg.sender === 'ai') {
-                didExplanation = nextMsg.text;
-                console.log(`🎭 Found D-ID explanation for: "${question}"`);
-              }
-            }
-          }
-          
-          // Create a temporary canvas just for this diagram
+
+          // Render directly onto the overlay canvas so the user sees the shapes animate
+          await drawWithAnimationAtPosition(
+            ctx,
+            elements,
+            0,
+            canvas.width,
+            blockHeight,
+            null
+          );
+
+          // Capture the rendered section for persistence
           const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = 800;
-          tempCanvas.height = 600;
+          tempCanvas.width = canvas.width;
+          tempCanvas.height = blockHeight;
           const tempCtx = tempCanvas.getContext('2d');
-          
-          // Fill with white background
-          tempCtx.fillStyle = '#ffffff';
-          tempCtx.fillRect(0, 0, 800, 600);
-          
-          // Draw without animation for now (we'll add animation later)
-          // Draw elements scaled to fit in 800x600
-          elements.forEach(element => {
-            const { type, x, y, width, height, radius, color, text, fontSize, x2, y2, rx, ry } = element;
-            
-            tempCtx.strokeStyle = color || '#000000';
-            tempCtx.fillStyle = color || '#000000';
-            tempCtx.lineWidth = 2;
-            
-            switch (type) {
-              case 'circle':
-                tempCtx.beginPath();
-                tempCtx.arc(x, y, radius, 0, Math.PI * 2);
-                tempCtx.stroke();
-                break;
-                
-              case 'ellipse':
-                tempCtx.beginPath();
-                tempCtx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-                tempCtx.stroke();
-                break;
-                
-              case 'rect':
-                tempCtx.strokeRect(x, y, width, height);
-                break;
-                
-              case 'line':
-                tempCtx.beginPath();
-                tempCtx.moveTo(x, y);
-                tempCtx.lineTo(x2, y2);
-                tempCtx.stroke();
-                break;
-                
-              case 'path':
-                if (element.path && element.path.length > 0) {
-                  tempCtx.beginPath();
-                  tempCtx.moveTo(element.path[0].x, element.path[0].y);
-                  element.path.slice(1).forEach(point => {
-                    tempCtx.lineTo(point.x, point.y);
-                  });
-                  tempCtx.stroke();
-                }
-                break;
-                
-              case 'text':
-                tempCtx.font = `${fontSize || 14}px Arial`;
-                tempCtx.fillText(text || '', x, y);
-                break;
-            }
-          });
-          
+          tempCtx.drawImage(
+            canvas,
+            0,
+            0,
+            canvas.width,
+            blockHeight,
+            0,
+            0,
+            canvas.width,
+            blockHeight
+          );
           const canvasData = tempCanvas.toDataURL('image/png');
+
+          // Wipe the overlay so it doesn't show the completed diagram after saving
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
 
           // Save to database
           if (whiteboardSessionId) {
@@ -1107,9 +1072,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
               aiResponse: `Animated diagram ${templateId ? `(${templateId} template)` : '(AI-generated)'}`,
               canvasData,
               elements: [],
-              positionY: 0, // Not used anymore
-              height: 600,
-              canvasWidth: 800,
+              positionY,
+              height: blockHeight,
+              canvasWidth: canvas.width,
               drawing,
               templateId,
               source
@@ -1133,6 +1098,8 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
         } catch (parseError) {
           console.error('Failed to parse drawing:', parseError);
           alert('Failed to render diagram. Please try again.');
+        } finally {
+          setIsAnimatingFastDrawing(false);
         }
         
         setUserInput('');
@@ -1154,7 +1121,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
           setCanvasHeight(requiredHeight);
         }
 
-        const canvas = canvasRef.current;
+        const canvas = ensureBaseCanvas();
         const ctx = canvas.getContext('2d');
         
         // Make sure canvas is tall enough
@@ -1296,7 +1263,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
       }
 
       // Get canvas and wait for it to resize
-      const canvas = canvasRef.current;
+      const canvas = ensureBaseCanvas();
       const ctx = canvas.getContext('2d');
       
       // Make sure canvas is tall enough
@@ -1662,6 +1629,8 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
     });
   };
 
+  const shouldShowBaseCanvas = contentBlocks.length === 0 || isAnimatingFastDrawing;
+
   return (
     <div className="h-full w-full flex flex-col relative bg-gradient-to-br from-black via-[#130a04] to-[#2f1a00] text-amber-50">
       {/* Loading Overlay */}
@@ -1799,31 +1768,6 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
           </div>
         )}
         
-        {/* Main Canvas - For manual drawing */}
-        {contentBlocks.length === 0 && (
-          <div className="flex items-center justify-center bg-black/40 border border-white/10 rounded-2xl p-4 shadow-[inset_0_0_30px_rgba(0,0,0,0.6)]">
-            <canvas
-              ref={canvasRef}
-              width={800}
-              height={600}
-              onMouseDown={startDrawing}
-              onMouseMove={draw}
-              onMouseUp={stopDrawing}
-              onMouseLeave={stopDrawing}
-              onTouchStart={startDrawing}
-              onTouchMove={draw}
-              onTouchEnd={stopDrawing}
-              className={`border-2 border-white/15 rounded-2xl bg-black/80 shadow-[0_20px_45px_rgba(0,0,0,0.5)] ${isPaintModeEnabled ? 'cursor-crosshair touch-none' : 'cursor-default'}`}
-              style={{ 
-                touchAction: isPaintModeEnabled ? 'none' : 'auto',
-                display: 'block',
-                maxWidth: '100%',
-                height: 'auto'
-              }}
-            />
-          </div>
-        )}
-        
         {/* Content Blocks - Each with its own canvas */}
         <div className="space-y-6 max-w-4xl mx-auto">
           {contentBlocks.map((block, index) => {
@@ -1907,6 +1851,36 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
               </div>
             );
           })}
+          {/* Live/Manual Canvas positioned after existing diagrams */}
+          <div
+            className={`${shouldShowBaseCanvas ? 'flex' : 'hidden'} relative items-center justify-center bg-black/40 border border-white/10 rounded-2xl p-4 shadow-[inset_0_0_30px_rgba(0,0,0,0.6)]`}
+          >
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={600}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+              className={`border-2 border-white/15 rounded-2xl bg-black/80 shadow-[0_20px_45px_rgba(0,0,0,0.5)] ${isPaintModeEnabled ? 'cursor-crosshair touch-none' : 'cursor-default'}`}
+              style={{ 
+                touchAction: isPaintModeEnabled ? 'none' : 'auto',
+                display: 'block',
+                maxWidth: '100%',
+                height: 'auto'
+              }}
+            />
+
+            {isAnimatingFastDrawing && (
+              <div className="absolute top-3 left-3 bg-black/70 text-amber-100 text-xs px-3 py-1 rounded-full border border-white/10">
+                Drawing live...
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
