@@ -30,39 +30,69 @@ function matchAnatomyTemplate(prompt) {
 function convertTemplateToCompact(template) {
   let compact = '';
   for (const element of template.elements) {
-    // Handle array-based format from OpenAI: { txt: [x, y, size, color, text] }
-    if (element.txt) {
+    // Handle compact string format: { txt: "x,y,size,color,text" }
+    if (element.txt && typeof element.txt === 'string') {
+      compact += `txt:${element.txt}\n`;
+      continue;
+    }
+    if (element.tri && typeof element.tri === 'string') {
+      compact += `tri:${element.tri}\n`;
+      continue;
+    }
+    if ((element.circ || element.circle) && typeof (element.circ || element.circle) === 'string') {
+      compact += `circ:${element.circ || element.circle}\n`;
+      continue;
+    }
+    if (element.line && typeof element.line === 'string') {
+      compact += `line:${element.line}\n`;
+      continue;
+    }
+    if (element.arrow && typeof element.arrow === 'string') {
+      compact += `arrow:${element.arrow}\n`;
+      continue;
+    }
+    if (element.rect && typeof element.rect === 'string') {
+      compact += `rect:${element.rect}\n`;
+      continue;
+    }
+    if ((element.ell || element.ellipse) && typeof (element.ell || element.ellipse) === 'string') {
+      compact += `ell:${element.ell || element.ellipse}\n`;
+      continue;
+    }
+    
+    // Handle array-based format: { txt: [x, y, size, color, text] }
+    if (element.txt && Array.isArray(element.txt)) {
       const [x, y, size, color, text] = element.txt;
       compact += `txt:${x},${y},${size},${color},${text}\n`;
       continue;
     }
-    if (element.tri) {
+    if (element.tri && Array.isArray(element.tri)) {
       const [x1, y1, x2, y2, x3, y3, stroke, fill] = element.tri;
       compact += `tri:${x1},${y1},${x2},${y2},${x3},${y3},${stroke},${fill}\n`;
       continue;
     }
-    if (element.circ || element.circle) {
+    if ((element.circ || element.circle) && Array.isArray(element.circ || element.circle)) {
       const arr = element.circ || element.circle;
       const [x, y, r, stroke, fill] = arr;
       compact += `circ:${x},${y},${r},${stroke},${fill}\n`;
       continue;
     }
-    if (element.line) {
+    if (element.line && Array.isArray(element.line)) {
       const [x1, y1, x2, y2, color] = element.line;
       compact += `line:${x1},${y1},${x2},${y2},${color}\n`;
       continue;
     }
-    if (element.arrow) {
+    if (element.arrow && Array.isArray(element.arrow)) {
       const [x1, y1, x2, y2, color] = element.arrow;
       compact += `arrow:${x1},${y1},${x2},${y2},${color}\n`;
       continue;
     }
-    if (element.rect) {
+    if (element.rect && Array.isArray(element.rect)) {
       const [x, y, w, h, stroke, fill] = element.rect;
       compact += `rect:${x},${y},${w},${h},${stroke},${fill}\n`;
       continue;
     }
-    if (element.ell || element.ellipse) {
+    if ((element.ell || element.ellipse) && Array.isArray(element.ell || element.ellipse)) {
       const arr = element.ell || element.ellipse;
       const [x, y, w, h, stroke, fill] = arr;
       compact += `ell:${x},${y},${w},${h},${stroke},${fill}\n`;
