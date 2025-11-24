@@ -1789,16 +1789,31 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
             // Find matching D-ID response from externalChatHistory
             const questionText = block.question?.trim().toLowerCase();
             let didResponse = null;
+            
+            // Try to find the D-ID agent's response from chat history
             if (questionText && externalChatHistory.length > 0) {
+              console.log('🔍 Looking for response to:', questionText);
+              console.log('🔍 Chat history length:', externalChatHistory.length);
+              
               const userMsgIndex = externalChatHistory.findIndex(msg => 
-                msg.sender === 'user' && msg.text?.trim().toLowerCase() === questionText
+                msg.sender === 'user' && msg.text?.trim().toLowerCase().includes(questionText)
               );
+              
+              console.log('🔍 Found user message at index:', userMsgIndex);
+              
               if (userMsgIndex !== -1 && userMsgIndex < externalChatHistory.length - 1) {
                 const nextMsg = externalChatHistory[userMsgIndex + 1];
-                if (nextMsg.sender === 'ai') {
+                if (nextMsg.sender === 'ai' && nextMsg.text) {
                   didResponse = nextMsg.text;
+                  console.log('✅ Found D-ID response:', didResponse.substring(0, 100));
                 }
               }
+            }
+            
+            // Fallback to stored ai_response if no D-ID response found
+            if (!didResponse && block.ai_response) {
+              didResponse = block.ai_response;
+              console.log('📝 Using stored ai_response');
             }
             
             return (
@@ -1863,15 +1878,6 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
                     className="border border-white/15 rounded-2xl bg-black/80 shadow-[0_20px_45px_rgba(0,0,0,0.5)] max-w-full h-auto"
                   />
                 </div>
-                
-                {/* AI Response if available */}
-                {block.ai_response && (
-                  <div className="p-4 bg-black/40 border-t border-white/10">
-                    <p className="text-sm text-amber-100/90 italic">
-                      {block.ai_response}
-                    </p>
-                  </div>
-                )}
               </div>
             );
           })}
