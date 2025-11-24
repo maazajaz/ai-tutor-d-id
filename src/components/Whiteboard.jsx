@@ -1837,9 +1837,18 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
                       <span className="text-2xl flex-shrink-0">🎭</span>
                       <div className="flex-1">
                         <h4 className="font-semibold text-amber-200 mb-2">AI Agent Explanation:</h4>
-                        <p className="text-amber-50 text-sm leading-relaxed whitespace-pre-wrap">
-                          {didResponse}
-                        </p>
+                        <div className="text-amber-50 text-sm leading-relaxed whitespace-pre-wrap prose prose-invert prose-sm max-w-none">
+                          {/* Render markdown-style text with basic formatting */}
+                          {didResponse.split('\n').map((line, i) => {
+                            // Handle bold **text**
+                            const boldFormatted = line.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+                            // Handle numbered lists
+                            if (/^\d+\./.test(line.trim())) {
+                              return <div key={i} className="ml-4" dangerouslySetInnerHTML={{ __html: boldFormatted }} />;
+                            }
+                            return <div key={i} dangerouslySetInnerHTML={{ __html: boldFormatted || '<br/>' }} />;
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>

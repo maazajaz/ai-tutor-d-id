@@ -1,6 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '../hooks/useChat';
 
+// Helper function to strip markdown formatting for speech
+const stripMarkdown = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/\*\*/g, '') // Remove bold **text**
+    .replace(/\*/g, '')   // Remove italic *text*
+    .replace(/`{3}[\s\S]*?`{3}/g, '') // Remove code blocks ```code```
+    .replace(/`[^`]*`/g, '') // Remove inline code `code`
+    .replace(/#{1,6}\s/g, '') // Remove headers # ## ###
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Convert links [text](url) to just text
+    .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '$1') // Convert images ![alt](url) to alt text
+    .replace(/^\s*[-*+]\s/gm, '') // Remove list bullets
+    .replace(/^\s*\d+\.\s/gm, '') // Remove numbered lists
+    .replace(/>\s/g, '') // Remove blockquotes
+    .replace(/---/g, '') // Remove horizontal rules
+    .replace(/\n{3,}/g, '\n\n') // Reduce multiple newlines
+    .trim();
+};
+
 const DIDAgentAvatar = () => {
   const videoRef = useRef(null);
   const idleVideoRef = useRef(null); // For continuous idle animation
@@ -124,8 +143,10 @@ const DIDAgentAvatar = () => {
       // Agent responses come through as 'chat/answer:' messages
       if (msg.includes('chat/answer')) {
         const responseText = decodeURIComponent(msg.replace('chat/answer:', ''));
-        console.log('🤖 Agent response via data channel:', responseText);
-        // Update chatbox immediately with the response
+        console.log('🤖 Agent response via data channel (raw):', responseText);
+        
+        // Store the original markdown text in chat history
+        // (The D-ID agent will internally handle the cleaned version for speech)
         updateAgentResponse(responseText);
       }
       
