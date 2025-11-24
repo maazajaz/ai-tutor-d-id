@@ -30,35 +30,41 @@ function matchAnatomyTemplate(prompt) {
 function convertTemplateToCompact(template) {
   let compact = '';
   for (const element of template.elements) {
-    // Handle compact string format: { txt: "x,y,size,color,text" }
+    // Handle compact string format: { txt: "x,y,size,color,text", circ: "...", arrow: "..." }
+    // Process ALL properties in the element, not just the first one
+    let processed = false;
+    
     if (element.txt && typeof element.txt === 'string') {
       compact += `txt:${element.txt}\n`;
-      continue;
+      processed = true;
     }
     if (element.tri && typeof element.tri === 'string') {
       compact += `tri:${element.tri}\n`;
-      continue;
+      processed = true;
     }
     if ((element.circ || element.circle) && typeof (element.circ || element.circle) === 'string') {
       compact += `circ:${element.circ || element.circle}\n`;
-      continue;
+      processed = true;
     }
     if (element.line && typeof element.line === 'string') {
       compact += `line:${element.line}\n`;
-      continue;
+      processed = true;
     }
     if (element.arrow && typeof element.arrow === 'string') {
       compact += `arrow:${element.arrow}\n`;
-      continue;
+      processed = true;
     }
     if (element.rect && typeof element.rect === 'string') {
       compact += `rect:${element.rect}\n`;
-      continue;
+      processed = true;
     }
     if ((element.ell || element.ellipse) && typeof (element.ell || element.ellipse) === 'string') {
       compact += `ell:${element.ell || element.ellipse}\n`;
-      continue;
+      processed = true;
     }
+    
+    // If we processed string properties, continue to next element
+    if (processed) continue;
     
     // Handle array-based format: { txt: [x, y, size, color, text] }
     if (element.txt && Array.isArray(element.txt)) {
