@@ -246,29 +246,35 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
     
     // Log first few elements to debug
     console.log('🔍 First 3 elements:', JSON.stringify(drawingData.elements.slice(0, 3), null, 2));
+    console.log('🔍 Element types:', drawingData.elements.slice(0, 3).map(el => typeof el));
     
-    // Check if we need to convert from object format to compact string format
-    const needsConversion = drawingData.elements.some(el => typeof el === 'object' && el !== null);
+    // Process elements - they might be strings or objects
+    const processedElements = drawingData.elements.map(el => {
+      // If it's already a string in compact format, use it directly
+      if (typeof el === 'string') {
+        return el;
+      }
+      
+      // If it's an object, try to convert it
+      if (typeof el === 'object' && el !== null) {
+        const converted = convertTemplateToCompact({ elements: [el] });
+        if (converted && converted.trim().length > 0) {
+          return converted.trim();
+        }
+        console.warn('⚠️ Failed to convert element:', el);
+        return null;
+      }
+      
+      return null;
+    }).filter(Boolean);
     
-    let drawing;
-    if (needsConversion) {
-      console.log('🔄 Converting object elements to compact format...');
-      // OpenAI returned structured objects, convert the whole template at once
-      drawing = convertTemplateToCompact({ elements: drawingData.elements });
-      
-      if (!drawing || drawing.trim().length === 0) {
-        console.error('❌ Conversion produced empty result! Elements:', JSON.stringify(drawingData.elements, null, 2));
-        return res.status(500).json({ error: 'Failed to convert diagram elements to drawing format' });
-      }
-    } else {
-      // Elements are already strings in compact format
-      console.log('✅ Elements already in compact string format');
-      drawing = drawingData.elements.join('\n');
-      
-      if (!drawing || drawing.trim().length === 0) {
-        console.error('❌ Joining produced empty result! Elements:', drawingData.elements);
-        return res.status(500).json({ error: 'No drawing data generated' });
-      }
+    console.log('✅ Processed', processedElements.length, 'elements');
+    
+    const drawing = processedElements.join('\n');
+    
+    if (!drawing || drawing.trim().length === 0) {
+      console.error('❌ No valid elements! Original:', JSON.stringify(drawingData.elements, null, 2));
+      return res.status(500).json({ error: 'Failed to generate valid drawing data' });
     }
     
     console.log('🔍 Final drawing (first 200 chars):', drawing.substring(0, 200));
