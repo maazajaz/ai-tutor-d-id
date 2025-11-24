@@ -253,44 +253,74 @@ export default async function handler(req, res) {
       messages: [
         {
           role: 'system',
-          content: `You are an expert at creating DETAILED educational diagrams using ULTRA COMPACT notation.
+          content: `You are an expert at creating ACCURATE educational diagrams using ULTRA COMPACT notation.
 
 Canvas: 800x600 (origin top-left)
 
-COMPACT FORMAT:
-- tri:x1,y1,x2,y2,x3,y3,stroke,fill           → triangle
-- rect:x,y,w,h,stroke,fill                     → rectangle  
+COMPACT FORMAT - Each element object can have MULTIPLE shapes:
+{
+  "circ": "x,y,radius,stroke,fill",
+  "txt": "x,y,size,color,text",
+  "arrow": "x1,y1,x2,y2,color,label"
+}
+
+Available shapes:
 - circ:x,y,radius,stroke,fill                  → circle
-- line:x1,y1,x2,y2,color,width                 → line
+- rect:x,y,w,h,stroke,fill                     → rectangle  
+- tri:x1,y1,x2,y2,x3,y3,stroke,fill           → triangle
+- line:x1,y1,x2,y2,color                       → line
 - arrow:x1,y1,x2,y2,color,label text           → arrow with label
 - txt:x,y,size,color,text content              → text
 
-CRITICAL LAYOUT RULES:
-1. NEVER use white (#fff or #ffffff) for text - it's invisible on white canvas!
-2. Use dark colors for text: #1f2937 (dark gray), #000 (black), or matching element color
-3. For cycles/processes, ALWAYS add arrows between elements to show flow
-4. SPACE OUT elements properly - don't overlap! Use the full 800x600 canvas
-5. For solar system: place sun at center, planets spread out horizontally (NO orbit arrows needed)
-6. For life cycles: arrange in circle/square pattern with good spacing and connecting arrows
-7. Leave margins: keep elements at least 50px from edges
-8. Keep diagrams simple and clear - avoid unnecessary decorative elements
+CRITICAL DIAGRAM RULES:
 
-SPACING EXAMPLES:
-- Solar system: Sun at (400,300), planets at (240,300), (300,300), (360,300), (440,300), (520,300), (600,300), (670,300), (730,300) etc.
-- Life cycle: corners like (200,150), (600,150), (600,450), (200,450)
-- Vertical flow: top (400,100), middle (400,300), bottom (400,500)
+1. **ACCURATE CONTENT**: Show the CORRECT scientific/educational information
+   - Human evolution: Primates → Australopithecus → Homo Habilis → Homo Erectus → Homo Sapiens (with proper timeline/flow)
+   - Solar system: Sun (center) → 8 planets in CORRECT ORDER with relative sizes
+   - Cell structure: Show REAL organelles (nucleus, mitochondria, etc.)
+   - Water cycle: Evaporation → Condensation → Precipitation → Collection (proper cycle)
 
-IMPORTANT: When asked for solar system, include ALL 8 PLANETS in order: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune
+2. **LOGICAL LAYOUT**:
+   - Timeline/Evolution: LEFT to RIGHT or TOP to BOTTOM with arrows showing progression
+   - Cycles: Circular arrangement with arrows forming a complete loop
+   - Hierarchies: Tree structure with parent at top, children below
+   - Comparisons: Side-by-side with clear labels
+
+3. **PROPER SPACING**:
+   - Leave 80-100px between major elements
+   - Keep 50px margins from canvas edges
+   - Use full 800x600 canvas - spread elements out!
+   - Text BELOW circles (y + radius + 20)
+
+4. **COLOR & VISIBILITY**:
+   - NEVER use white text (#fff) - invisible on white canvas!
+   - Text color: #1f2937 (dark gray) or #000 (black)
+   - Different colors for different stages/types
+   - Fills: use "20" suffix for 20% opacity (e.g., #3b82f620)
+
+5. **CONNECTIONS**:
+   - Use arrows to show flow/progression/relationships
+   - Arrow labels should explain the transition
+   - Make cause-effect relationships clear
+
+EXAMPLE - Human Evolution (LEFT to RIGHT):
+[
+  { "circ": "150,300,30,#1f2937,#3b82f620", "txt": "150,340,14,#1f2937,Primates" },
+  { "arrow": "180,300,270,300,#1f2937,Evolution" },
+  { "circ": "300,300,30,#1f2937,#10b98120", "txt": "300,340,14,#1f2937,Australopithecus" },
+  { "arrow": "330,300,420,300,#1f2937,2-4 million years" },
+  { "circ": "450,300,30,#1f2937,#f59e0b20", "txt": "450,340,14,#1f2937,Homo Habilis" },
+  { "arrow": "480,300,570,300,#1f2937,Tool use" },
+  { "circ": "600,300,30,#1f2937,#ef444420", "txt": "600,340,14,#1f2937,Homo Sapiens" }
+]
 
 Colors: #3b82f6(blue) #10b981(green) #f59e0b(orange) #ef4444(red) #8b5cf6(purple) #1f2937(dark)
-Fills: Add "20" for 20% opacity (e.g., #3b82f620)
 
-Return ONLY compact JSON. Make it DETAILED and EDUCATIONAL with proper spacing and connections!
-DO NOT add comments like // in the JSON - return pure JSON only.`
+Return ONLY valid JSON. NO comments, NO markdown, just pure JSON with title and elements array!`
         },
         {
           role: 'user',
-          content: `Create compact drawing for: ${chatText}\n\nReturn ONLY JSON with title and elements array (compact format).`
+          content: `Create an ACCURATE, EDUCATIONAL diagram for: ${chatText}\n\nShow the correct information with logical layout and clear connections. Return ONLY JSON.`
         }
       ],
       temperature: 0.7,
