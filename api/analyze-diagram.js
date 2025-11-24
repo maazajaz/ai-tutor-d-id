@@ -249,26 +249,33 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
     console.log('🔍 Element types:', drawingData.elements.slice(0, 3).map(el => typeof el));
     
     // Process elements - they might be strings or objects
-    const processedElements = drawingData.elements.map(el => {
+    const processedElements = drawingData.elements.map((el, idx) => {
+      console.log(`🔧 Processing element ${idx}:`, typeof el, el);
+      
       // If it's already a string in compact format, use it directly
       if (typeof el === 'string') {
+        console.log(`✅ Element ${idx} is string:`, el);
         return el;
       }
       
       // If it's an object, try to convert it
       if (typeof el === 'object' && el !== null) {
+        console.log(`🔄 Converting element ${idx}:`, JSON.stringify(el));
         const converted = convertTemplateToCompact({ elements: [el] });
+        console.log(`🔄 Conversion result ${idx}:`, converted);
         if (converted && converted.trim().length > 0) {
+          console.log(`✅ Element ${idx} converted:`, converted.trim());
           return converted.trim();
         }
-        console.warn('⚠️ Failed to convert element:', el);
+        console.warn(`⚠️ Failed to convert element ${idx}:`, el);
         return null;
       }
       
+      console.warn(`⚠️ Element ${idx} is neither string nor object:`, typeof el);
       return null;
     }).filter(Boolean);
     
-    console.log('✅ Processed', processedElements.length, 'elements');
+    console.log('✅ Processed', processedElements.length, 'elements out of', drawingData.elements.length);
     
     const drawing = processedElements.join('\n');
     
