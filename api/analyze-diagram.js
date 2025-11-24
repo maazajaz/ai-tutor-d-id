@@ -30,13 +30,17 @@ function matchAnatomyTemplate(prompt) {
 function convertTemplateToCompact(template) {
   let compact = '';
   for (const element of template.elements) {
-    switch (element.type) {
+    const elementType = element.type?.toLowerCase();
+    
+    switch (elementType) {
       case 'circle':
+      case 'circ':
         // Handle both 'r' and 'radius' property names
         const radius = element.r || element.radius;
         compact += `circ:${element.x},${element.y},${radius},${element.stroke || element.color},${element.fill || 'none'}\n`;
         break;
       case 'ellipse':
+      case 'ell':
         // rx/ry are radii, parser expects width/height (diameters)
         // Convert: width = rx * 2, height = ry * 2
         const width = (element.rx || element.width) * 2;
@@ -50,6 +54,7 @@ function convertTemplateToCompact(template) {
         compact += `arrow:${element.x1},${element.y1},${element.x2},${element.y2},${element.color}\n`;
         break;
       case 'text':
+      case 'txt':
         // Parser format: txt:x,y,size,color,text (text at end to handle spaces)
         compact += `txt:${element.x},${element.y},${element.size || 12},${element.color},${element.text}\n`;
         break;
@@ -58,7 +63,11 @@ function convertTemplateToCompact(template) {
         compact += `path:${pathCoords},${element.stroke || element.color},${element.fill || 'none'}\n`;
         break;
       case 'rect':
+      case 'rectangle':
         compact += `rect:${element.x},${element.y},${element.width},${element.height},${element.stroke || element.color},${element.fill || 'none'}\n`;
+        break;
+      default:
+        console.warn('⚠️ Unknown element type:', elementType, 'Element:', element);
         break;
     }
   }
@@ -235,6 +244,9 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
 
     console.log('✅ Drawing generated:', drawingData.title, `(${drawingData.elements.length} elements)`);
     
+    // Log first few elements to debug
+    console.log('🔍 First 3 elements:', JSON.stringify(drawingData.elements.slice(0, 3), null, 2));
+    
     // Check if we need to convert from object format to compact string format
     const needsConversion = drawingData.elements.some(el => typeof el === 'object' && el !== null);
     
@@ -243,10 +255,20 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
       console.log('🔄 Converting object elements to compact format...');
       // OpenAI returned structured objects, convert the whole template at once
       drawing = convertTemplateToCompact({ elements: drawingData.elements });
+      
+      if (!drawing || drawing.trim().length === 0) {
+        console.error('❌ Conversion produced empty result! Elements:', JSON.stringify(drawingData.elements, null, 2));
+        return res.status(500).json({ error: 'Failed to convert diagram elements to drawing format' });
+      }
     } else {
       // Elements are already strings in compact format
       console.log('✅ Elements already in compact string format');
       drawing = drawingData.elements.join('\n');
+      
+      if (!drawing || drawing.trim().length === 0) {
+        console.error('❌ Joining produced empty result! Elements:', drawingData.elements);
+        return res.status(500).json({ error: 'No drawing data generated' });
+      }
     }
     
     console.log('🔍 Final drawing (first 200 chars):', drawing.substring(0, 200));
