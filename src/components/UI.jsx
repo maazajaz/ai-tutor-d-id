@@ -372,10 +372,12 @@ Come on, you got this! What's your answer? 🎮"]`;
 
   const sendMessage = async (messageText = null) => {
     const text = messageText || (input.current ? input.current.value : '');
-    if (!loading && !message && text.trim()) {
+    // Ensure text is a string
+    const textStr = typeof text === 'string' ? text : String(text || '');
+    if (!loading && !message && textStr.trim()) {
       // Check if the text contains a YouTube URL
       const youtubeRegex = /(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-      const match = text.match(youtubeRegex);
+      const match = textStr.match(youtubeRegex);
       
       if (match) {
         const youtubeUrl = match[0].startsWith('http') ? match[0] : `https://${match[0]}`;
@@ -475,7 +477,7 @@ Come on, you got this! What's your answer? 🎮"]`;
         }
       } else {
         // Regular message - send to D-ID agent
-        chat(text);
+        chat(textStr);
         if (input.current) {
           input.current.value = "";
         }
