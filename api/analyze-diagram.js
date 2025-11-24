@@ -1,22 +1,27 @@
-﻿import { anatomyTemplates } from './anatomyTemplates.js';
+﻿import OpenAI from 'openai';
+import { anatomyTemplates } from './anatomyTemplates.js';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 function matchAnatomyTemplate(prompt) {
   const lowerPrompt = prompt.toLowerCase();
   const keywords = {
-    'human-heart': ['heart', 'cardiac'],
-    'human-brain': ['brain', 'cerebral'],
-    'digestive-system': ['digest', 'stomach'],
-    'respiratory-system': ['respiratory', 'lung'],
-    'plant-cell': ['plant cell', 'chloroplast'],
-    'dog-anatomy': ['dog', 'canine'],
-    'eye-structure': ['eye', 'vision', 'retina'],
-    'atom-structure': ['atom', 'electron'],
-    'butterfly-lifecycle': ['butterfly', 'metamorphosis']
+    'human-heart': ['heart', 'cardiac', 'atrium', 'ventricle', 'cardiovascular'],
+    'human-brain': ['brain', 'cerebral', 'lobe', 'frontal', 'cerebellum', 'neural'],
+    'digestive-system': ['digestive', 'stomach', 'intestine', 'digestion', 'gut', 'esophagus'],
+    'respiratory-system': ['respiratory', 'lung', 'breathing', 'trachea', 'bronchi', 'respiration'],
+    'plant-cell': ['plant cell', 'chloroplast', 'vacuole', 'cell wall', 'plant structure'],
+    'dog-anatomy': ['dog', 'dog body', 'dog anatomy', 'dog parts', 'canine'],
+    'eye-structure': ['eye', 'eye structure', 'vision', 'retina', 'cornea', 'iris', 'pupil'],
+    'atom-structure': ['atom', 'atom structure', 'proton', 'neutron', 'electron', 'nucleus', 'atomic'],
+    'butterfly-lifecycle': ['butterfly', 'butterfly life cycle', 'metamorphosis', 'caterpillar', 'chrysalis', 'pupa']
   };
   
   for (const [templateId, terms] of Object.entries(keywords)) {
     if (terms.some(term => lowerPrompt.includes(term))) {
-      return templateId;
+      return anatomyTemplates[templateId];
     }
   }
   return null;
@@ -60,6 +65,61 @@ function convertTemplateToCompact(template) {
   return compact;
 }
 
+function detectComplexDiagram(prompt) {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  const complexKeywords = [
+    'anatomy', 'biological', 'organ', 'cell', 'tissue',
+    'nervous system', 'circulatory', 'skeletal', 'muscular',
+    'kidney', 'liver', 'eye structure', 'ear structure',
+    'dna', 'molecule', 'chemical structure', 'atom',
+    'detailed', 'cross-section', 'internal structure',
+    'photosynthesis', 'cellular respiration', 'mitosis', 'meiosis',
+    'animal', 'dog', 'cat', 'bird', 'fish', 'mammal', 'reptile',
+    'body parts', 'organism', 'creature', 'species'
+  ];
+  
+  const simpleKeywords = [
+    'solar system', 'water cycle', 'life cycle', 'food chain',
+    'triangle', 'circle', 'rectangle', 'square', 'perimeter', 'area',
+    'simple', 'basic', 'diagram', 'chart', 'flow'
+  ];
+  
+  if (simpleKeywords.some(keyword => lowerPrompt.includes(keyword))) {
+    return false;
+  }
+  
+  if (complexKeywords.some(keyword => lowerPrompt.includes(keyword))) {
+    return true;
+  }
+  
+  return false;
+}
+
+function convertTemplateToCompactFormat(elements) {
+  return elements.map(el => {
+    switch (el.type) {
+      case 'circle':
+        return `circ:${el.x},${el.y},${el.r},${el.stroke},${el.fill}`;
+      case 'ellipse':
+        return `ellipse:${el.x},${el.y},${el.rx},${el.ry},${el.stroke},${el.fill}`;
+      case 'rect':
+        return `rect:${el.x},${el.y},${el.width},${el.height},${el.stroke},${el.fill}`;
+      case 'line':
+        return `line:${el.x1},${el.y1},${el.x2},${el.y2},${el.stroke},${el.strokeWidth}`;
+      case 'arrow':
+        return `arrow:${el.x1},${el.y1},${el.x2},${el.y2},${el.color},${el.label || ''}`;
+      case 'text':
+        return `txt:${el.x},${el.y},${el.size},${el.color},${el.text}`;
+      case 'path':
+        const pointsStr = el.points.map(p => `${p[0]},${p[1]}`).join(',');
+        return `path:${pointsStr}:${el.stroke}:${el.fill || 'none'}:${el.strokeWidth}`;
+      default:
+        return null;
+    }
+  }).filter(Boolean);
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST,PUT');
@@ -75,57 +135,118 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Chat text required' });
     }
 
-    const templateId = matchAnatomyTemplate(chatText);
-    if (templateId && anatomyTemplates[templateId]) {
-      const compact = convertTemplateToCompact(anatomyTemplates[templateId]);
+    // Check for pre-built anatomy template first
+    const anatomyTemplate = matchAnatomyTemplate(chatText);
+    if (anatomyTemplate) {
+      console.log('📋 Using pre-defined template:', anatomyTemplate.title);
+      const compact = convertTemplateToCompact(anatomyTemplate);
       return res.status(200).json({
         diagramType: 'fast_drawing',
         drawing: compact,
-        source: 'template'
+        source: 'template',
+        templateId: anatomyTemplate.title
       });
     }
 
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `http://localhost:${process.env.PORT || 3000}`;
-    let response;
+    // No template match - generate via OpenAI
+    console.log('🎨 Generating drawing via OpenAI (compact format):', chatText);
+
+    const isComplexDiagram = detectComplexDiagram(chatText);
+    const model = isComplexDiagram ? "gpt-4" : "gpt-3.5-turbo";
+    const maxTokens = isComplexDiagram ? 1200 : 800;
+    
+    console.log(`🤖 Using ${model} (${isComplexDiagram ? 'complex' : 'simple'} diagram)`);
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert at creating DETAILED educational diagrams using ULTRA COMPACT notation.
+
+Canvas: 800x600 (origin top-left)
+
+COMPACT FORMAT:
+- tri:x1,y1,x2,y2,x3,y3,stroke,fill           → triangle
+- rect:x,y,w,h,stroke,fill                     → rectangle  
+- circ:x,y,radius,stroke,fill                  → circle
+- line:x1,y1,x2,y2,color,width                 → line
+- arrow:x1,y1,x2,y2,color,label text           → arrow with label
+- txt:x,y,size,color,text content              → text
+
+CRITICAL LAYOUT RULES:
+1. NEVER use white (#fff or #ffffff) for text - it's invisible on white canvas!
+2. Use dark colors for text: #1f2937 (dark gray), #000 (black), or matching element color
+3. For cycles/processes, ALWAYS add arrows between elements to show flow
+4. SPACE OUT elements properly - don't overlap! Use the full 800x600 canvas
+5. For solar system: place sun at center, planets spread out horizontally (NO orbit arrows needed)
+6. For life cycles: arrange in circle/square pattern with good spacing and connecting arrows
+7. Leave margins: keep elements at least 50px from edges
+8. Keep diagrams simple and clear - avoid unnecessary decorative elements
+
+SPACING EXAMPLES:
+- Solar system: Sun at (400,300), planets at (240,300), (300,300), (360,300), (440,300), (520,300), (600,300), (670,300), (730,300) etc.
+- Life cycle: corners like (200,150), (600,150), (600,450), (200,450)
+- Vertical flow: top (400,100), middle (400,300), bottom (400,500)
+
+IMPORTANT: When asked for solar system, include ALL 8 PLANETS in order: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune
+
+Colors: #3b82f6(blue) #10b981(green) #f59e0b(orange) #ef4444(red) #8b5cf6(purple) #1f2937(dark)
+Fills: Add "20" for 20% opacity (e.g., #3b82f620)
+
+Return ONLY compact JSON. Make it DETAILED and EDUCATIONAL with proper spacing and connections!
+DO NOT add comments like // in the JSON - return pure JSON only.`
+        },
+        {
+          role: 'user',
+          content: `Create compact drawing for: ${chatText}\n\nReturn ONLY JSON with title and elements array (compact format).`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: maxTokens
+    });
+
+    const content = completion.choices[0].message.content.trim();
+    
+    // Remove markdown if present
+    let jsonStr = content;
+    if (content.startsWith('```')) {
+      jsonStr = content.replace(/```json?\n?/g, '').replace(/```\n?$/g, '').trim();
+    }
+    
+    // Remove JSON comments (// ...) that GPT sometimes adds
+    jsonStr = jsonStr.replace(/\/\/[^\n]*/g, '');
+
+    let drawingData;
     try {
-      response = await fetch(`${baseUrl}/api/generate-drawing-fast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: chatText })
-      });
-    } catch (fetchErr) {
-      console.error('❌ Fetch to drawing API failed:', fetchErr);
-      throw new Error(`Failed to contact drawing API: ${fetchErr.message}`);
-    }
-
-    if (response.ok) {
-      const data = await response.json();
-      
-      // Check if elements array exists
-      if (!data.elements || !Array.isArray(data.elements)) {
-        console.error('Invalid response from drawing API:', data);
-        throw new Error('Drawing API returned invalid format');
-      }
-      
-      // Convert elements array to compact format string
-      const drawing = data.elements.join('\n');
-      return res.status(200).json({
-        diagramType: 'fast_drawing',
-        drawing: drawing,
-        source: data.isTemplate ? 'template' : 'gpt'
+      drawingData = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('❌ Parse error:', jsonStr);
+      return res.status(500).json({ 
+        error: 'Failed to parse OpenAI response',
+        details: parseError.message
       });
     }
 
-    // Non-OK response: include status and body to help diagnose Vercel-only failures
-    let respText = '';
-    try {
-      respText = await response.text();
-    } catch (err) {
-      respText = `<unable to read response body: ${err.message}>`;
+    if (!drawingData.elements || !Array.isArray(drawingData.elements)) {
+      console.error('❌ Invalid response from OpenAI:', drawingData);
+      return res.status(500).json({ error: 'OpenAI returned invalid format' });
     }
-    console.error('❌ Drawing API returned non-OK:', response.status, respText);
-    throw new Error(`Drawing API failed: ${response.status} ${respText}`);
+
+    console.log('✅ Drawing generated:', drawingData.title, `(${drawingData.elements.length} elements)`);
+
+    // Convert elements array to compact format string
+    const drawing = drawingData.elements.join('\n');
+    return res.status(200).json({
+      diagramType: 'fast_drawing',
+      drawing: drawing,
+      source: 'gpt'
+    });
+    
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error in analyze-diagram:', error);
+    return res.status(500).json({ 
+      error: error.message || 'Internal server error'
+    });
   }
 }
