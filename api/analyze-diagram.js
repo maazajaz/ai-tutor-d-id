@@ -85,12 +85,18 @@ export default async function handler(req, res) {
       });
     }
 
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-    const response = await fetch(`${baseUrl}/api/generate-drawing-fast`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: chatText })
-    });
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `http://localhost:${process.env.PORT || 3000}`;
+    let response;
+    try {
+      response = await fetch(`${baseUrl}/api/generate-drawing-fast`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: chatText })
+      });
+    } catch (fetchErr) {
+      console.error('❌ Fetch to drawing API failed:', fetchErr);
+      throw new Error(`Failed to contact drawing API: ${fetchErr.message}`);
+    }
 
     if (response.ok) {
       const data = await response.json();
@@ -109,8 +115,16 @@ export default async function handler(req, res) {
         source: data.isTemplate ? 'template' : 'gpt'
       });
     }
-    
-    throw new Error('Drawing API failed');
+
+    // Non-OK response: include status and body to help diagnose Vercel-only failures
+    let respText = '';
+    try {
+      respText = await response.text();
+    } catch (err) {
+      respText = `<unable to read response body: ${err.message}>`;
+    }
+    console.error('❌ Drawing API returned non-OK:', response.status, respText);
+    throw new Error(`Drawing API failed: ${response.status} ${respText}`);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
