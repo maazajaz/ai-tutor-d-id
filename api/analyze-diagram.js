@@ -250,6 +250,9 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
     }
     
     console.log('🔍 Final drawing (first 200 chars):', drawing.substring(0, 200));
+    console.log('🔍 Drawing type:', typeof drawing);
+    console.log('🔍 Drawing is string?', typeof drawing === 'string');
+    
     return res.status(200).json({
       diagramType: 'fast_drawing',
       drawing: drawing,

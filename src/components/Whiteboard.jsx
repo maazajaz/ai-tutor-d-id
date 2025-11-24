@@ -1015,6 +1015,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
       // 🚀 Handle FAST_DRAWING type - Real-time animated diagrams
       if (diagramType === 'fast_drawing' && drawing) {
         console.log(`🎨 Rendering fast drawing (${source || 'gpt'})...`);
+        console.log('🔍 Drawing type:', typeof drawing);
+        console.log('🔍 Drawing value (first 200 chars):', typeof drawing === 'string' ? drawing.substring(0, 200) : JSON.stringify(drawing).substring(0, 200));
+        
         setIsAnimatingFastDrawing(true);
         requestAnimationFrame(() => {
           if (canvasRef.current) {
@@ -1036,7 +1039,9 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
         
         // Parse and animate the drawing
         try {
-          const elements = parseCompactFormat(drawing);
+          // Ensure drawing is a string before parsing
+          const drawingStr = typeof drawing === 'string' ? drawing : JSON.stringify(drawing);
+          const elements = parseCompactFormat(drawingStr);
           console.log(`✅ Parsed ${elements.length} elements, starting animation...`);
 
           // Render directly onto the overlay canvas so the user sees the shapes animate
