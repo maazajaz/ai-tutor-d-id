@@ -977,6 +977,7 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
       }
 
       // Analyze the question to determine diagram type, image request, or elements
+      console.log('📊 Calling /api/analyze-diagram with:', question);
       const analysisResponse = await fetch('/api/analyze-diagram', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -985,16 +986,25 @@ export const Whiteboard = ({ onClose, chatSessionId = 'default', onAskQuestion, 
         })
       });
 
+      console.log('📊 Analysis response status:', analysisResponse.status, analysisResponse.ok);
+
       if (!analysisResponse.ok) {
         const errorText = await analysisResponse.text();
-        console.error('Analysis failed:', analysisResponse.status, errorText);
+        console.error('❌ Analysis failed:', analysisResponse.status, errorText);
         throw new Error(`Failed to analyze diagram: ${analysisResponse.status}`);
       }
 
       const result = await analysisResponse.json();
-      console.log('Analysis result:', result);
+      console.log('✅ Analysis result:', result);
+      console.log('🔍 Drawing field present?', !!result.drawing, 'DiagramType:', result.diagramType);
       
       const { diagramType, elements, imageUrl, imageSource, imageAttribution, imageAttributionUrl, imagePrompt, revisedPrompt, drawing, templateId, source } = result;
+      
+      // Validate we have something to render
+      if (!diagramType) {
+        console.error('❌ No diagramType returned from API:', result);
+        throw new Error('API did not return a valid diagram type');
+      }
       
       // Calculate position for new content (append below existing content)
       const lastBlock = contentBlocks[contentBlocks.length - 1];
