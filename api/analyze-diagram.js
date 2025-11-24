@@ -30,6 +30,46 @@ function matchAnatomyTemplate(prompt) {
 function convertTemplateToCompact(template) {
   let compact = '';
   for (const element of template.elements) {
+    // Handle array-based format from OpenAI: { txt: [x, y, size, color, text] }
+    if (element.txt) {
+      const [x, y, size, color, text] = element.txt;
+      compact += `txt:${x},${y},${size},${color},${text}\n`;
+      continue;
+    }
+    if (element.tri) {
+      const [x1, y1, x2, y2, x3, y3, stroke, fill] = element.tri;
+      compact += `tri:${x1},${y1},${x2},${y2},${x3},${y3},${stroke},${fill}\n`;
+      continue;
+    }
+    if (element.circ || element.circle) {
+      const arr = element.circ || element.circle;
+      const [x, y, r, stroke, fill] = arr;
+      compact += `circ:${x},${y},${r},${stroke},${fill}\n`;
+      continue;
+    }
+    if (element.line) {
+      const [x1, y1, x2, y2, color] = element.line;
+      compact += `line:${x1},${y1},${x2},${y2},${color}\n`;
+      continue;
+    }
+    if (element.arrow) {
+      const [x1, y1, x2, y2, color] = element.arrow;
+      compact += `arrow:${x1},${y1},${x2},${y2},${color}\n`;
+      continue;
+    }
+    if (element.rect) {
+      const [x, y, w, h, stroke, fill] = element.rect;
+      compact += `rect:${x},${y},${w},${h},${stroke},${fill}\n`;
+      continue;
+    }
+    if (element.ell || element.ellipse) {
+      const arr = element.ell || element.ellipse;
+      const [x, y, w, h, stroke, fill] = arr;
+      compact += `ell:${x},${y},${w},${h},${stroke},${fill}\n`;
+      continue;
+    }
+    
+    // Fallback to old object-based format
     const elementType = element.type?.toLowerCase();
     
     switch (elementType) {
