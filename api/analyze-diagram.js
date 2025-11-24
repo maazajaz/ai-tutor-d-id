@@ -139,6 +139,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Check if OpenAI API key is configured
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('❌ OPENAI_API_KEY not configured in environment variables');
+      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+
     const { chatText } = req.body;
     if (!chatText) {
       return res.status(400).json({ error: 'Chat text required' });
