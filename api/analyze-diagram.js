@@ -234,9 +234,25 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
     }
 
     console.log('✅ Drawing generated:', drawingData.title, `(${drawingData.elements.length} elements)`);
+    console.log('🔍 First 3 elements:', drawingData.elements.slice(0, 3));
+    console.log('🔍 Element types:', drawingData.elements.slice(0, 3).map(e => typeof e));
+
+    // Ensure all elements are strings before joining
+    const elementStrings = drawingData.elements.map(el => {
+      if (typeof el === 'string') {
+        return el;
+      } else if (typeof el === 'object' && el !== null) {
+        // If OpenAI returned objects, convert them using our helper
+        return convertTemplateToCompactFormat([el])[0] || '';
+      }
+      return String(el);
+    }).filter(Boolean);
+
+    console.log('✅ Converted to', elementStrings.length, 'string elements');
+    console.log('🔍 First converted element:', elementStrings[0]);
 
     // Convert elements array to compact format string
-    const drawing = drawingData.elements.join('\n');
+    const drawing = elementStrings.join('\n');
     return res.status(200).json({
       diagramType: 'fast_drawing',
       drawing: drawing,
