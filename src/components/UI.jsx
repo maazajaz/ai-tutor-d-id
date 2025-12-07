@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { useChat } from "../hooks/useChat";
 import { useYawnDetection } from "../hooks/useYawnDetection";
 import { useAuth } from "../contexts/AuthContext";
@@ -25,10 +25,11 @@ export const UI = ({ hidden, showChat, setShowChat, onCameraStatus, whiteboardLa
   // Detect if user is on mobile device
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   
-  // Disable emotion detection by default on mobile due to camera permission issues
-  const [emotionDetectionEnabled, setEmotionDetectionEnabled] = useState(!isMobile);
+  // DISABLED: Emotion detection causes ERR_INSUFFICIENT_RESOURCES and blocks D-ID connection
+  // Users can manually enable it if needed, but it's off by default to prevent issues
+  const [emotionDetectionEnabled, setEmotionDetectionEnabled] = useState(false);
   const [cameraStreamReady, setCameraStreamReady] = useState(false); // Track when camera is ready
-  const [showCameraPreview, setShowCameraPreview] = useState(!isMobile); // Hide by default on mobile
+  const [showCameraPreview, setShowCameraPreview] = useState(false); // Hide by default
   
   // Use refs to access current values in speech recognition callbacks
   const isLiveModeRef = useRef(false);
@@ -97,17 +98,6 @@ Come on, you got this! What's your answer? 🎮"]`;
     enabled: emotionDetectionEnabled
   });
 
-  // Debug log for yawn detection state
-  useEffect(() => {
-    console.log('📊 Yawn Detection State:', {
-      emotionDetectionEnabled,
-      isInitialized,
-      isLoading,
-      error,
-      hasVideoRef: !!videoRef.current
-    });
-  }, [emotionDetectionEnabled, isInitialized, isLoading, error]);
-
   // Auto-open whiteboard when dashboard navigation requests it
   useEffect(() => {
     if (!whiteboardLaunchKey) return;
@@ -167,8 +157,10 @@ Come on, you got this! What's your answer? 🎮"]`;
       clearInterval(checkInterval);
       setCameraStreamReady(false);
     };
-  }, [emotionDetectionEnabled, showCameraPreview]); // Added showCameraPreview  // Notify parent about camera status changes
-  useEffect(() => {
+  }, [emotionDetectionEnabled, showCameraPreview]); // Added showCameraPreview  
+  
+  // Memoize camera status callback to prevent infinite loops
+  const stableCameraStatus = useCallback(() => {
     if (onCameraStatus) {
       onCameraStatus({
         isEnabled: emotionDetectionEnabled,
@@ -178,7 +170,12 @@ Come on, you got this! What's your answer? 🎮"]`;
         currentEmotion: detectionStats
       });
     }
-  }, [emotionDetectionEnabled, isInitialized, cameraStreamReady, detectionStats, onCameraStatus]);
+  }, [emotionDetectionEnabled, isInitialized, cameraStreamReady, detectionStats]);
+  
+  // Notify parent about camera status changes
+  useEffect(() => {
+    stableCameraStatus();
+  }, [stableCameraStatus]);
   
   // Keep refs in sync with state
   useEffect(() => {

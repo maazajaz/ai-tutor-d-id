@@ -17,6 +17,7 @@ const CollaborativeStudy = lazy(() => import("./components/CollaborativeStudy").
 const PracticeProblems = lazy(() => import("./components/PracticeProblems"));
 const RoughDrawTest = lazy(() => import("./components/RoughDrawTest"));
 const RoughDrawTestV2 = lazy(() => import("./components/RoughDrawTestV2"));
+const Interview = lazy(() => import("./components/Interview").then(module => ({ default: module.Interview })));
 
 // Loading fallback component
 const ComponentLoader = () => (
@@ -31,7 +32,7 @@ const ComponentLoader = () => (
 // Main App Content (when authenticated)
 const AppContent = () => {
   const { user, profile, signOut, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'chat', 'practice'
+  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'chat', 'practice', 'interview'
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showChat, setShowChat] = useState(true); // Chat visibility state
@@ -126,12 +127,13 @@ const AppContent = () => {
   // Render both views but toggle visibility to prevent remounting
   return (
     <>
-      {/* Dashboard View - Hidden when chat/practice is active */}
+      {/* Dashboard View - Hidden when chat/practice/interview is active */}
       <div style={{ display: currentView === 'dashboard' ? 'block' : 'none' }}>
         <Suspense fallback={<ComponentLoader />}>
           <Dashboard 
             onNavigateToChat={() => setCurrentView('chat')}
             onNavigateToPractice={() => setCurrentView('practice')}
+            onNavigateToInterview={() => setCurrentView('interview')}
             onNavigateToWhiteboard={() => {
               setCurrentView('chat');
               setShowChat(true);
@@ -151,6 +153,13 @@ const AppContent = () => {
       <div style={{ display: currentView === 'practice' ? 'block' : 'none' }}>
         <Suspense fallback={<ComponentLoader />}>
           <PracticeProblems onBack={() => setCurrentView('dashboard')} />
+        </Suspense>
+      </div>
+
+      {/* Interview View */}
+      <div style={{ display: currentView === 'interview' ? 'block' : 'none' }}>
+        <Suspense fallback={<ComponentLoader />}>
+          <Interview onBack={() => setCurrentView('dashboard')} />
         </Suspense>
       </div>
 

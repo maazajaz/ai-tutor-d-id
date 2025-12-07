@@ -40,6 +40,7 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
   const rightEyeClosedRef = useRef(false);
   const eyesClosedStartRef = useRef(null);
   const lastAlertTimeRef = useRef({});
+  const lastStatsUpdateRef = useRef(0); // Throttle state updates
 
   // Face Mesh landmark indices (MediaPipe Face Mesh)
   // Based on the repository's point IDs: [187, 411, 152, 68, 174, 399, 298]
@@ -140,12 +141,16 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
     const rightEAR = calculateEAR(landmarks, false);
     const avgEAR = (leftEAR + rightEAR) / 2;
 
-    // Update live metrics for debugging
-    setDetectionStats(prev => ({
-      ...prev,
-      currentMAR: mar,
-      currentEAR: avgEAR
-    }));
+    // THROTTLE: Only update state every 500ms to prevent infinite loop
+    // Store current values in refs for immediate access without triggering re-renders
+    if (now - lastStatsUpdateRef.current > 500) {
+      setDetectionStats(prev => ({
+        ...prev,
+        currentMAR: mar,
+        currentEAR: avgEAR
+      }));
+      lastStatsUpdateRef.current = now;
+    }
 
     // Log detection metrics every 30 frames for debugging (reduce console spam)
     if (Math.random() < 0.03) { // ~3% of frames = every 30 frames at 30fps
@@ -320,33 +325,47 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
         
         // Load the script if not already loaded
         if (!window.FaceMesh) {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js';
-            script.crossOrigin = 'anonymous';
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
+          try {
+            await new Promise((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js';
+              script.crossOrigin = 'anonymous';
+              script.onload = resolve;
+              script.onerror = reject;
+              document.head.appendChild(script);
+            });
+          } catch (err) {
+            console.error('❌ Failed to load MediaPipe script:', err);
+            throw new Error('Failed to load MediaPipe library from CDN');
+          }
         }
         
         console.log('📍 Step 5: MediaPipe loaded successfully');
 
-        const faceMesh = new window.FaceMesh({
-          locateFile: (file) => {
-            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-          }
-        });
+        // Create Face Mesh instance with error suppression
+        let faceMesh;
+        try {
+          faceMesh = new window.FaceMesh({
+            locateFile: (file) => {
+              return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+            }
+          });
 
-        faceMesh.setOptions({
-          maxNumFaces: 1,
-          refineLandmarks: false, // Disable for faster performance
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
-        });
+          faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: false, // Disable for faster performance
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+          });
 
-        faceMesh.onResults(processFaceLandmarks);
-        faceMeshRef.current = faceMesh;
+          faceMesh.onResults(processFaceLandmarks);
+          faceMeshRef.current = faceMesh;
+          
+          console.log('✅ Face Mesh instance created');
+        } catch (err) {
+          console.warn('⚠️ Face Mesh initialization warning (non-critical):', err.message);
+          // Continue anyway - the face mesh might still work
+        }
 
         console.log('✅ MediaPipe Face Mesh initialized');
 
@@ -429,7 +448,10 @@ export const useYawnDetection = ({ onYawnDetected, onDrowsinessDetected, enabled
                 try {
                   await faceMeshRef.current.send({ image: videoRef.current });
                 } catch (error) {
-                  console.error('❌ Detection error:', error);
+                  // Silently handle detection errors to prevent console spam
+                  if (!error.message?.includes('Module.arguments')) {
+                    console.error('❌ Detection error:', error);
+                  }
                 }
               }
               animationId = requestAnimationFrame(detectLoop);

@@ -129,7 +129,13 @@ const corsOptions = {
       process.env.CORS_ORIGIN
     ].filter(Boolean);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://192.168.') || origin.startsWith('http://172.')) {
+    // Allow Vercel preview deployments and production
+    if (
+      allowedOrigins.indexOf(origin) !== -1 || 
+      origin.startsWith('http://192.168.') || 
+      origin.startsWith('http://172.') ||
+      origin.endsWith('.vercel.app') // Allow all Vercel deployments
+    ) {
       callback(null, true);
     } else {
       console.log('CORS blocked for origin:', origin);
@@ -1444,6 +1450,126 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
     res.json(drawingData);
   } catch (error) {
     console.error('❌ Error generating drawing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// INTERVIEW PRACTICE ENDPOINTS
+// ==========================================
+
+// Generate interview question
+app.post("/api/interview/generate-question", async (req, res) => {
+  try {
+    const { interviewType, jobRole, experience, questionNumber, totalQuestions, previousAnswers } = req.body;
+    
+    if (!openai) {
+      return res.status(500).json({ error: 'OpenAI API not configured' });
+    }
+
+    console.log(`🎯 Generating ${interviewType} interview question ${questionNumber}/${totalQuestions} for ${jobRole}`);
+
+    // Build context from previous answers
+    let previousContext = '';
+    if (previousAnswers && previousAnswers.length > 0) {
+      previousContext = '\n\nPrevious questions and answers:\n';
+      previousAnswers.forEach((qa, idx) => {
+        previousContext += `Q${idx + 1}: ${qa.question}\nA${idx + 1}: ${qa.answer}\n\n`;
+      });
+    }
+
+    // System prompts based on interview type
+    const systemPrompts = {
+      technical: `You are an expert technical interviewer for ${jobRole} positions. Ask challenging but fair technical questions appropriate for a ${experience} level candidate. Focus on problem-solving, algorithms, system design, and role-specific technical knowledge. Make questions progressively harder.`,
+      behavioral: `You are an experienced HR interviewer specializing in behavioral interviews for ${jobRole} positions. Ask STAR method questions (Situation, Task, Action, Result) that reveal the candidate's soft skills, teamwork, leadership, and past experiences. Tailor questions to ${experience} level.`,
+      hr: `You are a professional HR interviewer for ${jobRole} positions. Ask questions about the candidate's background, motivation, career goals, company fit, and general professional attributes. Adjust difficulty for ${experience} level candidates.`
+    };
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompts[interviewType] || systemPrompts.technical
+        },
+        {
+          role: "user",
+          content: `Generate interview question ${questionNumber} of ${totalQuestions} for a ${experience} level ${jobRole} candidate.${previousContext}\n\nProvide ONLY the question text, no additional formatting or explanations.`
+        }
+      ],
+      temperature: 0.8,
+      max_tokens: 200
+    });
+
+    const question = completion.choices[0].message.content.trim();
+    console.log(`✅ Question generated: "${question.substring(0, 50)}..."`);
+
+    res.json({ question });
+  } catch (error) {
+    console.error('❌ Error generating interview question:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Generate interview feedback
+app.post("/api/interview/generate-feedback", async (req, res) => {
+  try {
+    const { interviewType, jobRole, experience, answers } = req.body;
+    
+    if (!openai) {
+      return res.status(500).json({ error: 'OpenAI API not configured' });
+    }
+
+    console.log(`📊 Generating feedback for ${answers.length} answers (${interviewType} interview)`);
+
+    // Build interview transcript
+    let transcript = '';
+    answers.forEach((qa, idx) => {
+      transcript += `Q${idx + 1}: ${qa.question}\n`;
+      transcript += `A${idx + 1}: ${qa.answer}\n\n`;
+    });
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert interview coach analyzing a ${interviewType} interview for a ${experience} level ${jobRole} position. Provide constructive, detailed feedback on the candidate's performance.`
+        },
+        {
+          role: "user",
+          content: `Analyze this interview transcript and provide feedback in the following JSON format:
+
+{
+  "overallScore": <number 0-100>,
+  "strengths": [<array of 3-5 specific strengths>],
+  "improvements": [<array of 3-5 specific areas to improve>],
+  "summary": "<2-3 sentence overall assessment>"
+}
+
+Interview transcript:
+${transcript}
+
+Return ONLY valid JSON, no markdown or additional text.`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 800
+    });
+
+    let content = completion.choices[0].message.content.trim();
+    
+    // Remove markdown code blocks if present
+    if (content.startsWith('```')) {
+      content = content.replace(/```json?\n?/g, '').replace(/```\n?$/g, '').trim();
+    }
+
+    const feedback = JSON.parse(content);
+    console.log(`✅ Feedback generated: Score ${feedback.overallScore}/100`);
+
+    res.json({ feedback });
+  } catch (error) {
+    console.error('❌ Error generating interview feedback:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -20,7 +20,7 @@ const stripMarkdown = (text) => {
     .trim();
 };
 
-const DIDAgentAvatar = () => {
+const DIDAgentAvatar = ({ customMessage, onCustomMessagePlayed, onConnectionChange, speakOnly = false, skipChatHistory = false }) => {
   const videoRef = useRef(null);
   const idleVideoRef = useRef(null); // For continuous idle animation
   const peerConnectionRef = useRef(null);
@@ -40,8 +40,20 @@ const DIDAgentAvatar = () => {
   const [idleVideoUrl, setIdleVideoUrl] = useState(null); // Store idle video URL
   const [audioEnabled, setAudioEnabled] = useState(false); // Track if audio is enabled by user
   const sessionTimeoutRef = useRef(null); // Track session timeout
+  const lastSentMessageRef = useRef(null); // Prevent duplicate message sends
   
-  const { message, onMessagePlayed, loading, updateAgentResponse } = useChat();
+  const { message: chatMessage, onMessagePlayed: chatOnMessagePlayed, loading, updateAgentResponse } = useChat();
+
+  // Use custom message from props if provided, otherwise use chat context message
+  const message = customMessage || chatMessage;
+  const onMessagePlayed = onCustomMessagePlayed || chatOnMessagePlayed;
+
+  // Notify parent when connection status changes
+  useEffect(() => {
+    if (onConnectionChange) {
+      onConnectionChange(isConnected);
+    }
+  }, [isConnected, onConnectionChange]);
 
   // D-ID API configuration
   const DID_API_KEY = import.meta.env.VITE_DID_API_KEY;
@@ -145,9 +157,13 @@ const DIDAgentAvatar = () => {
         const responseText = decodeURIComponent(msg.replace('chat/answer:', ''));
         console.log('🤖 Agent response via data channel (raw):', responseText);
         
-        // Store the original markdown text in chat history
+        // Store the original markdown text in chat history (only if not skipped)
         // (The D-ID agent will internally handle the cleaned version for speech)
-        updateAgentResponse(responseText);
+        if (!skipChatHistory) {
+          updateAgentResponse(responseText);
+        } else {
+          console.log('⏭️ Skipping chat history update (interview mode)');
+        }
       }
       
       // Stream started event (for fluent agents)
@@ -447,37 +463,63 @@ const DIDAgentAvatar = () => {
     }
   };
 
-  // Send message to agent via chat
+  // Send message to agent via chat or speak
   const speakWithAgent = async (text) => {
-    if (!agentId || !chatId || !streamId || !sessionId || !isConnected) {
+    if (!agentId || !streamId || !sessionId || !isConnected) {
       console.warn('⚠️ Agent not ready for conversation');
+      return;
+    }
+
+    // For speakOnly mode, chatId is not required - we use the speak endpoint
+    if (!speakOnly && !chatId) {
+      console.warn('⚠️ Chat ID not ready');
       return;
     }
 
     try {
       console.log('💬 Sending message to agent:', text);
       
-      // Send message to D-ID Agent - response will come via WebRTC data channel
-      await fetchWithRetry(`${API_URL}/agents/${agentId}/chat/${chatId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${DID_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          streamId: streamId,
-          sessionId: sessionId,
-          messages: [
-            {
-              role: 'user',
-              content: text,
-              created_at: new Date().toLocaleString(),
-            }
-          ],
-        }),
-      });
-
-      console.log('✅ Message sent to agent - response will come via data channel');
+      if (speakOnly) {
+        // Use the SPEAK endpoint - agent will repeat text directly without LLM processing
+        console.log('🎤 Using speak endpoint for direct text-to-speech');
+        await fetchWithRetry(`${API_URL}/agents/${agentId}/streams/${streamId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${DID_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            script: {
+              type: 'text',
+              input: text
+            },
+            session_id: sessionId,
+          }),
+        });
+        console.log('✅ Speak request sent - agent will speak text directly');
+      } else {
+        // Use the CHAT endpoint - agent will process with LLM and respond
+        console.log('💬 Using chat endpoint for conversational response');
+        await fetchWithRetry(`${API_URL}/agents/${agentId}/chat/${chatId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${DID_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            streamId: streamId,
+            sessionId: sessionId,
+            messages: [
+              {
+                role: 'user',
+                content: text,
+                created_at: new Date().toLocaleString(),
+              }
+            ],
+          }),
+        });
+        console.log('✅ Message sent to agent - response will come via data channel');
+      }
       
       // The agent will:
       // 1. Process with GPT-4
@@ -614,17 +656,37 @@ const DIDAgentAvatar = () => {
 
   // Handle incoming messages
   useEffect(() => {
+    console.log('🔍 Message effect triggered:', { 
+      message, 
+      isConnected, 
+      hasText: message?.text,
+      hasUserQuestion: message?.userQuestion,
+      messageKey: message?.key
+    });
+    
+    // Prevent duplicate sends - check if this exact message was already sent
+    const messageIdentifier = message?.key || message?.text || message?.userQuestion;
+    if (messageIdentifier && lastSentMessageRef.current === messageIdentifier) {
+      console.log('⏭️ Duplicate message detected, skipping...');
+      return;
+    }
+    
     if (message && message.userQuestion && isConnected) {
       // Send the original user question to the agent, not the AI response
       console.log('📝 Sending user question to agent:', message.userQuestion);
+      lastSentMessageRef.current = messageIdentifier;
       speakWithAgent(message.userQuestion);
     } else if (message && message.text && !message.userQuestion && isConnected) {
       // Fallback: if no userQuestion, send the message text (for backward compatibility)
       console.log('📝 No userQuestion found, sending message text:', message.text);
+      lastSentMessageRef.current = messageIdentifier;
       speakWithAgent(message.text);
     } else if (message && !isConnected) {
       console.warn('⚠️ Message received but agent not connected, skipping...');
+      console.log('Agent status:', { isConnected, isConnecting, connectionStatus });
       onMessagePlayed();
+    } else if (!message) {
+      console.log('No message to send');
     }
   }, [message, isConnected]);
 

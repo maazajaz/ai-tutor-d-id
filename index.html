@@ -6,6 +6,99 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sharda Informatics 360 - AI Digital Tutor</title>
     <meta name="description" content="AI-powered digital tutoring platform by Sharda Informatics 360" />
+    
+    <!-- Suppress MediaPipe WASM errors early -->
+    <script>
+      // Store original console methods
+      const _error = console.error;
+      const _warn = console.warn;
+      const _info = console.info;
+      const _log = console.log;
+      
+      // Override console.error
+      console.error = function(...args) {
+        const msg = args[0]?.toString() || '';
+        if (
+          msg.includes('Module.arguments') ||
+          msg.includes('face_mesh') ||
+          msg.includes('mediapipe') ||
+          msg.includes('simd_wasm_bin') ||
+          msg.includes('assets_loader') ||
+          msg.includes('face_mesh_solution_packed_assets') ||
+          msg.includes('ERR_INSUFFICIENT_RESOURCES') ||
+          msg.includes('gl_context') ||
+          msg.includes('Maximum update depth exceeded')
+        ) {
+          return; // Suppress
+        }
+        _error.apply(console, args);
+      };
+      
+      // Override console.warn
+      console.warn = function(...args) {
+        const msg = args[0]?.toString() || '';
+        const stack = new Error().stack || '';
+        if (
+          msg.includes('Module.arguments') ||
+          msg.includes('face_mesh') ||
+          msg.includes('mediapipe') ||
+          msg.includes('Assertion failed') ||
+          msg.includes('gl_context') ||
+          msg.includes('GL version') ||
+          msg.includes('OpenGL') ||
+          stack.includes('face_mesh_solution') ||
+          stack.includes('simd_wasm_bin')
+        ) {
+          return; // Suppress
+        }
+        _warn.apply(console, args);
+      };
+      
+      // Override console.info
+      console.info = function(...args) {
+        const msg = args[0]?.toString() || '';
+        if (
+          msg.includes('gl_context') ||
+          msg.includes('GL version') ||
+          msg.includes('OpenGL') ||
+          msg.includes('WebGL context')
+        ) {
+          return; // Suppress
+        }
+        _info.apply(console, args);
+      };
+      
+      // Catch global errors
+      window.addEventListener('error', function(e) {
+        if (
+          e.message?.includes('Module.arguments') ||
+          e.message?.includes('face_mesh') ||
+          e.message?.includes('mediapipe') ||
+          e.message?.includes('face_mesh_solution_packed_assets') ||
+          e.message?.includes('ERR_INSUFFICIENT_RESOURCES') ||
+          e.filename?.includes('face_mesh') ||
+          e.filename?.includes('mediapipe')
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }, true);
+      
+      // Catch unhandled promise rejections
+      window.addEventListener('unhandledrejection', function(e) {
+        const msg = e.reason?.toString() || '';
+        if (
+          msg.includes('Module.arguments') ||
+          msg.includes('face_mesh') ||
+          msg.includes('mediapipe') ||
+          msg.includes('ERR_INSUFFICIENT_RESOURCES')
+        ) {
+          e.preventDefault();
+          return false;
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

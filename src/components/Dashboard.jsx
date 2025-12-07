@@ -7,7 +7,7 @@ import { QuizGenerator } from './QuizGenerator'
 import { DashboardLoader } from './DashboardLoader'
 import logo from '../assets/logo_white.svg'
 
-export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenCollabStudy, onNavigateToPractice, onNavigateToWhiteboard }) => {
+export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenCollabStudy, onNavigateToPractice, onNavigateToWhiteboard, onNavigateToInterview }) => {
   const { user, profile, signOut } = useAuth()
   const { initialLoading } = useChat()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -337,6 +337,44 @@ export const Dashboard = ({ onNavigateToChat, onNavigateToCustomize, onOpenColla
               <div className="flex items-center gap-2 text-amber-200 font-medium">
                 <span className="text-lg">🖌️</span>
                 <span>Live Animation</span>
+              </div>
+            </div>
+          </button>
+
+          {/* Interview Practice Card - NEW */}
+          <button
+            onClick={onNavigateToInterview}
+            className={`${glassCardClasses} hover:border-amber-200/60`}
+          >
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-xl md:text-2xl">
+                🎯
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-purple-400/20 text-purple-100 border border-purple-200/60 text-xs font-semibold rounded-full">
+                  NEW
+                </span>
+                <div className="w-7 h-7 md:w-8 md:h-8 bg-purple-200/10 rounded-full flex items-center justify-center text-purple-200 group-hover:bg-purple-300 group-hover:text-black transition-colors">
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <h3 className="text-lg md:text-xl font-bold text-white mb-2 group-hover:text-purple-200 transition-colors">
+              Interview Practice
+            </h3>
+            <p className="text-gray-400 text-xs md:text-sm mb-3 md:mb-4">
+              Practice technical, behavioral, and HR interviews with AI-powered feedback
+            </p>
+            <div className="flex items-center gap-4 text-xs md:text-sm">
+              <div className="flex items-center gap-2 text-purple-200 font-medium">
+                <span className="text-lg">🤖</span>
+                <span>AI Interviewer</span>
+              </div>
+              <div className="flex items-center gap-2 text-purple-200 font-medium">
+                <span className="text-lg">📊</span>
+                <span>Performance Feedback</span>
               </div>
             </div>
           </button>
