@@ -492,35 +492,35 @@ export const ChatProvider = ({ children }) => {
 
   // Initialize chat sessions when auth state changes
   useEffect(() => {
-    // Skip if we've already loaded data (prevents re-loading on component re-renders)
-    if (hasLoadedDataRef.current) {
-      console.log('✅ Data already loaded, skipping initialization');
-      return;
-    }
-
-    console.log('Initializing chat sessions. Auth loading:', authLoading, 'User:', user?.email || 'Anonymous');
-    console.log('Current state - Chat ID:', currentChatId, 'Sessions:', chatSessions.length);
+    console.log('🔄 Auth state changed. Auth loading:', authLoading, 'User:', user?.email || 'Anonymous');
+    console.log('📊 Current state - Chat ID:', currentChatId, 'Sessions:', chatSessions.length, 'Data loaded:', hasLoadedDataRef.current);
     
     if (!authLoading) {
-      hasLoadedDataRef.current = true; // Mark that we're loading data
-      
       if (user) {
-        console.log('Loading user chat sessions...');
-        loadUserChatSessions(user.id);
-        
-        // Migrate current session to Supabase if it exists and isn't already there
-        if (currentChatId && chatSessions.length > 0) {
-          const currentSession = chatSessions.find(s => s.id === currentChatId);
-          if (currentSession && currentSession.messages && currentSession.messages.length > 0) {
-            console.log('🔄 Migrating current session to Supabase...');
-            migrateSessionToSupabase(currentSession);
+        // Only load data if we haven't loaded for this user yet
+        if (!hasLoadedDataRef.current) {
+          console.log('✅ User logged in, loading chat sessions...');
+          hasLoadedDataRef.current = true; // Mark that we're loading data
+          loadUserChatSessions(user.id);
+          
+          // Migrate current session to Supabase if it exists and isn't already there
+          if (currentChatId && chatSessions.length > 0) {
+            const currentSession = chatSessions.find(s => s.id === currentChatId);
+            if (currentSession && currentSession.messages && currentSession.messages.length > 0) {
+              console.log('🔄 Migrating current session to Supabase...');
+              migrateSessionToSupabase(currentSession);
+            }
           }
+        } else {
+          console.log('✅ Data already loaded for this user, skipping reload');
         }
       } else {
-        // For anonymous users, load from localStorage
+        // User logged out - reset and load from localStorage
+        console.log('❌ User logged out, loading localStorage sessions...');
+        hasLoadedDataRef.current = false; // Reset for next login
         setInitialLoading(true);
         const localSessions = loadChatSessions();
-        console.log('Loaded localStorage sessions:', localSessions.length);
+        console.log('💾 Loaded localStorage sessions:', localSessions.length);
         
         if (localSessions.length > 0) {
           console.log('Using existing localStorage sessions...');
