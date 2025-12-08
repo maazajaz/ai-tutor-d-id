@@ -1469,20 +1469,44 @@ app.post("/api/interview/generate-question", async (req, res) => {
 
     console.log(`🎯 Generating ${interviewType} interview question ${questionNumber}/${totalQuestions} for ${jobRole}`);
 
-    // Build context from previous answers
+    // Build context from previous questions to avoid repetition
     let previousContext = '';
     if (previousAnswers && previousAnswers.length > 0) {
-      previousContext = '\n\nPrevious questions and answers:\n';
+      previousContext = '\n\nPrevious questions asked (DO NOT repeat these topics):\n';
       previousAnswers.forEach((qa, idx) => {
-        previousContext += `Q${idx + 1}: ${qa.question}\nA${idx + 1}: ${qa.answer}\n\n`;
+        previousContext += `${idx + 1}. ${qa.question}\n`;
       });
+      previousContext += '\nMake sure the new question covers DIFFERENT topics and skills.';
     }
 
-    // System prompts based on interview type
+    // System prompts based on interview type with more specific instructions
     const systemPrompts = {
-      technical: `You are an expert technical interviewer for ${jobRole} positions. Ask challenging but fair technical questions appropriate for a ${experience} level candidate. Focus on problem-solving, algorithms, system design, and role-specific technical knowledge. Make questions progressively harder.`,
-      behavioral: `You are an experienced HR interviewer specializing in behavioral interviews for ${jobRole} positions. Ask STAR method questions (Situation, Task, Action, Result) that reveal the candidate's soft skills, teamwork, leadership, and past experiences. Tailor questions to ${experience} level.`,
-      hr: `You are a professional HR interviewer for ${jobRole} positions. Ask questions about the candidate's background, motivation, career goals, company fit, and general professional attributes. Adjust difficulty for ${experience} level candidates.`
+      technical: `You are an expert technical interviewer for ${jobRole} positions. Generate UNIQUE, NON-REPETITIVE questions appropriate for ${experience} level candidates. 
+
+For ${experience} level:
+- Fresher: Focus on fundamentals, basic concepts, simple problem-solving
+- Intermediate: Ask about real-world applications, optimization, best practices
+- Expert: Challenge with system design, architecture decisions, trade-offs
+
+Topics to cover: coding, algorithms, data structures, system design, debugging, optimization, frameworks, tools, and ${jobRole}-specific technologies.`,
+
+      behavioral: `You are an experienced HR interviewer specializing in behavioral interviews for ${jobRole} positions. Create UNIQUE STAR method questions (Situation, Task, Action, Result) for ${experience} level candidates.
+
+For ${experience} level:
+- Fresher: Focus on academic projects, internships, learning experiences
+- Intermediate: Ask about team collaboration, project management, challenges
+- Expert: Explore leadership, mentoring, strategic decisions, conflict resolution
+
+Topics: teamwork, leadership, problem-solving, adaptability, communication, conflict resolution, time management.`,
+
+      hr: `You are a professional HR interviewer for ${jobRole} positions. Ask DIVERSE questions about background, motivation, and fit for ${experience} level candidates.
+
+For ${experience} level:
+- Fresher: Career goals, learning attitude, company culture fit
+- Intermediate: Career progression, work-life balance, professional development
+- Expert: Long-term vision, leadership philosophy, industry expertise
+
+Topics: motivation, strengths/weaknesses, career goals, company fit, work style, handling pressure.`
     };
 
     const completion = await openai.chat.completions.create({
@@ -1494,10 +1518,12 @@ app.post("/api/interview/generate-question", async (req, res) => {
         },
         {
           role: "user",
-          content: `Generate interview question ${questionNumber} of ${totalQuestions} for a ${experience} level ${jobRole} candidate.${previousContext}\n\nProvide ONLY the question text, no additional formatting or explanations.`
+          content: `This is question ${questionNumber} of ${totalQuestions} for a ${experience} level ${jobRole} position.${previousContext}
+
+Generate ONE unique, specific interview question. Make it different from previous questions. Output ONLY the question text, no numbering, no explanations, no formatting.`
         }
       ],
-      temperature: 0.8,
+      temperature: 0.9, // Increased for more variety
       max_tokens: 200
     });
 
