@@ -23,7 +23,7 @@ import { anatomyTemplates } from "./anatomyTemplates.js";
 
 function matchAnatomyTemplate(prompt) {
   const lowerPrompt = prompt.toLowerCase();
-  
+
   const keywords = {
     'human-heart': ['heart', 'cardiac', 'atrium', 'ventricle', 'cardiovascular'],
     'human-brain': ['brain', 'cerebral', 'lobe', 'frontal', 'cerebellum', 'neural'],
@@ -35,19 +35,19 @@ function matchAnatomyTemplate(prompt) {
     'atom-structure': ['atom', 'atom structure', 'proton', 'neutron', 'electron', 'nucleus', 'atomic'],
     'butterfly-lifecycle': ['butterfly', 'butterfly life cycle', 'metamorphosis', 'caterpillar', 'chrysalis', 'pupa']
   };
-  
+
   for (const [templateId, keywordList] of Object.entries(keywords)) {
     if (keywordList.some(keyword => lowerPrompt.includes(keyword))) {
       return anatomyTemplates[templateId];
     }
   }
-  
+
   return null;
 }
 
 function detectComplexDiagram(prompt) {
   const lowerPrompt = prompt.toLowerCase();
-  
+
   // Complex diagram keywords (biological, anatomical, detailed systems)
   const complexKeywords = [
     'anatomy', 'biological', 'organ', 'cell', 'tissue',
@@ -59,24 +59,24 @@ function detectComplexDiagram(prompt) {
     'animal', 'dog', 'cat', 'bird', 'fish', 'mammal', 'reptile',
     'body parts', 'organism', 'creature', 'species'
   ];
-  
+
   // Simple diagram keywords (geometric, basic concepts, cycles)
   const simpleKeywords = [
     'solar system', 'water cycle', 'life cycle', 'food chain',
     'triangle', 'circle', 'rectangle', 'square', 'perimeter', 'area',
     'simple', 'basic', 'diagram', 'chart', 'flow'
   ];
-  
+
   // If explicitly asks for simple, use GPT-3.5
   if (simpleKeywords.some(keyword => lowerPrompt.includes(keyword))) {
     return false;
   }
-  
+
   // If matches complex keywords, use GPT-4
   if (complexKeywords.some(keyword => lowerPrompt.includes(keyword))) {
     return true;
   }
-  
+
   // Default to simple/fast for unknown prompts
   return false;
 }
@@ -120,7 +120,7 @@ const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     const allowedOrigins = [
       "http://localhost:5173",
       "http://localhost:3000",
@@ -128,11 +128,11 @@ const corsOptions = {
       "https://ai-tutor-final-sepia.vercel.app",
       process.env.CORS_ORIGIN
     ].filter(Boolean);
-    
+
     // Allow Vercel preview deployments and production
     if (
-      allowedOrigins.indexOf(origin) !== -1 || 
-      origin.startsWith('http://192.168.') || 
+      allowedOrigins.indexOf(origin) !== -1 ||
+      origin.startsWith('http://192.168.') ||
       origin.startsWith('http://172.') ||
       origin.endsWith('.vercel.app') // Allow all Vercel deployments
     ) {
@@ -170,24 +170,24 @@ app.get("/api", (req, res) => {
 app.get("/api/did-status", async (req, res) => {
   try {
     console.log('🔍 Checking D-ID API status...');
-    
+
     if (!didApiKey) {
       return res.status(500).send({
         status: 'error',
         message: 'D-ID API key not configured'
       });
     }
-    
+
     // Simple health check by attempting to create a test request
     res.send({
       status: 'working',
       message: 'D-ID API key configured',
       hasApiKey: !!didApiKey
     });
-    
+
   } catch (error) {
     console.error('❌ D-ID API error:', error);
-    res.status(500).send({ 
+    res.status(500).send({
       status: 'error',
       error: error.message,
       statusCode: error.status || 500
@@ -204,14 +204,14 @@ app.post("/api/did-chat/:agentId/:chatId", async (req, res) => {
   try {
     const { agentId, chatId } = req.params;
     const { message, streamId, sessionId } = req.body;
-    
+
     console.log(`💬 Sending message to D-ID agent ${agentId}, chat ${chatId}`);
     console.log(`📝 Message: "${message}"`);
-    
+
     if (!didApiKey) {
       return res.status(500).send({ error: 'D-ID API key not configured' });
     }
-    
+
     // Step 1: Send message to chat to get GPT-4 response (without stream for now)
     const chatResponse = await fetch(`https://api.d-id.com/agents/${agentId}/chat/${chatId}`, {
       method: 'POST',
@@ -229,16 +229,16 @@ app.post("/api/did-chat/:agentId/:chatId", async (req, res) => {
         ],
       }),
     });
-    
+
     if (!chatResponse.ok) {
       const errorText = await chatResponse.text();
       console.error('❌ D-ID chat API error:', errorText);
       return res.status(chatResponse.status).send({ error: errorText });
     }
-    
+
     const chatData = await chatResponse.json();
     console.log('✅ Chat response received from D-ID');
-    
+
     // Step 2: Send the same message with streamId to make agent speak
     if (streamId && sessionId) {
       console.log('🗣️ Sending to stream for speaking...');
@@ -260,16 +260,16 @@ app.post("/api/did-chat/:agentId/:chatId", async (req, res) => {
           ],
         }),
       });
-      
+
       if (streamResponse.ok) {
         console.log('✅ Message sent to stream successfully');
       } else {
         console.warn('⚠️ Failed to send to stream, but we have the text response');
       }
     }
-    
+
     res.send(chatData);
-    
+
   } catch (error) {
     console.error('❌ Error in D-ID chat:', error);
     res.status(500).send({ error: error.message });
@@ -281,11 +281,11 @@ app.get("/api/did-chat-history/:agentId/:chatId", async (req, res) => {
   try {
     const { agentId, chatId } = req.params;
     console.log(`📥 Fetching D-ID chat history for agent ${agentId}, chat ${chatId}`);
-    
+
     if (!didApiKey) {
       return res.status(500).send({ error: 'D-ID API key not configured' });
     }
-    
+
     const response = await fetch(`https://api.d-id.com/agents/${agentId}/chat/${chatId}`, {
       method: 'GET',
       headers: {
@@ -293,17 +293,17 @@ app.get("/api/did-chat-history/:agentId/:chatId", async (req, res) => {
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ D-ID API error:', errorText);
       return res.status(response.status).send({ error: errorText });
     }
-    
+
     const data = await response.json();
     console.log('✅ Chat history retrieved:', data.messages?.length || 0, 'messages');
     res.send(data);
-    
+
   } catch (error) {
     console.error('❌ Error fetching D-ID chat history:', error);
     res.status(500).send({ error: error.message });
@@ -317,21 +317,21 @@ app.post("/api/generate-quiz", async (req, res) => {
   console.log('🌍 Environment:', process.env.NODE_ENV);
   console.log('🔑 OpenAI API key exists:', !!process.env.OPENAI_API_KEY);
   console.log('🔑 OpenAI client initialized:', !!openai);
-  
+
   try {
     const { messages } = req.body;
-    
+
     console.log('🎯 Generating quiz from', messages?.length || 0, 'messages');
     console.log('🔑 OpenAI API key exists:', !!process.env.OPENAI_API_KEY);
     console.log('🔑 OpenAI client initialized:', !!openai);
-    
+
     if (!messages || messages.length === 0) {
       return res.status(400).send({ error: 'No chat history provided' });
     }
 
     if (!openai) {
       console.error('❌ OpenAI client not initialized');
-      return res.status(500).send({ 
+      return res.status(500).send({
         error: 'OpenAI API not configured',
         details: 'OPENAI_API_KEY environment variable is missing'
       });
@@ -339,7 +339,7 @@ app.post("/api/generate-quiz", async (req, res) => {
 
     // Prepare conversation context for OpenAI
     console.log('📋 Preparing conversation context...');
-    const conversationContext = messages.map(m => 
+    const conversationContext = messages.map(m =>
       `${m.role === 'user' ? 'Student' : 'AI Tutor'}: ${m.content}`
     ).join('\n');
     console.log('📋 Context prepared, length:', conversationContext.length);
@@ -391,8 +391,8 @@ Make sure questions are:
     let quiz;
     try {
       // Try to extract JSON from markdown code blocks if present
-      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
-                        responseText.match(/```\n([\s\S]*?)\n```/);
+      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) ||
+        responseText.match(/```\n([\s\S]*?)\n```/);
       const jsonText = jsonMatch ? jsonMatch[1] : responseText;
       quiz = JSON.parse(jsonText);
     } catch (parseError) {
@@ -413,33 +413,33 @@ Make sure questions are:
 
     console.log('✅ Quiz generated successfully with', quiz.questions?.length || 0, 'questions');
     res.send({ quiz });
-    
+
   } catch (error) {
     console.error('❌ === QUIZ GENERATION ERROR ===');
     console.error('❌ Error message:', error.message);
     console.error('❌ Error name:', error.name);
     console.error('❌ Error code:', error.code);
     console.error('❌ Error stack:', error.stack);
-    
+
     // Check for specific OpenAI errors
     if (error.code === 'insufficient_quota') {
-      return res.status(500).send({ 
+      return res.status(500).send({
         error: 'OpenAI API quota exceeded',
         details: 'Your OpenAI API key has exceeded its quota. Please check your OpenAI account.',
         type: 'QuotaError'
       });
     }
-    
+
     if (error.code === 'invalid_api_key') {
-      return res.status(500).send({ 
+      return res.status(500).send({
         error: 'Invalid OpenAI API key',
         details: 'The OpenAI API key is invalid or expired. Please check your environment variables.',
         type: 'AuthenticationError'
       });
     }
-    
+
     // Generic error response
-    res.status(500).send({ 
+    res.status(500).send({
       error: error.message || 'Unknown error',
       details: error.code || error.type || 'No additional details',
       type: error.name || 'UnknownError',
@@ -452,9 +452,9 @@ Make sure questions are:
 app.post("/api/generate-notes", async (req, res) => {
   try {
     const { messages, chatTitle } = req.body;
-    
+
     console.log('📝 Generating notes from', messages?.length || 0, 'messages');
-    
+
     if (!messages || messages.length === 0) {
       return res.status(400).send({ error: 'No chat history provided' });
     }
@@ -464,7 +464,7 @@ app.post("/api/generate-notes", async (req, res) => {
     }
 
     // Prepare conversation context
-    const conversationContext = messages.map(m => 
+    const conversationContext = messages.map(m =>
       `${m.role === 'user' ? 'Student' : 'AI Tutor'}: ${m.content}`
     ).join('\n\n');
 
@@ -498,9 +498,9 @@ Make the notes clear, concise, and easy to review for studying.`
 
     const notes = completion.choices[0].message.content;
     console.log('✅ Notes generated successfully');
-    
+
     res.send({ notes });
-    
+
   } catch (error) {
     console.error('❌ Error generating notes:', error);
     res.status(500).send({ error: error.message });
@@ -511,21 +511,21 @@ Make the notes clear, concise, and easy to review for studying.`
 app.post("/api/analyze-diagram", async (req, res) => {
   try {
     const { chatText } = req.body;
-    
+
     console.log('📊 Analyzing chat for diagram generation...');
-    
+
     if (!chatText) {
       return res.status(400).send({ error: 'No chat text provided' });
     }
 
     // 🚀 STEP 1: Check if this matches any anatomy template (INSTANT)
     const template = matchAnatomyTemplate(chatText);
-    
+
     if (template) {
       console.log(`⚡ Template matched - instant rendering!`);
       const compactArray = convertTemplateToCompactFormat(template.elements);
       const compactDrawing = compactArray.join('\n'); // Convert array to string
-      
+
       return res.send({
         diagramType: 'fast_drawing',
         drawing: compactDrawing,
@@ -536,7 +536,7 @@ app.post("/api/analyze-diagram", async (req, res) => {
 
     // STEP 2: Call /api/generate-drawing-fast for custom diagrams
     console.log('🎨 No template match, using fast drawing API...');
-    
+
     try {
       const drawingResponse = await fetch('http://localhost:3000/api/generate-drawing-fast', {
         method: 'POST',
@@ -547,16 +547,16 @@ app.post("/api/analyze-diagram", async (req, res) => {
       if (drawingResponse.ok) {
         const drawingData = await drawingResponse.json();
         console.log('✅ Fast drawing generated:', drawingData.isTemplate ? 'template' : 'gpt');
-        
+
         // Check if elements array exists
         if (!drawingData.elements || !Array.isArray(drawingData.elements)) {
           console.error('Invalid drawing data:', drawingData);
           throw new Error('Drawing API returned invalid format');
         }
-        
+
         // Convert elements array to compact format string
         const drawing = drawingData.elements.join('\n');
-        
+
         return res.send({
           diagramType: 'fast_drawing',
           drawing: drawing,
@@ -577,7 +577,7 @@ app.post("/api/analyze-diagram", async (req, res) => {
         ]
       });
     }
-    
+
   } catch (error) {
     console.error('❌ Error analyzing diagram:', error);
     res.status(500).send({ error: error.message });
@@ -593,10 +593,10 @@ async function fetchTranscriptWithFallbacks(videoId) {
       try {
         const youtube = await Innertube.create();
         const info = await youtube.getInfo(videoId);
-        
+
         // Get transcript from captions
         const transcriptData = await info.getTranscript();
-        
+
         if (transcriptData && transcriptData.transcript) {
           const segments = transcriptData.transcript.content.body.initial_segments;
           if (segments && segments.length > 0) {
@@ -644,15 +644,15 @@ async function fetchTranscriptWithFallbacks(videoId) {
         }
       });
       const html = await response.text();
-      
+
       // Look for caption tracks in the page - multiple patterns
       const patterns = [
         /"captionTracks":\s*(\[.*?\])/,
         /"captions".*?"playerCaptionsTracklistRenderer".*?"captionTracks":\s*(\[.*?\])/s
       ];
-      
+
       let captionTracks = null;
-      
+
       for (const pattern of patterns) {
         const match = html.match(pattern);
         if (match && match[1]) {
@@ -667,14 +667,14 @@ async function fetchTranscriptWithFallbacks(videoId) {
           }
         }
       }
-      
+
       if (captionTracks && captionTracks.length > 0) {
         // Try to find Hindi or English captions first
         const preferredLangs = ['hi', 'en', 'ur'];
         let selectedTrack = null;
-        
+
         for (const lang of preferredLangs) {
-          selectedTrack = captionTracks.find(track => 
+          selectedTrack = captionTracks.find(track =>
             track.languageCode && track.languageCode.startsWith(lang)
           );
           if (selectedTrack) {
@@ -682,24 +682,24 @@ async function fetchTranscriptWithFallbacks(videoId) {
             break;
           }
         }
-        
+
         // If no preferred language, use first available
         if (!selectedTrack) {
           selectedTrack = captionTracks[0];
           console.log(`   ✓ Using first available: ${selectedTrack.languageCode || 'unknown'}`);
         }
-        
+
         const captionUrl = selectedTrack.baseUrl;
         console.log('   � Fetching captions from URL...');
-        
+
         const captionResponse = await fetch(captionUrl);
         const captionXml = await captionResponse.text();
-        
+
         // Parse XML to extract text - improved regex
         const textRegex = /<text[^>]*>(.*?)<\/text>/gs;
         const texts = [];
         let textMatch;
-        
+
         while ((textMatch = textRegex.exec(captionXml)) !== null) {
           let text = textMatch[1]
             .replace(/&amp;#39;/g, "'")
@@ -714,7 +714,7 @@ async function fetchTranscriptWithFallbacks(videoId) {
             .trim();
           if (text && text.length > 0) texts.push(text);
         }
-        
+
         if (texts.length > 0) {
           console.log(`   ✅ Extracted ${texts.length} caption segments`);
           return texts.join(' ');
@@ -728,26 +728,26 @@ async function fetchTranscriptWithFallbacks(videoId) {
     async () => {
       console.log('🔄 Method 4: Trying YouTube timedtext API...');
       const langs = ['hi', 'hi-IN', 'en', 'en-US', 'en-GB', 'hi-Latn', 'ur', 'ur-PK', 'ar', 'pa', 'bn', 'es', 'fr'];
-      
+
       for (const lang of langs) {
         try {
           console.log(`   🔍 Trying timedtext for: ${lang}`);
           const timedtextUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${lang}`;
           const response = await fetch(timedtextUrl);
-          
+
           if (response.ok) {
             const xml = await response.text();
-            
+
             // Check if we actually got captions (not an error page)
             if (!xml.includes('<transcript>') && !xml.includes('<text')) {
               console.log(`   ⚠️ No valid captions for ${lang}`);
               continue;
             }
-            
+
             const textRegex = /<text[^>]*>(.*?)<\/text>/gs;
             const texts = [];
             let match;
-            
+
             while ((match = textRegex.exec(xml)) !== null) {
               let text = match[1]
                 .replace(/&amp;#39;/g, "'")
@@ -760,7 +760,7 @@ async function fetchTranscriptWithFallbacks(videoId) {
                 .trim();
               if (text && text.length > 0) texts.push(text);
             }
-            
+
             if (texts.length > 0) {
               console.log(`   ✅ Got transcript from timedtext API (${lang}): ${texts.length} segments`);
               return texts.join(' ');
@@ -796,13 +796,13 @@ async function fetchTranscriptWithFallbacks(videoId) {
       console.log(`❌ Method ${i + 1} failed:`, error.message);
       lastError = error;
     }
-    
+
     // Add a small delay between attempts
     if (i < methods.length - 1) {
       await new Promise(resolve => setTimeout(resolve, 300));
     }
   }
-  
+
   throw lastError || new Error('All transcript fetching methods failed');
 }
 
@@ -810,9 +810,9 @@ async function fetchTranscriptWithFallbacks(videoId) {
 app.post("/api/summarize-youtube", async (req, res) => {
   try {
     const { url } = req.body;
-    
+
     console.log('🎥 Summarizing YouTube video:', url);
-    
+
     if (!url) {
       return res.status(400).send({ error: 'YouTube URL is required' });
     }
@@ -830,7 +830,7 @@ app.post("/api/summarize-youtube", async (req, res) => {
       } else if (urlObj.hostname.includes('youtu.be')) {
         videoId = urlObj.pathname.slice(1);
       }
-      
+
       if (!videoId) {
         throw new Error('Invalid YouTube URL');
       }
@@ -844,19 +844,19 @@ app.post("/api/summarize-youtube", async (req, res) => {
     let transcript;
     let videoTitle = 'YouTube Video';
     let isMetadataOnly = false;
-    
+
     try {
       transcript = await fetchTranscriptWithFallbacks(videoId);
-      
+
       // Check if we only got metadata
       if (transcript.startsWith('METADATA_ONLY::')) {
         isMetadataOnly = true;
         transcript = transcript.replace('METADATA_ONLY::', '');
       }
-      
+
       console.log('✅ Content fetched, length:', transcript.length);
       console.log('📊 Is metadata only:', isMetadataOnly);
-      
+
       // Try to get video title
       try {
         const videoInfo = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
@@ -866,10 +866,10 @@ app.post("/api/summarize-youtube", async (req, res) => {
       } catch (titleError) {
         console.log('⚠️ Could not fetch video title:', titleError.message);
       }
-      
+
     } catch (error) {
       console.error('❌ Error fetching transcript:', error);
-      return res.status(400).send({ 
+      return res.status(400).send({
         error: 'Could not fetch video content. Video may be private, age-restricted, or unavailable.',
         details: error.message
       });
@@ -884,7 +884,7 @@ app.post("/api/summarize-youtube", async (req, res) => {
 
     // Generate summary using OpenAI
     console.log('🤖 Generating summary with OpenAI...');
-    
+
     const systemPrompt = isMetadataOnly
       ? `You are an expert at creating educational previews for YouTube videos. Based on the video title and metadata, create an informative overview.
 
@@ -948,7 +948,7 @@ IMPORTANT:
         },
         {
           role: "user",
-          content: isMetadataOnly 
+          content: isMetadataOnly
             ? `Create an educational preview for this YouTube video:\n\nVideo: ${videoTitle}\n\n${transcript}`
             : `Analyze and summarize the ACTUAL CONTENT from this video.
 
@@ -967,13 +967,13 @@ Remember to include ALL sections in your response with the exact format specifie
     const summary = completion.choices[0].message.content;
     console.log('✅ Summary generated successfully');
     console.log('📄 Summary preview:', summary.substring(0, 200) + '...');
-    
-    res.send({ 
+
+    res.send({
       summary,
       videoId,
       videoUrl: url
     });
-    
+
   } catch (error) {
     console.error('❌ Error summarizing YouTube video:', error);
     res.status(500).send({ error: error.message });
@@ -988,7 +988,7 @@ app.post("/api/execute-code", async (req, res) => {
 
     // For now, we'll use a simple Python executor
     // In production, use a sandboxed environment like Judge0 API or Docker containers
-    
+
     if (language === 'python') {
       const { exec } = await import('child_process');
       const { promisify } = await import('util');
@@ -1000,7 +1000,7 @@ app.post("/api/execute-code", async (req, res) => {
       // Create a temporary file
       const tmpDir = os.tmpdir();
       const tmpFile = path.join(tmpDir, `code_${Date.now()}.py`);
-      
+
       // Write code to temp file
       fs.writeFileSync(tmpFile, code);
 
@@ -1051,7 +1051,7 @@ app.post("/api/execute-code", async (req, res) => {
 // Helper function to run test cases
 async function runTestCases(code, testCases, language) {
   const results = [];
-  
+
   for (const testCase of testCases) {
     try {
       // Extract function name from code
@@ -1068,12 +1068,12 @@ async function runTestCases(code, testCases, language) {
       }
 
       const functionName = functionMatch[1];
-      
+
       // Build test code
-      const inputArgs = Array.isArray(testCase.input) 
+      const inputArgs = Array.isArray(testCase.input)
         ? testCase.input.map(arg => JSON.stringify(arg)).join(', ')
         : JSON.stringify(testCase.input);
-      
+
       const testCode = `${code}\n\nresult = ${functionName}(${inputArgs})\nprint(result)`;
 
       // Execute test
@@ -1230,7 +1230,7 @@ Example for "area of triangle":
     });
 
     const content = completion.choices[0].message.content.trim();
-    
+
     // Remove markdown code blocks if present
     let jsonStr = content;
     if (content.startsWith('```')) {
@@ -1242,7 +1242,7 @@ Example for "area of triangle":
       drawingData = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error('❌ Failed to parse GPT-4 response:', jsonStr);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to parse drawing instructions',
         details: parseError.message,
         rawResponse: content
@@ -1286,7 +1286,7 @@ app.post("/api/generate-drawing-fast", async (req, res) => {
     const isComplexDiagram = detectComplexDiagram(prompt);
     const model = isComplexDiagram ? "gpt-4" : "gpt-3.5-turbo";
     const maxTokens = isComplexDiagram ? 1200 : 800;
-    
+
     console.log(`🤖 Using ${model} (${isComplexDiagram ? 'complex' : 'simple'} diagram)`);
 
     const completion = await openai.chat.completions.create({
@@ -1424,13 +1424,13 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
     });
 
     const content = completion.choices[0].message.content.trim();
-    
+
     // Remove markdown code blocks if present
     let jsonStr = content;
     if (content.startsWith('```')) {
       jsonStr = content.replace(/```json?\n?/g, '').replace(/```\n?$/g, '').trim();
     }
-    
+
     // Remove JSON comments (// ...) that GPT sometimes adds
     jsonStr = jsonStr.replace(/\/\/[^\n]*/g, '');
 
@@ -1439,7 +1439,7 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
       drawingData = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error('❌ Failed to parse GPT-4 response:', jsonStr);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to parse drawing instructions',
         details: parseError.message,
         rawResponse: content
@@ -1462,7 +1462,7 @@ DO NOT add comments like // in the JSON - return pure JSON only.`
 app.post("/api/interview/generate-question", async (req, res) => {
   try {
     const { interviewType, jobRole, experience, questionNumber, totalQuestions, previousAnswers } = req.body;
-    
+
     if (!openai) {
       return res.status(500).json({ error: 'OpenAI API not configured' });
     }
@@ -1541,12 +1541,67 @@ Generate ONE unique, specific interview question. Make it different from previou
 app.post("/api/interview/generate-feedback", async (req, res) => {
   try {
     const { interviewType, jobRole, experience, answers } = req.body;
-    
+
     if (!openai) {
       return res.status(500).json({ error: 'OpenAI API not configured' });
     }
 
     console.log(`📊 Generating feedback for ${answers.length} answers (${interviewType} interview)`);
+
+    // PRE-CHECK: Detect garbage/irrelevant answers BEFORE sending to GPT-4
+    const allAnswersText = answers.map(a => a.answer.toLowerCase().trim()).join(' ');
+    const totalWords = allAnswersText.split(/\s+/).filter(w => w.length > 0).length;
+
+    // Expanded garbage patterns (case-insensitive)
+    const garbagePatterns = [
+      'ok', 'okay', 'okok', 'okk', 'k',
+      'yes', 'yeah', 'yep', 'yea', 'ya',
+      'no', 'nope', 'nah',
+      'idk', 'dunno', 'duno',
+      'maybe', 'perhaps',
+      'hmm', 'hmmm', 'umm', 'ummm', 'uhh', 'uh',
+      'mm', 'mmm', 'mhmm',
+      'whatever', 'whateva', 'whtever',
+      'zpc', 'xyz', 'abc', 'test', 'testing',
+      'nothing', 'something', 'anything',
+      'sure', 'fine', 'cool', 'nice',
+      'good', 'bad', 'great'
+    ];
+
+    // Check if ANY answer is irrelevant/garbage
+    const hasGarbageAnswers = answers.some(a => {
+      const answer = a.answer.toLowerCase().trim().replace(/[.,!?;:]/g, '');
+      
+      // Exact match or close match with garbage patterns
+      if (garbagePatterns.includes(answer)) return true;
+      
+      // Answer is too short (less than 5 characters)
+      if (answer.length < 5) return true;
+      
+      // Answer contains only garbage words
+      const words = answer.split(/\s+/);
+      if (words.length <= 2 && words.every(w => garbagePatterns.includes(w))) return true;
+      
+      return false;
+    });
+
+    // FORCE SCORE 0 for garbage/irrelevant answers
+    if (hasGarbageAnswers || totalWords < 20) {
+      console.log(`🚫 GARBAGE/IRRELEVANT ANSWER DETECTED: ${totalWords} words, returning score 0`);
+      return res.json({
+        feedback: {
+          overallScore: 0,
+          strengths: [],
+          improvements: [
+            'Provide substantial, relevant answers instead of one-word or irrelevant responses',
+            'Give specific examples and technical details related to the question',
+            `Demonstrate real ${jobRole} knowledge with in-depth, meaningful explanations`,
+            'Each answer should be at least 2-3 sentences with concrete information'
+          ],
+          summary: `Strong No - Answers were irrelevant, too brief, or non-substantive (e.g., "ok", "mm", "whatever"). Interview requires detailed, thoughtful, and relevant responses demonstrating genuine ${jobRole} expertise. Score: 0/100.`
+        }
+      });
+    }
 
     // Build interview transcript
     let transcript = '';
@@ -1560,7 +1615,15 @@ app.post("/api/interview/generate-feedback", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are an expert interview coach analyzing a ${interviewType} interview for a ${experience} level ${jobRole} position. Provide constructive, detailed feedback on the candidate's performance.`
+          content: `You are an expert interview coach analyzing a ${interviewType} interview for a ${experience} level ${jobRole} position. 
+
+CRITICAL SCORING RULES:
+1. If ANY answer is irrelevant, off-topic, or one-word (e.g., "ok", "mm", "whatever"), give 0/100
+2. If answers lack technical depth or specificity, score 20-40
+3. If answers are generic without examples, score 40-55
+4. Only score 60+ if answers demonstrate real expertise with concrete examples
+
+Be EXTREMELY STRICT. Most candidates should score 30-50 unless they show exceptional knowledge.`
         },
         {
           role: "user",
@@ -1573,6 +1636,11 @@ app.post("/api/interview/generate-feedback", async (req, res) => {
   "summary": "<2-3 sentence overall assessment>"
 }
 
+IMPORTANT: 
+- Give 0 if answers are irrelevant, off-topic, or one-word responses
+- Be very strict with scoring - verify technical accuracy and depth
+- Check if answers actually address the questions asked
+
 Interview transcript:
 ${transcript}
 
@@ -1584,7 +1652,7 @@ Return ONLY valid JSON, no markdown or additional text.`
     });
 
     let content = completion.choices[0].message.content.trim();
-    
+
     // Remove markdown code blocks if present
     if (content.startsWith('```')) {
       content = content.replace(/```json?\n?/g, '').replace(/```\n?$/g, '').trim();
@@ -1597,6 +1665,318 @@ Return ONLY valid JSON, no markdown or additional text.`
   } catch (error) {
     console.error('❌ Error generating interview feedback:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== INTERVIEW PRACTICE API ENDPOINTS =====
+
+// Generate role-specific interview questions
+app.post("/api/interview/generate-question", async (req, res) => {
+  try {
+    const { interviewType, jobRole, experience, questionNumber, totalQuestions, previousAnswers } = req.body;
+
+    console.log(`🎯 Generating ${interviewType} interview question #${questionNumber} for ${jobRole} (${experience})`);
+
+    if (!openai) {
+      return res.status(500).send({ error: 'OpenAI API not configured' });
+    }
+
+    // Build context from previous answers if available
+    let contextText = '';
+    if (previousAnswers && previousAnswers.length > 0) {
+      contextText = '\\n\\nPrevious Q&A in this interview:\\n' +
+        previousAnswers.map((qa, idx) =>
+          `Q${idx + 1}: ${qa.question}\\nA${idx + 1}: ${qa.answer.substring(0, 200)}...`
+        ).join('\\n\\n');
+    }
+
+    // Create role-specific system prompts
+    const systemPrompts = {
+      technical: `You are a senior technical interviewer conducting a STRICT, IN-DEPTH ${jobRole} interview. 
+
+CRITICAL RULES:
+1. Questions MUST be 100% relevant to ${jobRole} - NO generic software or CS questions if the role is non-tech
+2. Questions should be HIGHLY SPECIFIC to the actual day-to-day responsibilities of a ${jobRole}
+3. For ${experience} level: ${experience === 'fresher' ? 'Ask practical, hands-on questions about tools, techniques, and basic scenarios' : experience === 'intermediate' ? 'Ask about problem-solving, decision-making, and handling complex situations' : 'Ask about strategy, leadership, innovation, and industry expertise'}
+4. Make questions CHALLENGING and REALISTIC - what a real hiring manager would ask
+5. Focus on: technical skills, tools/equipment used, problem-solving, quality standards, industry knowledge
+6. Avoid: buzzwords, generic questions, unrelated tech topics
+
+${contextText}
+
+Generate question #${questionNumber} of ${totalQuestions} that is:
+- Directly applicable to ${jobRole} work
+- Appropriate for ${experience} level
+- Requires detailed, specific knowledge
+- Tests both theoretical understanding and practical experience`,
+
+      behavioral: `You are an experienced HR interviewer conducting a STRICT behavioral interview for a ${jobRole} position.
+
+CRITICAL RULES:
+1. Use STAR method (Situation, Task, Action, Result) framework
+2. Questions MUST relate to real scenarios in ${jobRole} work environment
+3. For ${experience} level: ${experience === 'fresher' ? 'Focus on academic projects, internships, teamwork, and learning ability' : experience === 'intermediate' ? 'Focus on handling conflicts, leadership moments, and career growth' : 'Focus on strategic decisions, team management, and organizational impact'}
+4. Probe for SPECIFIC examples, not hypotheticals
+5. Test: communication, teamwork, problem-solving, adaptability, work ethic
+6. Make it relevant to actual ${jobRole} challenges
+
+${contextText}
+
+Generate question #${questionNumber} of ${totalQuestions} that:
+- Asks for a SPECIFIC past experience
+- Is relevant to ${jobRole} responsibilities
+- Appropriate for ${experience} level
+- Requires detailed STAR-format answer`,
+
+      hr: `You are an HR manager conducting a STRICT general HR interview for a ${jobRole} position.
+
+CRITICAL RULES:
+1. Questions MUST be relevant to ${jobRole} career path and industry
+2. For ${experience} level: ${experience === 'fresher' ? 'Focus on motivation, career goals, cultural fit, and why this role' : experience === 'intermediate' ? 'Focus on career progression, achievements, job switching reasons' : 'Focus on leadership vision, industry trends, long-term goals, mentoring'}
+3. Assess: cultural fit, motivation, career goals, self-awareness, professional development
+4. Test knowledge of ${jobRole} industry and trends
+5. Make questions thought-provoking and specific to their career stage
+6. Avoid generic "tell me about yourself" - be specific
+
+${contextText}
+
+Generate question #${questionNumber} of ${totalQuestions} that:
+- Is specific to ${jobRole} career and industry
+- Appropriate for ${experience} level
+- Tests self-awareness and career planning
+- Requires honest, detailed reflection`
+    };
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompts[interviewType]
+        },
+        {
+          role: "user",
+          content: `Generate a challenging, role-specific question #${questionNumber} for a ${experience}-level ${jobRole} candidate. Return ONLY the question text, nothing else.`
+        }
+      ],
+      temperature: 0.8,
+      max_tokens: 300
+    });
+
+    const question = completion.choices[0].message.content.trim();
+    console.log(`✅ Generated question: "${question.substring(0, 100)}..."`);
+
+    res.send({ question });
+
+  } catch (error) {
+    console.error('❌ Error generating interview question:', error);
+    res.status(500).send({ error: error.message });
+  }
+});
+
+// ULTRA-STRICT Feedback Endpoint - Paste this into server.js replacing lines 1709-1800
+
+app.post("/api/interview/generate-feedback", async (req, res) => {
+  try {
+    const { interviewType, jobRole, experience, answers } = req.body;
+
+    console.log(`📊 Generating STRICT feedback for ${jobRole} ${interviewType} interview (${answers.length} answers)`);
+
+    if (!openai) {
+      return res.status(500).send({ error: 'OpenAI API not configured' });
+    }
+
+    // Prepare Q&A for analysis
+    const qaText = answers.map((qa, idx) =>
+      `Q${idx + 1}: ${qa.question}\n\nCandidate Answer: ${qa.answer}\n\n---`
+    ).join('\n');
+
+    // PRE-CHECK: Detect garbage answers BEFORE sending to GPT-4
+    const allAnswersText = answers.map(a => a.answer.toLowerCase().trim()).join(' ');
+    const totalWords = allAnswersText.split(/\s+/).filter(w => w.length > 0).length;
+
+    // Expanded garbage patterns (case-insensitive)
+    const garbagePatterns = [
+      'ok', 'okay', 'okok', 'okk', 'k',
+      'yes', 'yeah', 'yep', 'yea', 'ya',
+      'no', 'nope', 'nah',
+      'idk', 'dunno', 'duno',
+      'maybe', 'perhaps',
+      'hmm', 'hmmm', 'umm', 'ummm', 'uhh', 'uh',
+      'mm', 'mmm', 'mhmm',
+      'whatever', 'whateva', 'whtever',
+      'zpc', 'xyz', 'abc', 'test', 'testing',
+      'nothing', 'something', 'anything',
+      'sure', 'fine', 'cool', 'nice',
+      'good', 'bad', 'great'
+    ];
+
+    // Check if ANY answer is irrelevant/garbage
+    const hasGarbageAnswers = answers.some(a => {
+      const answer = a.answer.toLowerCase().trim().replace(/[.,!?;:]/g, '');
+      
+      // Exact match or close match with garbage patterns
+      if (garbagePatterns.includes(answer)) return true;
+      
+      // Answer is too short (less than 5 characters)
+      if (answer.length < 5) return true;
+      
+      // Answer contains only garbage words
+      const words = answer.split(/\s+/);
+      if (words.length <= 2 && words.every(w => garbagePatterns.includes(w))) return true;
+      
+      return false;
+    });
+
+    // FORCE SCORE 0 for garbage/irrelevant answers
+    if (hasGarbageAnswers || totalWords < 20) {
+      console.log(`🚫 GARBAGE/IRRELEVANT ANSWER DETECTED: ${totalWords} words, returning score 0`);
+      return res.send({
+        feedback: {
+          overallScore: 0,
+          strengths: [],
+          improvements: [
+            'Provide substantial, relevant answers instead of one-word or irrelevant responses',
+            'Give specific examples and technical details related to the question',
+            `Demonstrate real ${jobRole} knowledge with in-depth, meaningful explanations`,
+            'Each answer should be at least 2-3 sentences with concrete information'
+          ],
+          summary: `Strong No - Answers were irrelevant, too brief, or non-substantive (e.g., "ok", "mm", "whatever"). Interview requires detailed, thoughtful, and relevant responses demonstrating genuine ${jobRole} expertise. Score: 0/100.`
+        }
+      });
+    }
+
+
+    const strictPrompt = `You are a ${jobRole} DOMAIN EXPERT and SENIOR HIRING MANAGER. Evaluate with EXTREME STRICTNESS.
+
+VERIFICATION CHECKLIST (analyze EVERY answer):
+1. RELEVANCE: Does the answer actually address the question asked?
+2. TECHNICAL ACCURACY: Are concepts explained CORRECTLY?
+3. DEPTH: Surface knowledge or deep understanding?
+4. SPECIFICITY: Concrete examples with numbers/metrics?
+5. PRECISION: Correct tools/libraries/methods for ${jobRole}?
+6. SUBSTANCE: Real information or just fluff?
+
+AUTOMATIC SCORE 0 IF:
+- Irrelevant answers: "ok", "mm", "whatever", "zpc", "yes", "no"
+- Gibberish or random text unrelated to the question
+- WRONG technical information
+- Less than 15 substantive words total
+- Answer doesn't address the question at all
+
+AUTOMATIC 1-10 SCORE IF:
+- Extremely vague or mostly irrelevant
+- Name-dropping without explanation
+- Off-topic responses
+
+SCORING SYSTEM (START AT 20 IF RELEVANT):
+Base score 20 (assume weak but on-topic)
+
+ADD POINTS:
++20 per answer: Correct in-depth technical explanation
++15 per answer: Specific examples WITH metrics/numbers  
++12 per answer: Demonstrates deep ${jobRole} expertise
++10 per answer: Proper terminology and accurate concepts
++8 per answer: Well-structured logical explanation
+
+SUBTRACT POINTS:
+-100: Answer is COMPLETELY IRRELEVANT or gibberish (results in 0)
+-50: ANY factually WRONG technical information
+-25: Surface knowledge only (no depth)
+-20: Name-drops tools without explaining HOW
+-15: No concrete examples or metrics  
+-15: Vague "we did" (no personal contribution)
+-12: Generic answers (not ${jobRole} specific)
+-10: Theoretical only (no practical application)
+
+FINAL SCORE RANGES:
+0: Irrelevant, garbage, or gibberish answers
+1-15: Almost no substance (wrong info, non-answers)
+16-35: Unqualified (major gaps, no depth)
+36-55: Weak (surface knowledge, generic) ← MOST CANDIDATES
+56-70: Adequate (decent but not impressive)
+71-80: Good (solid depth and accuracy)
+81-90: Excellent (top 10% - exceptional depth)
+91-100: Exceptional (expert-level mastery)
+
+CRITICAL: For tech roles, VERIFY:
+- Does the answer actually address the question?
+- Are libraries/frameworks mentioned REAL?
+- Are concepts explained ACCURATELY?
+- Do they show HANDS-ON experience or just theory?
+- Any misconceptions or errors?
+
+Return ONLY valid JSON:
+{
+  "overallScore": <number 0-100>,
+  "strengths": ["Specific technical thing done well", "Another", "Third"],
+  "improvements": ["Q1: Mentioned X but lacked depth/accuracy", "Q2: Wrong about Y", "Needs Z"],
+  "summary": "Technical assessment: exact gaps, errors, or missing depth"
+}
+
+CONCRETE EXAMPLES:
+Answer "ok": Score 0 (irrelevant/gibberish)
+Answer "mm": Score 0 (irrelevant/gibberish)
+Answer "whatever": Score 0 (irrelevant/dismissive)
+Answer "yes": Score 0 (non-answer)
+Answer "I know React": Score 15 (name-drop, no substance)
+Answer "React is good": Score 18 (vague, no depth)
+Answer "I used React hooks": Score 25 (mentions tool but no example)
+Answer "Built login with React useState, managed 3 form fields": Score 55 (some specifics but basic)
+Answer "Built auth with React, JWT tokens, bcrypt hashing, 500ms response time": Score 75 (good depth)
+
+DEFAULT SCORE: 30-50 unless they demonstrate REAL expertise. Be MICROSCOPICALLY CRITICAL. GIVE 0 FOR IRRELEVANT ANSWERS.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: strictPrompt
+        },
+        {
+          role: "user",
+          content: `Evaluate this ${experience}-level ${jobRole} ${interviewType} interview. VERIFY every technical claim:\n\n${qaText}\n\nBe BRUTALLY STRICT. Check for wrong info, lack of depth, vague answers.`
+        }
+      ],
+      temperature: 0.2,
+      max_tokens: 1000
+    });
+
+    let feedback;
+    try {
+      const responseText = completion.choices[0].message.content.trim();
+      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) ||
+        responseText.match(/```\n([\s\S]*?)\n```/);
+      const jsonText = jsonMatch ? jsonMatch[1] : responseText;
+      feedback = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error('Failed to parse feedback JSON:', parseError);
+      feedback = {
+        overallScore: 40,
+        strengths: [
+          'Completed the interview',
+          'Provided answers to questions',
+          'Showed interest in the role'
+        ],
+        improvements: [
+          'Provide specific examples with metrics',
+          'Demonstrate deeper technical knowledge',
+          `Study ${jobRole} concepts and tools more thoroughly`
+        ],
+        summary: `Showed basic familiarity but lacked depth and specificity expected for ${jobRole}. Need more concrete examples and technical accuracy.`
+      };
+    }
+
+    console.log(`✅ STRICT Feedback: ${feedback.overallScore}/100`);
+    res.send({ feedback });
+
+  } catch (error) {
+    console.error('❌ CRITICAL ERROR in feedback generation:');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Full stack:', error.stack);
+    res.status(500).send({ error: error.message });
   }
 });
 
